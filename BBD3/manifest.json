@@ -1,0 +1,24 @@
+{
+  "short_name": "InvestIQ",
+  "name": "InvestIQ — Microinversión en Bolsa",
+  "description": "Invierte desde $1 USD en acciones fraccionadas con IA Robo-Advisor",
+  "icons": [
+    { "src": "favicon.ico", "sizes": "64x64 32x32 24x24 16x16", "type": "image/x-icon" },
+    { "src": "logo192.png", "type": "image/png", "sizes": "192x192", "purpose": "any maskable" },
+    { "src": "logo512.png", "type": "image/png", "sizes": "512x512", "purpose": "any maskable" }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#12a068",
+  "background_color": "#0b0f14",
+  "orientation": "portrait-primary",
+  "categories": ["finance", "investment"],
+  "lang": "es",
+  "scope": "/",
+  "prefer_related_applications": false,
+  "shortcuts": [
+    { "name": "Dashboard", "url": "/", "icons": [{ "src": "logo192.png", "sizes": "192x192" }] },
+    { "name": "Nueva orden", "url": "/?panel=ordenes", "icons": [{ "src": "logo192.png", "sizes": "192x192" }] },
+    { "name": "Portafolio", "url": "/?page=portafolio", "icons": [{ "src": "logo192.png", "sizes": "192x192" }] }
+  ]
+}

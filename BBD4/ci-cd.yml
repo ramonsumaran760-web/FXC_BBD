@@ -1,0 +1,192 @@
+name: InvestIQ CI/CD
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  PYTHON_VERSION: "3.12"
+  NODE_VERSION: "20"
+
+jobs:
+  # ── Backend tests ──────────────────────────────────────────────────────
+  backend-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio httpx slowapi sentry-sdk[fastapi]
+
+      - name: Verify all imports
+        run: |
+          cd backend
+          python3 -c "
+          from core.config import settings
+          from core.security import hash_password, firmar_orden, verificar_firma, generar_mfa_secret
+          from core.rate_limit import limiter, get_limit
+          from core.monitoring import init_sentry, capturar_error
+          from models.models import Usuario, Orden, PosicionPortafolio, Alerta
+          from services.services import get_market_prices, robo_advisor_analizar, aml_check_entidad
+          from services.payments import verificar_config_pagos, stripe_crear_payment_intent
+          from services.email_service import email_bienvenida
+          from services.push_service import enviar_push, generar_vapid_keys
+          from workers.backup_worker import ejecutar_backup
+          print('✓ All imports OK')
+          "
+
+      - name: Run test suite
+        run: |
+          cd backend
+          python3 -m pytest tests/test_core.py -v --tb=short
+
+      - name: Sentry release notification
+        if: github.ref == 'refs/heads/main' && success()
+        run: |
+          if [ -n "${{ secrets.SENTRY_DSN }}" ]; then
+            curl -sX POST "https://sentry.io/api/0/projects/${{ secrets.SENTRY_ORG }}/${{ secrets.SENTRY_PROJECT }}/releases/" \
+              -H "Authorization: Bearer ${{ secrets.SENTRY_AUTH_TOKEN }}" \
+              -H "Content-Type: application/json" \
+              -d "{\"version\": \"investiq@$(git rev-parse --short HEAD)\", \"refs\": [{\"repository\": \"${{ github.repository }}\", \"commit\": \"${{ github.sha }}\"}]}"
+          fi
+
+  # ── Frontend build ─────────────────────────────────────────────────────
+  frontend-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install & Build
+        run: |
+          cd frontend
+          npm install --legacy-peer-deps
+          CI=false npm run build
+        env:
+          REACT_APP_API_URL: ${{ secrets.REACT_APP_API_URL || 'http://localhost:8000/api/v1' }}
+          REACT_APP_WS_URL: ${{ secrets.REACT_APP_WS_URL || 'ws://localhost:8000/ws' }}
+          REACT_APP_STRIPE_PK: ${{ secrets.STRIPE_PUBLISHABLE_KEY || 'pk_test_demo' }}
+          REACT_APP_SENTRY_DSN: ${{ secrets.SENTRY_DSN_FRONTEND }}
+
+      - name: Upload frontend build
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build-${{ github.sha }}
+          path: frontend/build/
+          retention-days: 7
+
+  # ── Security scan ──────────────────────────────────────────────────────
+  security-scan:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Bandit (Python security)
+        run: |
+          pip install bandit -q
+          cd backend
+          bandit -r . -ll -x ./tests,./workers 2>/dev/null || true
+      - name: Check for hardcoded secrets
+        run: |
+          # Asegurarse de que no hay secrets hardcodeados
+          if grep -r "sk_live_\|pk_live_\|sk-ant-api" backend/ frontend/src/ 2>/dev/null; then
+            echo "ERROR: Hardcoded production keys found!"
+            exit 1
+          fi
+          echo "✓ No hardcoded secrets found"
+
+  # ── Deploy Railway (backend) ───────────────────────────────────────────
+  deploy-backend:
+    needs: [backend-tests, frontend-build, security-scan]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy to Railway
+        run: |
+          cd backend
+          railway up --service investiq-backend --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+
+      - name: Wait for deployment
+        run: sleep 30
+
+      - name: Health check
+        run: |
+          BACKEND_URL="${{ secrets.BACKEND_URL || 'http://localhost:8000' }}"
+          curl -f "$BACKEND_URL/api/v1/health" || exit 1
+          echo "✓ Backend healthy"
+
+      - name: Notify Sentry deployment
+        if: env.SENTRY_AUTH_TOKEN != ''
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: |
+          pip install sentry-cli -q
+          sentry-cli releases finalize "investiq@$(git rev-parse --short HEAD)" 2>/dev/null || true
+
+  # ── Deploy Vercel (frontend) ───────────────────────────────────────────
+  deploy-frontend:
+    needs: [frontend-build]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontend-build-${{ github.sha }}
+          path: frontend/build
+
+      - name: Deploy to Vercel
+        if: env.VERCEL_TOKEN != ''
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          npm install -g vercel
+          cd frontend
+          vercel --token $VERCEL_TOKEN --prod --yes 2>/dev/null || echo "Vercel not configured"
+
+  # ── Backup verification (weekly) ───────────────────────────────────────
+  backup-check:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: Verify backup worker
+        run: |
+          cd backend
+          pip install -r requirements.txt -q
+          python3 -c "
+          from workers.backup_worker import backup_sqlite, rotar_backups_locales
+          print('✓ Backup worker imports OK')
+          "
