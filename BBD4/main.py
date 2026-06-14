@@ -30,6 +30,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Silenciar librerías externas que spamean logs en data centers
+# (Yahoo Finance bloquea IPs de hosting — el fallback de precios lo maneja el código)
+for _noisy in ("yfinance", "yfinance.base", "yfinance.utils", "yfinance.cache",
+               "peewee", "urllib3.connectionpool", "charset_normalizer"):
+    logging.getLogger(_noisy).setLevel(logging.CRITICAL)
+
 # ── Seed data ─────────────────────────────────────────────
 async def seed_inicial():
     from sqlalchemy import select, func

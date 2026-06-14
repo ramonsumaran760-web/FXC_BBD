@@ -38,7 +38,7 @@ slowapi==0.1.9
 
 # ── Datos de mercado ─────────────────────────────────────────
 yfinance==0.2.50
-requests==2.31.0
+requests==2.32.3
 httpx==0.27.0
 
 # ── Generación de reportes ────────────────────────────────────
