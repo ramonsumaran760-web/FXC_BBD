@@ -42,8 +42,8 @@ class Settings(BaseSettings):
 
     # Claude API — Robo-Advisor
     CLAUDE_API_KEY: str = os.getenv("CLAUDE_API_KEY", "")
-    CLAUDE_MODEL: str = "claude-sonnet-4-6"
-    CLAUDE_MAX_TOKENS: int = 1000
+    CLAUDE_MODEL: str = "claude-haiku-4-5-20251001"
+    CLAUDE_MAX_TOKENS: int = 512
 
     # Yahoo Finance fallback
     YF_TICKERS: list = ["AAPL","MSFT","TSLA","NVDA","AMZN","GOOGL","META","SPY","QQQ","BND","VTI","GLD"]
