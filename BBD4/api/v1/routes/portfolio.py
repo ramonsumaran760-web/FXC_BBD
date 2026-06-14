@@ -1,7 +1,7 @@
 """
 Portfolio routes — posiciones actuales + equity curve (historial de rendimiento)
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select, func
@@ -65,7 +65,7 @@ async def get_equity_curve(
     """
     Historial de valor del portafolio. Permite graficar la evolución del capital.
     """
-    desde = datetime.utcnow() - timedelta(days=dias)
+    desde = datetime.now(timezone.utc) - timedelta(days=dias)
     res = await db.execute(
         select(EquityCurve)
         .where(EquityCurve.usuario_id == current_user.id,
@@ -92,7 +92,7 @@ async def get_equity_curve(
 async def _registrar_equity_point(db: AsyncSession, usuario_id: int,
                                    valor: float, saldo: float, gp: float):
     """Registra un punto de equity curve (máximo 1 por hora para evitar spam)."""
-    hace_1h = datetime.utcnow() - timedelta(hours=1)
+    hace_1h = datetime.now(timezone.utc) - timedelta(hours=1)
     res = await db.execute(
         select(func.count(EquityCurve.id)).where(
             EquityCurve.usuario_id == usuario_id,
@@ -115,7 +115,7 @@ def _generar_equity_demo(dias: int) -> list:
     precio = 10000.0
     puntos = []
     for i in range(dias):
-        ts = datetime.utcnow() - timedelta(days=dias - i)
+        ts = datetime.now(timezone.utc) - timedelta(days=dias - i)
         chg = random.gauss(0.05, 0.8)
         precio = round(precio * (1 + chg / 100), 2)
         puntos.append({"timestamp": ts.isoformat(), "valor_portafolio_usd": precio,

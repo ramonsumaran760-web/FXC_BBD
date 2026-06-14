@@ -2,7 +2,7 @@
 Tax routes — cálculo de ganancias de capital FIFO / LIFO y reporte fiscal anual
 """
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy import select
@@ -28,7 +28,7 @@ async def reporte_fiscal(
     Genera el reporte fiscal anual para el año indicado.
     Calcula ganancias/pérdidas de capital usando FIFO o LIFO.
     """
-    if año < 2020 or año > datetime.utcnow().year:
+    if año < 2020 or año > datetime.now(timezone.utc).year:
         raise HTTPException(400, f"Año inválido: {año}")
 
     # Obtener todas las órdenes del usuario
@@ -72,7 +72,7 @@ async def reporte_fiscal(
         reporte.dividendos_recibidos = total_dividendos
         reporte.impuesto_estimado = calculo["impuesto_estimado"]
         reporte.detalle_json = json.dumps(calculo["transacciones"])
-        reporte.generado = datetime.utcnow()
+        reporte.generado = datetime.now(timezone.utc)
     else:
         db.add(ReporteFiscal(
             usuario_id=current_user.id, año=año, metodo=metodo,

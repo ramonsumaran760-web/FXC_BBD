@@ -6,7 +6,7 @@ Notification Service — Notificaciones unificadas:
   - Firebase Cloud Messaging (FCM)
 """
 import os, json, logging
-from datetime import datetime
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -93,7 +93,7 @@ def send_push(usuario_id: int, titulo: str, mensaje: str,
     if not sub:
         return False
     payload = json.dumps({"titulo": titulo, "mensaje": mensaje, "tipo": tipo,
-                          "url": url, "ts": datetime.utcnow().isoformat()})
+                          "url": url, "ts": datetime.now(timezone.utc).isoformat()})
     vapid_private = os.getenv("VAPID_PRIVATE_KEY", "")
     vapid_email = os.getenv("VAPID_EMAIL", "admin@investiq.co")
     if not vapid_private:

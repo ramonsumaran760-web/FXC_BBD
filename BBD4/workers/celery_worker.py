@@ -12,6 +12,7 @@ Workers v2.0 — Celery tasks para operaciones asíncronas pesadas:
 Arrancar: celery -A workers.celery_worker worker -B --loglevel=info
 """
 import os, asyncio, logging
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,7 @@ except ImportError:
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 if CELERY_OK:
+    from celery.schedules import crontab
     app = Celery("investiq", broker=REDIS_URL, backend=REDIS_URL)
     app.conf.update(
         task_serializer="json",
@@ -50,7 +52,7 @@ if CELERY_OK:
             },
             "reporte-diario": {
                 "task": "workers.celery_worker.generar_reporte_diario",
-                "schedule": {"hour": 6, "minute": 0},
+                "schedule": crontab(hour=6, minute=0),
             },
             "aml-check": {
                 "task": "workers.celery_worker.verificar_aml_pendientes",
@@ -58,7 +60,7 @@ if CELERY_OK:
             },
             "sincronizar-tax-lots": {
                 "task": "workers.celery_worker.sincronizar_tax_lots",
-                "schedule": {"hour": 2, "minute": 0},
+                "schedule": crontab(hour=2, minute=0),
             },
         }
     )
@@ -83,7 +85,7 @@ if CELERY_OK:
                         if a.ticker in prices:
                             a.precio_actual = prices[a.ticker]["price"]
                             a.variacion_pct = prices[a.ticker]["change_pct"]
-                            a.ultima_actualizacion = datetime.utcnow()
+                            a.ultima_actualizacion = datetime.now(timezone.utc)
                     await db.commit()
                 return len(activos)
 
@@ -161,7 +163,7 @@ if CELERY_OK:
                         if "error" not in broker_resp:
                             nonce = generar_nonce()
                             datos = {"ticker": oa.ticker, "monto_usd": monto_usd,
-                                     "tipo": "sell", "ts": str(datetime.utcnow()), "nonce": nonce}
+                                     "tipo": "sell", "ts": str(datetime.now(timezone.utc)), "nonce": nonce}
                             from core.security import firmar_orden
                             firma = firmar_orden(datos)
 
@@ -174,7 +176,7 @@ if CELERY_OK:
                                 broker_order_id=broker_resp.get("id"),
                                 firma_ecdsa=firma, firma_verificada=True,
                                 nonce=nonce, aml_check="clear",
-                                creado=datetime.utcnow(), ejecutado=datetime.utcnow()
+                                creado=datetime.now(timezone.utc), ejecutado=datetime.now(timezone.utc)
                             )
                             db.add(orden)
                             await db.flush()
@@ -182,7 +184,7 @@ if CELERY_OK:
                             oa.ejecutada = True
                             oa.activa = False
                             oa.orden_id = orden.id
-                            oa.ejecutado_ts = datetime.utcnow()
+                            oa.ejecutado_ts = datetime.now(timezone.utc)
 
                             # Actualizar posición
                             pos.acciones = max(0, round(pos.acciones - acc_vender, 8))
@@ -318,7 +320,7 @@ if CELERY_OK:
                         r = aml_check_entidad(u.nombre)
                         u.aml_status = r["status"]
                         u.aml_score = r["score"]
-                        u.aml_fecha = datetime.utcnow()
+                        u.aml_fecha = datetime.now(timezone.utc)
                         db.add(AMLLog(usuario_id=u.id, entidad=u.nombre,
                                       tipo_check="scheduled", resultado=r["status"],
                                       score=r["score"], detalle=r["detalle"], fuente=r["fuente"]))

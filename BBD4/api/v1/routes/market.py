@@ -10,7 +10,7 @@ from core.database import get_db
 from core.rate_limit import limiter, get_limit
 from models.models import Activo
 from services.services import get_market_prices, get_candles, cache_get, cache_set
-from datetime import datetime
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/mercado", tags=["mercado"])
 
@@ -49,6 +49,6 @@ async def get_activos(db: AsyncSession = Depends(get_db)):
         p = prices.get(a.ticker, {})
         a.precio_actual = p.get("price", a.precio_actual)
         a.variacion_pct = p.get("change_pct", 0)
-        a.ultima_actualizacion = datetime.utcnow()
+        a.ultima_actualizacion = datetime.now(timezone.utc)
     await db.commit()
     return [a.to_dict() for a in activos]

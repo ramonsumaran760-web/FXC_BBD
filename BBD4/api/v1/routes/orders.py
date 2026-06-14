@@ -1,7 +1,7 @@
 """
 Orders routes — CRUD órdenes + stop-loss / take-profit automáticos
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -51,7 +51,7 @@ async def crear_orden(data: OrdenSchema, request: Request,
     # Firma ECDSA
     nonce = generar_nonce()
     datos_firma = {"ticker": data.ticker, "monto_usd": data.monto_usd,
-                   "tipo": data.tipo, "ts": str(datetime.utcnow()), "nonce": nonce}
+                   "tipo": data.tipo, "ts": str(datetime.now(timezone.utc)), "nonce": nonce}
     firma = firmar_orden(datos_firma)
     firma_ok = verificar_firma(datos_firma, firma)
 
@@ -76,7 +76,7 @@ async def crear_orden(data: OrdenSchema, request: Request,
         broker="alpaca_paper", broker_order_id=broker_resp.get("id"),
         firma_ecdsa=firma, firma_verificada=firma_ok,
         nonce=nonce, ip_origen=request.client.host if request.client else "",
-        aml_check="clear", creado=datetime.utcnow(), ejecutado=datetime.utcnow()
+        aml_check="clear", creado=datetime.now(timezone.utc), ejecutado=datetime.now(timezone.utc)
     )
     db.add(orden)
     await db.flush()
@@ -88,7 +88,7 @@ async def crear_orden(data: OrdenSchema, request: Request,
         # Crear tax lot para FIFO/LIFO
         db.add(TaxLot(usuario_id=current_user.id, ticker=data.ticker,
                       acciones_originales=fracs, acciones_restantes=fracs,
-                      precio_costo=price, fecha_compra=datetime.utcnow(),
+                      precio_costo=price, fecha_compra=datetime.now(timezone.utc),
                       orden_id=orden.id))
 
     elif data.tipo == "sell":

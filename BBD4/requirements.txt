@@ -46,7 +46,7 @@ reportlab==4.1.0
 openpyxl==3.1.2
 
 # ── Monitoreo ────────────────────────────────────────────────
-sentry-sdk[fastapi,sqlalchemy,redis,logging]==1.45.0
+sentry-sdk[fastapi]==1.45.0
 
 # ── Pagos ────────────────────────────────────────────────────
 stripe==7.11.0

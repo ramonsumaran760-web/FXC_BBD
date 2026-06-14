@@ -7,7 +7,7 @@ from sqlalchemy import (Column, Integer, String, Float, Boolean, DateTime,
                         ForeignKey, Text, Index, UniqueConstraint)
 from sqlalchemy.orm import relationship
 from core.database import Base
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 # ── Usuario ───────────────────────────────────────────────
@@ -239,7 +239,7 @@ class PosicionPortafolio(Base):
                 self.valor_total_usd - (self.acciones * self.precio_promedio_compra), 2)
             self.ganancia_perdida_pct = round(
                 (self.precio_actual - self.precio_promedio_compra) / self.precio_promedio_compra * 100, 4)
-            self.ultima_actualizacion = datetime.utcnow()
+            self.ultima_actualizacion = datetime.now(timezone.utc)
 
     def to_dict(self):
         return {"id": self.id, "ticker": self.ticker, "nombre": self.nombre,

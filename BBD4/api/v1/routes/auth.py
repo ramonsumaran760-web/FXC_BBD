@@ -2,7 +2,7 @@
 Auth routes — login, me, mfa, refresh, logout
 get_current_user extrae el usuario del JWT; logout invalida el token en Redis.
 """
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
@@ -50,7 +50,7 @@ async def login(data: LoginSchema, request: Request, db: AsyncSession = Depends(
         if not data.mfa_token or not verificar_totp(user.mfa_secret, data.mfa_token):
             raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token MFA requerido o inválido")
 
-    user.ultimo_login = datetime.utcnow()
+    user.ultimo_login = datetime.now(timezone.utc)
     db.add(AuditLog(usuario_id=user.id, accion="LOGIN", modulo="auth",
                     detalle=f"Login: {user.email}",
                     ip=request.client.host if request.client else ""))
@@ -131,7 +131,7 @@ async def logout(request: Request, current_user: Usuario = Depends(get_current_u
         payload = decode_token(token)
         jti = payload.get("jti")
         exp = payload.get("exp", 0)
-        ttl = max(0, exp - int(datetime.utcnow().timestamp()))
+        ttl = max(0, exp - int(datetime.now(timezone.utc).timestamp()))
         if jti:
             cache_set(f"blacklist:{jti}", "1", ttl=max(ttl, 60))
     except Exception:

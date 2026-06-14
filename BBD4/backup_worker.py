@@ -3,7 +3,7 @@ workers/backup_worker.py — Backups automáticos PostgreSQL + SQLite
 Estrategia: diario local + semanal S3 + retención 30 días
 """
 import os, subprocess, logging, gzip, shutil
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,7 @@ os.makedirs(BACKUP_DIR, exist_ok=True)
 
 
 def timestamp() -> str:
-    return datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+    return datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
 
 
 # ── SQLite backup (dev) ───────────────────────────────────────────────────
@@ -126,7 +126,7 @@ def upload_s3(archivo: str) -> bool:
 # ── Rotación (eliminar backups viejos) ────────────────────────────────────
 def rotar_backups_locales(dias: int = RETAIN_DAYS) -> int:
     """Elimina backups locales más viejos que `dias` días."""
-    limite = datetime.utcnow() - timedelta(days=dias)
+    limite = datetime.now(timezone.utc) - timedelta(days=dias)
     eliminados = 0
     for f in Path(BACKUP_DIR).glob("investiq_*.gz"):
         if datetime.utcfromtimestamp(f.stat().st_mtime) < limite:
@@ -143,7 +143,7 @@ def rotar_s3(dias: int = RETAIN_DAYS) -> int:
     try:
         import boto3
         s3 = boto3.client("s3")
-        limite = datetime.utcnow() - timedelta(days=dias)
+        limite = datetime.now(timezone.utc) - timedelta(days=dias)
         paginator = s3.get_paginator("list_objects_v2")
         eliminados = 0
         for page in paginator.paginate(Bucket=S3_BUCKET, Prefix=S3_PREFIX):
@@ -167,7 +167,7 @@ def notificar_backup(archivo: str, s3_ok: bool, error: str = None):
         estado = "✓ Exitoso" if not error else f"✗ Error: {error}"
         size = os.path.getsize(archivo) if archivo and os.path.exists(archivo) else 0
         _send(NOTIFY_EMAIL, f"InvestIQ Backup — {estado}", f"""
-<h3>Reporte de Backup — {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}</h3>
+<h3>Reporte de Backup — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}</h3>
 <p>Estado: <b>{estado}</b></p>
 <p>Archivo: {os.path.basename(archivo) if archivo else 'N/A'}</p>
 <p>Tamaño: {size:,} bytes</p>
@@ -187,7 +187,7 @@ def ejecutar_backup(tipo: str = "diario") -> dict:
     4. Rotación S3
     5. Notificación
     """
-    logger.info(f"Iniciando backup {tipo} — {datetime.utcnow().isoformat()}")
+    logger.info(f"Iniciando backup {tipo} — {datetime.now(timezone.utc).isoformat()}")
     archivo = None
     s3_ok = False
     error = None
@@ -205,13 +205,13 @@ def ejecutar_backup(tipo: str = "diario") -> dict:
             "s3": s3_ok,
             "eliminados_local": eliminados_local,
             "eliminados_s3": eliminados_s3,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.now(timezone.utc).isoformat()
         }
         logger.info(f"Backup completado: {resultado}")
     except Exception as e:
         error = str(e)
         logger.error(f"Backup FALLIDO: {error}")
-        resultado = {"ok": False, "error": error, "timestamp": datetime.utcnow().isoformat()}
+        resultado = {"ok": False, "error": error, "timestamp": datetime.now(timezone.utc).isoformat()}
 
     notificar_backup(archivo or "", s3_ok, error)
     return resultado

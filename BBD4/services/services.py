@@ -8,7 +8,7 @@ Services v2.0 — Orquestador de APIs de producción con Circuit Breakers
 6. CacheService        → Redis con TTL, fallback en memoria
 """
 import json, time, random, hashlib, os, logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 import requests
 
@@ -88,7 +88,7 @@ def _fallback_price(ticker: str) -> dict:
     _last_prices[ticker] = new_price
     return {"price": new_price, "change_pct": round(chg_pct, 3),
             "open": round(base, 4), "volume": random.randint(1000000, 50000000),
-            "source": "simulated", "ts": datetime.utcnow().isoformat()}
+            "source": "simulated", "ts": datetime.now(timezone.utc).isoformat()}
 
 def get_market_prices(tickers: list = None) -> dict:
     global _price_cache, _price_ts
@@ -115,7 +115,7 @@ def get_market_prices(tickers: list = None) -> dict:
                             chg = round((close - open_) / open_ * 100, 3) if open_ else 0
                             result[t] = {"price": round(close, 4), "change_pct": chg,
                                          "open": round(open_, 4), "volume": 0,
-                                         "source": "yahoo_finance", "ts": datetime.utcnow().isoformat()}
+                                         "source": "yahoo_finance", "ts": datetime.now(timezone.utc).isoformat()}
                         else:
                             result[t] = _fallback_price(t)
                     except Exception:
@@ -151,7 +151,7 @@ def _fallback_candles(ticker: str, period: str) -> list:
     price = _BASE_PRICES.get(ticker, 100)
     candles = []
     for i in range(n):
-        ts = datetime.utcnow() - timedelta(minutes=(n - i) * 5)
+        ts = datetime.now(timezone.utc) - timedelta(minutes=(n - i) * 5)
         o = price; chg = random.gauss(0, 0.5)
         c = round(o * (1 + chg / 100), 4)
         h = round(max(o, c) * (1 + abs(random.gauss(0, 0.2)) / 100), 4)
@@ -202,8 +202,8 @@ def alpaca_place_order(key: str, secret: str, ticker: str, monto_usd: float,
                 "notional": str(monto_usd), "filled_notional": str(monto_usd),
                 "filled_qty": str(fracciones), "filled_avg_price": str(round(price, 4)),
                 "status": "filled", "broker": "alpaca_paper_demo",
-                "submitted_at": datetime.utcnow().isoformat(),
-                "filled_at": datetime.utcnow().isoformat()}
+                "submitted_at": datetime.now(timezone.utc).isoformat(),
+                "filled_at": datetime.now(timezone.utc).isoformat()}
 
     from core.circuit_breaker import cb_alpaca
     try:

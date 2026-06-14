@@ -1,7 +1,7 @@
 """
 KYC routes — verificación de identidad con cifrado PII
 """
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -40,7 +40,7 @@ async def kyc_submit(request: Request,
 
     current_user.kyc_nivel = "basic"
     current_user.kyc_verificado = True
-    current_user.kyc_fecha = datetime.utcnow()
+    current_user.kyc_fecha = datetime.now(timezone.utc)
 
     db.add(AuditLog(usuario_id=current_user.id, accion="KYC_SUBMIT",
                     modulo="kyc", detalle="KYC básico completado",

@@ -5,7 +5,7 @@ Alpaca envía: fill, partial_fill, cancelled, expired, replaced
 Validación: HMAC-SHA256 del body con ALPACA_WEBHOOK_SECRET
 """
 import hashlib, hmac, json
-from datetime import datetime
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -67,7 +67,7 @@ async def alpaca_webhook(request: Request, db: AsyncSession = Depends(get_db)):
                 filled_price = float(event.get("order", {}).get("filled_avg_price", 0) or 0)
                 if filled_price:
                     orden.precio_ejecucion = filled_price
-                orden.ejecutado = datetime.utcnow()
+                orden.ejecutado = datetime.now(timezone.utc)
 
             db.add(AuditLog(
                 usuario_id=orden.usuario_id,
