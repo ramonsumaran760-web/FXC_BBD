@@ -154,12 +154,14 @@ async def seed_inicial():
 # ── Lifespan ──────────────────────────────────────────────
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # init_db DEBE ir antes del yield (crea las tablas)
     await init_db()
-    await seed_inicial()
     os.makedirs(settings.EXPORT_DIR, exist_ok=True)
     init_sentry(app)
+    # seed e yfinance corren en background para no bloquear el port binding
+    asyncio.create_task(seed_inicial())
     asyncio.create_task(price_broadcaster())
-    logger.info(f"InvestIQ v2.0 listo en http://localhost:8000 | docs: /docs")
+    logger.info("InvestIQ v2.0 listo — seed y broadcaster arrancando en background")
     yield
 
 # ── App ───────────────────────────────────────────────────
