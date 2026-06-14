@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 
 from core.config import settings
 from core.database import init_db, AsyncSessionLocal
@@ -330,24 +331,7 @@ async def health():
 
 @app.get("/", tags=["root"])
 async def root():
-    return {
-        "app": "InvestIQ API v2.0",
-        "docs": "/docs",
-        "ws": "/ws",
-        "health": "/api/v1/health",
-        "features": [
-            "JWT auth + MFA + token blacklist",
-            "Portfolio + equity curve (historial 365d)",
-            "Orders + stop-loss + take-profit automático",
-            "FIFO/LIFO tax engine",
-            "Circuit breakers (Alpaca, Claude, OpenSanctions)",
-            "Push notifications (Web Push, FCM, Twilio SMS)",
-            "Alpaca webhooks (fill events)",
-            "Celery async tasks",
-            "KYC con cifrado PII (Fernet AES-128)",
-            "Structured JSON logging",
-        ]
-    }
+    return FileResponse("static/index.html")
 
 
 if __name__ == "__main__":
