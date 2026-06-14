@@ -87,44 +87,82 @@ def _is_demo(key: str) -> bool:
 # ─────────────────────────────────────────────────────────
 # 1. MARKET DATA — Alpaca Data API (precios reales)
 # ─────────────────────────────────────────────────────────
-TICKERS_DEFAULT = ["AAPL","MSFT","TSLA","NVDA","AMZN","GOOGL","META","SPY","QQQ","BND","VTI","GLD"]
+TICKERS_DEFAULT = [
+    # ── US Tecnología ──────────────────────────────────────
+    "AAPL","MSFT","NVDA","TSLA","AMZN","GOOGL","META",
+    "NFLX","AMD","INTC","CRM","ADBE","ORCL","QCOM","TXN",
+    # ── US Finanzas ────────────────────────────────────────
+    "JPM","BAC","GS","V","MA","WFC","AXP","C","MS","BLK",
+    # ── US Salud ───────────────────────────────────────────
+    "JNJ","UNH","PFE","ABBV","MRK","TMO","MRNA","AMGN",
+    # ── US Energía ─────────────────────────────────────────
+    "XOM","CVX","COP","SLB","OXY",
+    # ── US Consumo ─────────────────────────────────────────
+    "WMT","HD","MCD","KO","PEP","NKE","SBUX","DIS","COST",
+    # ── US Industrial ──────────────────────────────────────
+    "CAT","BA","GE","HON","RTX",
+    # ── ETF Índices US ─────────────────────────────────────
+    "SPY","QQQ","DIA","IWM","VTI",
+    # ── ETF Sectores US ────────────────────────────────────
+    "XLK","XLF","XLV","XLE","XLI","XLC",
+    # ── ETF Internacional (otras bolsas) ───────────────────
+    "EEM","EFA","EWJ","EWG","EWZ","FXI","IEFA","EWU","EWC",
+    # ── ADR Globales (acciones internacionales en NYSE) ────
+    "TSM","BABA","NVO","ASML","SAP","VALE","NIO","TM","SONY",
+    # ── Renta Fija ─────────────────────────────────────────
+    "BND","TLT","HYG","LQD","IEF",
+    # ── Materias Primas ────────────────────────────────────
+    "GLD","SLV","GDX","USO",
+]
 _price_cache: dict = {}
 _price_ts: float = 0
 
 
 def _alpaca_snapshot_bulk(tickers: list, key: str, secret: str) -> dict:
-    """Obtiene precios reales de Alpaca Data API — endpoint /stocks/snapshots."""
-    r = requests.get(
-        f"{ALPACA_DATA_URL}/stocks/snapshots",
-        params={"symbols": ",".join(tickers), "feed": "iex"},
-        headers=_alpaca_headers(key, secret),
-        timeout=10,
-    )
-    if not r.ok:
-        raise Exception(f"Alpaca snapshot HTTP {r.status_code}: {r.text[:300]}")
-    raw = r.json()
+    """Obtiene precios reales de Alpaca Data API — endpoint /stocks/snapshots.
+    Procesa en lotes de 30 para evitar límites de URL (~4 KB).
+    """
+    BATCH = 30
     ts_now = datetime.now(timezone.utc).isoformat()
     result = {}
-    for ticker in tickers:
-        snap  = raw.get(ticker) or {}
-        daily = snap.get("dailyBar") or {}
-        prev  = snap.get("prevDailyBar") or {}
-        trade = snap.get("latestTrade") or {}
-        price  = float(trade.get("p") or daily.get("c") or 0)
-        open_  = float(daily.get("o") or price)
-        prev_c = float(prev.get("c") or open_)
-        chg_pct = round((price - prev_c) / prev_c * 100, 3) if prev_c else 0
-        if price > 0:
-            result[ticker] = {
-                "price":      round(price, 4),
-                "change_pct": chg_pct,
-                "open":       round(open_, 4),
-                "high":       round(float(daily.get("h") or price), 4),
-                "low":        round(float(daily.get("l") or price), 4),
-                "volume":     int(daily.get("v") or 0),
-                "source":     "alpaca_realtime",
-                "ts":         ts_now,
-            }
+
+    for i in range(0, len(tickers), BATCH):
+        batch = tickers[i:i + BATCH]
+        try:
+            r = requests.get(
+                f"{ALPACA_DATA_URL}/stocks/snapshots",
+                params={"symbols": ",".join(batch), "feed": "iex"},
+                headers=_alpaca_headers(key, secret),
+                timeout=12,
+            )
+            if not r.ok:
+                logger.warning(f"Alpaca snapshot batch {i//BATCH}: HTTP {r.status_code} {r.text[:200]}")
+                continue
+            raw = r.json()
+        except Exception as e:
+            logger.warning(f"Alpaca snapshot batch {i//BATCH}: {e}")
+            continue
+
+        for ticker in batch:
+            snap  = raw.get(ticker) or {}
+            daily = snap.get("dailyBar") or {}
+            prev  = snap.get("prevDailyBar") or {}
+            trade = snap.get("latestTrade") or {}
+            price  = float(trade.get("p") or daily.get("c") or 0)
+            open_  = float(daily.get("o") or price)
+            prev_c = float(prev.get("c") or open_)
+            chg_pct = round((price - prev_c) / prev_c * 100, 3) if prev_c else 0
+            if price > 0:
+                result[ticker] = {
+                    "price":      round(price, 4),
+                    "change_pct": chg_pct,
+                    "open":       round(open_, 4),
+                    "high":       round(float(daily.get("h") or price), 4),
+                    "low":        round(float(daily.get("l") or price), 4),
+                    "volume":     int(daily.get("v") or 0),
+                    "source":     "alpaca_realtime",
+                    "ts":         ts_now,
+                }
     return result
 
 

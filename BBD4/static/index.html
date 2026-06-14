@@ -276,6 +276,40 @@ tr:hover td{background:rgba(0,212,255,.03)}
 .main-section.active{display:flex}
 #section-dashboard{display:flex;flex-direction:column;gap:14px;flex-shrink:0}
 
+/* ── Mercado Live full section ── */
+#section-mercado{gap:0}
+#section-mercado .mkt-hdr{margin-bottom:16px;margin-top:0}
+.mkt-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.mkt-title{font-size:20px;font-weight:900;background:linear-gradient(90deg,#00d4ff,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.mkt-live-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;color:var(--green);background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);border-radius:20px;padding:4px 12px}
+.mkt-search{width:100%;max-width:320px;padding:9px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none}
+.mkt-search:focus{border-color:var(--accent)}
+.mkt-sector{margin-bottom:18px;background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.mkt-sector-hdr{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
+.mkt-sector-hdr:hover{background:rgba(0,212,255,.04)}
+.mkt-sector-icon{font-size:16px}
+.mkt-sector-name{font-size:13px;font-weight:800;color:var(--text);flex:1}
+.mkt-sector-count{font-size:11px;color:var(--muted)}
+.mkt-table{width:100%;border-collapse:collapse;font-size:12px}
+.mkt-table th{padding:8px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border);background:rgba(0,0,0,.2)}
+.mkt-table th:last-child,.mkt-table td:last-child{text-align:right}
+.mkt-table th:nth-child(3),.mkt-table th:nth-child(4),.mkt-table th:nth-child(5){text-align:right}
+.mkt-table td{padding:9px 12px;border-bottom:1px solid rgba(26,46,80,.5);vertical-align:middle;transition:background .15s}
+.mkt-table td:nth-child(3),.mkt-table td:nth-child(4),.mkt-table td:nth-child(5){text-align:right}
+.mkt-row:hover td{background:rgba(0,212,255,.04);cursor:pointer}
+.mkt-ticker{font-weight:900;color:var(--accent);font-size:13px;letter-spacing:.04em}
+.mkt-name{color:#7a9cc0;font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mkt-px{font-weight:800;color:var(--text)}
+.mkt-chg{font-weight:800;font-size:11px}
+.mkt-vol{color:var(--muted);font-size:11px}
+.mkt-btn{padding:4px 10px;border-radius:6px;border:none;font-size:11px;font-weight:700;cursor:pointer;transition:opacity .15s}
+.mkt-btn-buy{background:rgba(34,197,94,.2);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+.mkt-btn-buy:hover{opacity:.8}
+.mkt-stats-bar{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.mkt-stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px}
+.mkt-stat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.mkt-stat-val{font-size:18px;font-weight:900}
+
 /* ── Chat IA full section ── */
 .chat-full-wrap{background:var(--card);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;flex:1;min-height:0}
 .chat-full-hdr{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;flex-shrink:0}
@@ -593,9 +627,39 @@ tr:hover td{background:rgba(0,212,255,.03)}
           <div>
             <div style="font-size:11px;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.07em">Activo</div>
             <select id="o-ticker" style="width:100%;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none">
-              <option>AAPL</option><option>MSFT</option><option>TSLA</option><option>NVDA</option>
-              <option>AMZN</option><option>GOOGL</option><option>META</option><option>SPY</option>
-              <option>QQQ</option><option>GLD</option><option>BND</option><option>VTI</option>
+              <optgroup label="📱 US Tecnología">
+                <option>AAPL</option><option>MSFT</option><option>NVDA</option><option>TSLA</option><option>AMZN</option><option>GOOGL</option><option>META</option><option>NFLX</option><option>AMD</option><option>INTC</option><option>CRM</option><option>ADBE</option><option>ORCL</option><option>QCOM</option><option>TXN</option>
+              </optgroup>
+              <optgroup label="💰 US Finanzas">
+                <option>JPM</option><option>BAC</option><option>GS</option><option>V</option><option>MA</option><option>WFC</option><option>AXP</option><option>C</option><option>MS</option><option>BLK</option>
+              </optgroup>
+              <optgroup label="🏥 US Salud">
+                <option>JNJ</option><option>UNH</option><option>PFE</option><option>ABBV</option><option>MRK</option><option>TMO</option><option>MRNA</option><option>AMGN</option>
+              </optgroup>
+              <optgroup label="⚡ US Energía">
+                <option>XOM</option><option>CVX</option><option>COP</option><option>SLB</option><option>OXY</option>
+              </optgroup>
+              <optgroup label="🛒 US Consumo">
+                <option>WMT</option><option>HD</option><option>MCD</option><option>KO</option><option>PEP</option><option>NKE</option><option>SBUX</option><option>DIS</option><option>COST</option>
+              </optgroup>
+              <optgroup label="🏭 US Industrial">
+                <option>CAT</option><option>BA</option><option>GE</option><option>HON</option><option>RTX</option>
+              </optgroup>
+              <optgroup label="📊 ETF Índices">
+                <option>SPY</option><option>QQQ</option><option>DIA</option><option>IWM</option><option>VTI</option><option>XLK</option><option>XLF</option><option>XLV</option><option>XLE</option><option>XLI</option><option>XLC</option>
+              </optgroup>
+              <optgroup label="🌍 ETF Internacional">
+                <option>EEM</option><option>EFA</option><option>EWJ</option><option>EWG</option><option>EWZ</option><option>FXI</option><option>IEFA</option><option>EWU</option><option>EWC</option>
+              </optgroup>
+              <optgroup label="🌏 ADR Globales">
+                <option>TSM</option><option>BABA</option><option>NVO</option><option>ASML</option><option>SAP</option><option>VALE</option><option>NIO</option><option>TM</option><option>SONY</option>
+              </optgroup>
+              <optgroup label="⚖️ Renta Fija">
+                <option>BND</option><option>TLT</option><option>HYG</option><option>LQD</option><option>IEF</option>
+              </optgroup>
+              <optgroup label="🏆 Materias Primas">
+                <option>GLD</option><option>SLV</option><option>GDX</option><option>USO</option>
+              </optgroup>
             </select>
           </div>
           <div>
@@ -607,6 +671,30 @@ tr:hover td{background:rgba(0,212,255,.03)}
         <div id="o-msg" style="display:none;margin-top:12px;font-size:12px;padding:10px 14px;border-radius:8px"></div>
       </div>
     </div><!-- /section-dashboard -->
+
+    <!-- ══ SECCIÓN: Mercado Live ══ -->
+    <div id="section-mercado" class="main-section">
+      <div class="mkt-hdr">
+        <div>
+          <div class="mkt-title">Mercado Global en Tiempo Real</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:3px">Precios Alpaca IEX · Actualización automática cada 4s vía WebSocket</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div class="mkt-live-badge"><span style="width:6px;height:6px;border-radius:50%;background:var(--green);display:inline-block;animation:pulse 1.5s infinite"></span>LIVE</div>
+          <input class="mkt-search" type="text" placeholder="🔍 Buscar ticker o empresa..." oninput="filterMkt(this.value)" id="mkt-search-input">
+        </div>
+      </div>
+
+      <!-- Resumen rápido -->
+      <div class="mkt-stats-bar" id="mkt-stats-bar">
+        <div class="mkt-stat"><div class="mkt-stat-lbl">Activos subiendo</div><div class="mkt-stat-val up" id="mkt-up-count">—</div></div>
+        <div class="mkt-stat"><div class="mkt-stat-lbl">Activos bajando</div><div class="mkt-stat-val dn" id="mkt-dn-count">—</div></div>
+        <div class="mkt-stat"><div class="mkt-stat-lbl">Mayor subida</div><div class="mkt-stat-val up" id="mkt-top-gain">—</div></div>
+        <div class="mkt-stat"><div class="mkt-stat-lbl">Mayor caída</div><div class="mkt-stat-val dn" id="mkt-top-loss">—</div></div>
+      </div>
+
+      <div id="mkt-sectors"></div>
+    </div>
 
     <!-- ══ SECCIÓN: Chat IA ══ -->
     <div id="section-chat" class="main-section" style="height:calc(100vh - 180px)">
@@ -916,7 +1004,35 @@ let tvWidget = null;
 const AVATARS = {AAPL:'#16a34a',MSFT:'#2563eb',TSLA:'#b45309',NVDA:'#7c3aed',AMZN:'#ea580c',GOOGL:'#0891b2',META:'#1d4ed8',SPY:'#15803d',QQQ:'#0e7490',BND:'#64748b',VTI:'#4ade80',GLD:'#d97706'};
 const TV_EX = {AAPL:'NASDAQ',MSFT:'NASDAQ',TSLA:'NASDAQ',NVDA:'NASDAQ',AMZN:'NASDAQ',GOOGL:'NASDAQ',META:'NASDAQ',QQQ:'NASDAQ',SPY:'AMEX',BND:'AMEX',VTI:'AMEX',GLD:'AMEX'};
 const SB_IDX = {dashboard:0,mercado:1,portafolio:2,robo:3,chat:4,ordenes:5,historial:6,wallet:7,dividendos:8,kyc:9,aml:10,fiscal:13,perfil:14};
-const ALL_SECTIONS = ['dashboard','chat','wallet','historial','perfil','admin','usuarios'];
+const ALL_SECTIONS = ['dashboard','mercado','chat','wallet','historial','perfil','admin','usuarios'];
+
+// ── Definición sectores mercado global ────────────────────
+const MKT_SECTORS=[
+  {id:'tech',  icon:'📱', name:'US Tecnología',               tickers:['AAPL','MSFT','NVDA','TSLA','AMZN','GOOGL','META','NFLX','AMD','INTC','CRM','ADBE','ORCL','QCOM','TXN']},
+  {id:'fin',   icon:'💰', name:'US Finanzas',                 tickers:['JPM','BAC','GS','V','MA','WFC','AXP','C','MS','BLK']},
+  {id:'hlth',  icon:'🏥', name:'US Salud',                    tickers:['JNJ','UNH','PFE','ABBV','MRK','TMO','MRNA','AMGN']},
+  {id:'nrg',   icon:'⚡', name:'US Energía',                  tickers:['XOM','CVX','COP','SLB','OXY']},
+  {id:'cons',  icon:'🛒', name:'US Consumo',                  tickers:['WMT','HD','MCD','KO','PEP','NKE','SBUX','DIS','COST']},
+  {id:'ind',   icon:'🏭', name:'US Industrial',               tickers:['CAT','BA','GE','HON','RTX']},
+  {id:'etf',   icon:'📊', name:'Índices ETF',                 tickers:['SPY','QQQ','DIA','IWM','VTI','XLK','XLF','XLV','XLE','XLI','XLC']},
+  {id:'intl',  icon:'🌍', name:'Internacional ETF — Otras Bolsas',tickers:['EEM','EFA','EWJ','EWG','EWZ','FXI','IEFA','EWU','EWC']},
+  {id:'adr',   icon:'🌏', name:'ADR Globales — Empresas Internacionales',tickers:['TSM','BABA','NVO','ASML','SAP','VALE','NIO','TM','SONY']},
+  {id:'bonds', icon:'⚖️', name:'Renta Fija',                  tickers:['BND','TLT','HYG','LQD','IEF']},
+  {id:'comm',  icon:'🏆', name:'Materias Primas',             tickers:['GLD','SLV','GDX','USO']},
+];
+const MKT_NAMES={
+  AAPL:'Apple Inc.',MSFT:'Microsoft Corp.',NVDA:'NVIDIA Corp.',TSLA:'Tesla Inc.',AMZN:'Amazon.com',GOOGL:'Alphabet (Google)',META:'Meta Platforms',NFLX:'Netflix Inc.',AMD:'Advanced Micro Devices',INTC:'Intel Corp.',CRM:'Salesforce Inc.',ADBE:'Adobe Inc.',ORCL:'Oracle Corp.',QCOM:'Qualcomm Inc.',TXN:'Texas Instruments',
+  JPM:'JPMorgan Chase',BAC:'Bank of America',GS:'Goldman Sachs',V:'Visa Inc.',MA:'Mastercard',WFC:'Wells Fargo',AXP:'American Express',C:'Citigroup',MS:'Morgan Stanley',BLK:'BlackRock Inc.',
+  JNJ:'Johnson & Johnson',UNH:'UnitedHealth Group',PFE:'Pfizer Inc.',ABBV:'AbbVie Inc.',MRK:'Merck & Co.',TMO:'Thermo Fisher',MRNA:'Moderna Inc.',AMGN:'Amgen Inc.',
+  XOM:'ExxonMobil Corp.',CVX:'Chevron Corp.',COP:'ConocoPhillips',SLB:'SLB (Schlumberger)',OXY:'Occidental Petroleum',
+  WMT:'Walmart Inc.',HD:'Home Depot',MCD:"McDonald's Corp.",KO:'Coca-Cola Co.',PEP:'PepsiCo Inc.',NKE:'Nike Inc.',SBUX:'Starbucks Corp.',DIS:'Walt Disney Co.',COST:'Costco Wholesale',
+  CAT:'Caterpillar Inc.',BA:'Boeing Co.',GE:'GE Aerospace',HON:'Honeywell Intl.',RTX:'RTX Corp.',
+  SPY:'S&P 500 ETF',QQQ:'Nasdaq 100 ETF',DIA:'Dow Jones ETF',IWM:'Russell 2000 ETF',VTI:'Total Market ETF',XLK:'Technology ETF',XLF:'Financial ETF',XLV:'Health Care ETF',XLE:'Energy ETF',XLI:'Industrial ETF',XLC:'Communication ETF',
+  EEM:'Emerging Markets ETF',EFA:'MSCI EAFE ETF',EWJ:'Japan ETF',EWG:'Germany ETF',EWZ:'Brazil ETF',FXI:'China Large-Cap ETF',IEFA:'Core MSCI EAFE',EWU:'UK ETF',EWC:'Canada ETF',
+  TSM:'Taiwan Semiconductor (ADR)',BABA:'Alibaba Group (ADR)',NVO:'Novo Nordisk (ADR)',ASML:'ASML Holding (ADR)',SAP:'SAP SE (ADR)',VALE:'Vale S.A. (ADR)',NIO:'NIO Inc. (ADR)',TM:'Toyota Motor (ADR)',SONY:'Sony Group (ADR)',
+  BND:'Total Bond Market ETF',TLT:'20+ Yr Treasury ETF',HYG:'High Yield Bond ETF',LQD:'Corp Bond ETF',IEF:'7-10 Yr Treasury ETF',
+  GLD:'SPDR Gold Trust',SLV:'iShares Silver Trust',GDX:'Gold Miners ETF',USO:'US Oil Fund',
+};
 
 // ── Boot ──────────────────────────────────────────────────
 // Show splash 1.5s then decide: login or app
@@ -1035,6 +1151,7 @@ function connectWS(){
         lastPrices={...lastPrices,...prices};
         renderTicker(lastPrices); updateLivePortfolio();
         updatePosTablePrices(); updateExecSummaryLive(); renderNews();
+        updateMktLive(prices);
         // TTS: announce significant movers
         Object.entries(prices).forEach(([t,p])=>{
           const pct=p.change_pct||0;
@@ -1406,12 +1523,12 @@ function showSection(s){
   const orderEl=document.getElementById('order-section'), dynPanel=getOrCreateDynPanel();
   orderEl.style.display='none'; dynPanel.style.display='none';
 
-  if(s==='dashboard'||s==='mercado'||s==='portafolio'){
+  if(s==='dashboard'||s==='portafolio'){
     if(dash)dash.style.display='flex';
-    if(s==='mercado')setTVTicker(chartTicker);
     if(s==='portafolio')loadPortfolio();
     return;
   }
+  if(s==='mercado'){ showNewSection('mercado'); loadMercado(); return; }
   if(s==='ordenes'){
     if(dash)dash.style.display='flex';
     orderEl.style.display='block';
@@ -1437,6 +1554,114 @@ function showSection(s){
 function showNewSection(s){
   const el=document.getElementById('section-'+s);
   if(el)el.classList.add('active');
+}
+
+// ── Mercado Live ──────────────────────────────────────────
+let _mktFilter='';
+function loadMercado(){
+  // Si ya tenemos precios del WS, renderizamos inmediatamente
+  if(Object.keys(lastPrices).length>0){ renderMktFull(lastPrices); return; }
+  // Si no, hacemos fetch al endpoint de mercado
+  const el=document.getElementById('mkt-sectors');
+  if(el)el.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">Cargando precios en tiempo real…</div>';
+  apiFetch('/api/v1/market/prices').then(r=>r.json()).then(d=>{
+    const prices=d.precios||d||{};
+    lastPrices={...lastPrices,...prices};
+    renderMktFull(prices);
+  }).catch(()=>{
+    if(el)el.innerHTML='<div style="padding:40px;text-align:center;color:var(--muted)">Precios llegarán vía WebSocket en segundos…</div>';
+  });
+}
+
+function _mktStatsFrom(prices){
+  const entries=Object.entries(prices).filter(([,p])=>p&&p.price>0);
+  const up=entries.filter(([,p])=>p.change_pct>=0).length;
+  const dn=entries.filter(([,p])=>p.change_pct<0).length;
+  const topGain=entries.reduce((a,[t,p])=>(p.change_pct||0)>(a[1].change_pct||0)?[t,p]:a,entries[0]||['—',{change_pct:0}]);
+  const topLoss=entries.reduce((a,[t,p])=>(p.change_pct||0)<(a[1].change_pct||0)?[t,p]:a,entries[0]||['—',{change_pct:0}]);
+  return{up,dn,topGain,topLoss};
+}
+
+function renderMktFull(prices){
+  // Stats bar
+  const {up,dn,topGain,topLoss}=_mktStatsFrom(prices);
+  const elU=document.getElementById('mkt-up-count'),elD=document.getElementById('mkt-dn-count');
+  const elTG=document.getElementById('mkt-top-gain'),elTL=document.getElementById('mkt-top-loss');
+  if(elU)elU.textContent=up;if(elD)elD.textContent=dn;
+  if(elTG)elTG.textContent=topGain[0]!=='—'?`${topGain[0]} +${(topGain[1].change_pct||0).toFixed(2)}%`:'—';
+  if(elTL)elTL.textContent=topLoss[0]!=='—'?`${topLoss[0]} ${(topLoss[1].change_pct||0).toFixed(2)}%`:'—';
+  // Sectors
+  const container=document.getElementById('mkt-sectors'); if(!container)return;
+  container.innerHTML=MKT_SECTORS.map(sec=>{
+    const rows=sec.tickers.filter(t=>!_mktFilter||(t.toLowerCase().includes(_mktFilter)||((MKT_NAMES[t]||'').toLowerCase().includes(_mktFilter))));
+    if(!rows.length)return '';
+    return`<div class="mkt-sector">
+      <div class="mkt-sector-hdr" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'':'none'">
+        <span class="mkt-sector-icon">${sec.icon}</span>
+        <span class="mkt-sector-name">${sec.name}</span>
+        <span class="mkt-sector-count">${rows.length} activos</span>
+      </div>
+      <div>
+        <table class="mkt-table">
+          <thead><tr><th>Ticker</th><th>Empresa / Nombre</th><th>Precio</th><th>Cambio%</th><th>Volumen</th><th>Acción</th></tr></thead>
+          <tbody>${rows.map(t=>{
+            const p=prices[t], px=p&&p.price>0?p.price:null;
+            const chg=p?p.change_pct||0:null;
+            const cls=chg===null?'':(chg>=0?'up':'dn');
+            const pxStr=px!==null?'$'+px.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2}):'Cargando...';
+            const chgStr=chg!==null?`${chg>=0?'+':''}${chg.toFixed(2)}%`:'—';
+            const vol=p&&p.volume?(p.volume>1e6?(p.volume/1e6).toFixed(1)+'M':(p.volume>1e3?(p.volume/1e3).toFixed(0)+'K':p.volume)):'—';
+            return`<tr class="mkt-row" id="mr-${t}" onclick="mktClickRow('${t}')">
+              <td><span class="mkt-ticker">${t}</span></td>
+              <td><span class="mkt-name">${MKT_NAMES[t]||t}</span></td>
+              <td><span class="mkt-px" id="mp-${t}">${pxStr}</span></td>
+              <td><span class="mkt-chg ${cls}" id="mc-${t}">${chgStr}</span></td>
+              <td><span class="mkt-vol" id="mv-${t}">${vol}</span></td>
+              <td><button class="mkt-btn mkt-btn-buy" onclick="event.stopPropagation();mktBuy('${t}')">Comprar</button></td>
+            </tr>`;}).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function updateMktLive(prices){
+  // Solo actualiza celdas si la sección está activa (no re-renderiza todo)
+  if(!document.getElementById('section-mercado')?.classList.contains('active'))return;
+  Object.entries(prices).forEach(([t,p])=>{
+    if(!p||p.price<=0)return;
+    const px=document.getElementById('mp-'+t), chgEl=document.getElementById('mc-'+t), volEl=document.getElementById('mv-'+t);
+    if(px)px.textContent='$'+p.price.toLocaleString('en',{minimumFractionDigits:2,maximumFractionDigits:2});
+    if(chgEl){const c=p.change_pct||0,s=c>=0?'+':'';chgEl.textContent=s+c.toFixed(2)+'%';chgEl.className='mkt-chg '+(c>=0?'up':'dn');}
+    if(volEl&&p.volume){const v=p.volume;volEl.textContent=v>1e6?(v/1e6).toFixed(1)+'M':v>1e3?(v/1e3).toFixed(0)+'K':v;}
+  });
+  // Actualiza stats bar
+  const {up,dn,topGain,topLoss}=_mktStatsFrom(lastPrices);
+  const elU=document.getElementById('mkt-up-count'),elD=document.getElementById('mkt-dn-count');
+  const elTG=document.getElementById('mkt-top-gain'),elTL=document.getElementById('mkt-top-loss');
+  if(elU)elU.textContent=up;if(elD)elD.textContent=dn;
+  if(elTG&&topGain[0]!=='—')elTG.textContent=`${topGain[0]} +${(topGain[1].change_pct||0).toFixed(2)}%`;
+  if(elTL&&topLoss[0]!=='—')elTL.textContent=`${topLoss[0]} ${(topLoss[1].change_pct||0).toFixed(2)}%`;
+}
+
+function filterMkt(q){
+  _mktFilter=q.toLowerCase().trim();
+  if(Object.keys(lastPrices).length>0)renderMktFull(lastPrices);
+}
+
+function mktClickRow(ticker){
+  // Abre TradingView en el dashboard para ese ticker
+  showSection('dashboard');
+  setTimeout(()=>setTVTicker&&setTVTicker(ticker),300);
+}
+
+function mktBuy(ticker){
+  showSection('ordenes');
+  setTimeout(()=>{
+    const sel=document.getElementById('o-ticker');
+    if(sel){sel.value=ticker;if(!sel.querySelector(`option[value="${ticker}"]`)){const o=document.createElement('option');o.value=ticker;o.textContent=ticker;sel.appendChild(o);sel.value=ticker;}}
+  },200);
 }
 
 async function loadDynSection(s){

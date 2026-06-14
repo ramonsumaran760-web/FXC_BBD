@@ -110,14 +110,4 @@ async def _registrar_equity_point(db: AsyncSession, usuario_id: int,
 
 
 def _generar_equity_demo(dias: int) -> list:
-    import random
-    from datetime import datetime, timedelta
-    precio = 10000.0
-    puntos = []
-    for i in range(dias):
-        ts = datetime.now(timezone.utc) - timedelta(days=dias - i)
-        chg = random.gauss(0.05, 0.8)
-        precio = round(precio * (1 + chg / 100), 2)
-        puntos.append({"timestamp": ts.isoformat(), "valor_portafolio_usd": precio,
-                       "ganancia_perdida_pct": round(chg, 4)})
-    return puntos
+    return []  # No datos simulados — solo curva real de EquityCurve en DB
