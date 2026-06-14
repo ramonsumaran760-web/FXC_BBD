@@ -72,23 +72,61 @@ def cache_incr(key: str, ttl: int = 60) -> int:
         return val
 
 # ─────────────────────────────────────────────────────────
-# 1. MARKET DATA — Yahoo Finance con Circuit Breaker
+# HELPERS — compartidos por market data y broker
+# ─────────────────────────────────────────────────────────
+ALPACA_DATA_URL = "https://data.alpaca.markets/v2"
+
+def _alpaca_headers(key: str, secret: str) -> dict:
+    return {"APCA-API-KEY-ID": key, "APCA-API-SECRET-KEY": secret,
+            "Content-Type": "application/json"}
+
+def _is_demo(key: str) -> bool:
+    return not key or key in ("DEMO_KEY", "demo", "")
+
+
+# ─────────────────────────────────────────────────────────
+# 1. MARKET DATA — Alpaca Data API (precios reales)
 # ─────────────────────────────────────────────────────────
 TICKERS_DEFAULT = ["AAPL","MSFT","TSLA","NVDA","AMZN","GOOGL","META","SPY","QQQ","BND","VTI","GLD"]
 _price_cache: dict = {}
 _price_ts: float = 0
-_BASE_PRICES = {"AAPL":195,"MSFT":432,"TSLA":248,"NVDA":912,"AMZN":189,
-                "GOOGL":175,"META":512,"SPY":541,"QQQ":470,"BND":74,"VTI":248,"GLD":225}
-_last_prices = dict(_BASE_PRICES)
 
-def _fallback_price(ticker: str) -> dict:
-    base = _last_prices.get(ticker, 100)
-    chg_pct = random.gauss(0, 0.3)
-    new_price = round(base * (1 + chg_pct / 100), 4)
-    _last_prices[ticker] = new_price
-    return {"price": new_price, "change_pct": round(chg_pct, 3),
-            "open": round(base, 4), "volume": random.randint(1000000, 50000000),
-            "source": "simulated", "ts": datetime.now(timezone.utc).isoformat()}
+
+def _alpaca_snapshot_bulk(tickers: list, key: str, secret: str) -> dict:
+    """Obtiene precios reales de Alpaca Data API — endpoint /stocks/snapshots."""
+    r = requests.get(
+        f"{ALPACA_DATA_URL}/stocks/snapshots",
+        params={"symbols": ",".join(tickers), "feed": "iex"},
+        headers=_alpaca_headers(key, secret),
+        timeout=10,
+    )
+    if not r.ok:
+        raise Exception(f"Alpaca snapshot HTTP {r.status_code}: {r.text[:300]}")
+    raw = r.json()
+    ts_now = datetime.now(timezone.utc).isoformat()
+    result = {}
+    for ticker in tickers:
+        snap  = raw.get(ticker) or {}
+        daily = snap.get("dailyBar") or {}
+        prev  = snap.get("prevDailyBar") or {}
+        trade = snap.get("latestTrade") or {}
+        price  = float(trade.get("p") or daily.get("c") or 0)
+        open_  = float(daily.get("o") or price)
+        prev_c = float(prev.get("c") or open_)
+        chg_pct = round((price - prev_c) / prev_c * 100, 3) if prev_c else 0
+        if price > 0:
+            result[ticker] = {
+                "price":      round(price, 4),
+                "change_pct": chg_pct,
+                "open":       round(open_, 4),
+                "high":       round(float(daily.get("h") or price), 4),
+                "low":        round(float(daily.get("l") or price), 4),
+                "volume":     int(daily.get("v") or 0),
+                "source":     "alpaca_realtime",
+                "ts":         ts_now,
+            }
+    return result
+
 
 def get_market_prices(tickers: list = None) -> dict:
     global _price_cache, _price_ts
@@ -96,13 +134,32 @@ def get_market_prices(tickers: list = None) -> dict:
     if time.time() - _price_ts < 15 and _price_cache:
         return {t: _price_cache[t] for t in tickers if t in _price_cache}
 
-    from core.circuit_breaker import cb_yfinance
+    from core.config import settings
+    from core.circuit_breaker import cb_alpaca
+
+    # ── Fuente primaria: Alpaca Data API ─────────────────
+    if not _is_demo(settings.ALPACA_API_KEY):
+        try:
+            @cb_alpaca
+            def _fetch_alpaca():
+                return _alpaca_snapshot_bulk(tickers, settings.ALPACA_API_KEY,
+                                             settings.ALPACA_API_SECRET)
+            result = _fetch_alpaca()
+            if result:
+                _price_cache.update(result)
+                _price_ts = time.time()
+                return result
+        except Exception as e:
+            logger.warning(f"Alpaca Data API: {e}")
+
+    # ── Fuente secundaria: Yahoo Finance ─────────────────
     try:
+        from core.circuit_breaker import cb_yfinance
         @cb_yfinance
-        def _fetch():
+        def _fetch_yf():
             import yfinance as yf
             data = yf.download(tickers, period="1d", interval="1m",
-                               progress=False, auto_adjust=True, threads=True)
+                               progress=False, auto_adjust=True, threads=False)
             result = {}
             if not data.empty and "Close" in data.columns:
                 for t in tickers:
@@ -115,63 +172,79 @@ def get_market_prices(tickers: list = None) -> dict:
                             chg = round((close - open_) / open_ * 100, 3) if open_ else 0
                             result[t] = {"price": round(close, 4), "change_pct": chg,
                                          "open": round(open_, 4), "volume": 0,
-                                         "source": "yahoo_finance", "ts": datetime.now(timezone.utc).isoformat()}
-                        else:
-                            result[t] = _fallback_price(t)
+                                         "source": "yahoo_finance",
+                                         "ts": datetime.now(timezone.utc).isoformat()}
                     except Exception:
-                        result[t] = _fallback_price(t)
-            else:
-                result = {t: _fallback_price(t) for t in tickers}
+                        pass
+            if not result:
+                raise Exception("yfinance devolvió datos vacíos")
             return result
-        result = _fetch()
-        _price_cache = result; _price_ts = time.time()
+        result = _fetch_yf()
+        _price_cache.update(result)
+        _price_ts = time.time()
         return result
     except Exception as e:
-        logger.warning(f"get_market_prices fallback: {e}")
-        result = {t: _fallback_price(t) for t in tickers}
-        _price_cache = result; _price_ts = time.time()
-        return result
+        logger.warning(f"Yahoo Finance: {e}")
+
+    # ── Fallback: última cache con datos reales ───────────
+    if _price_cache:
+        logger.warning("Sin datos frescos — devolviendo última cache de precios reales")
+        return {t: _price_cache[t] for t in tickers if t in _price_cache}
+
+    logger.error("Sin fuente de precios. Configure ALPACA_API_KEY y ALPACA_API_SECRET en Render.")
+    return {}
+
 
 def get_candles(ticker: str, period: str = "1mo", interval: str = "1d") -> list:
+    from core.config import settings
+
+    # ── Fuente primaria: Alpaca bars API ─────────────────
+    if not _is_demo(settings.ALPACA_API_KEY):
+        try:
+            days = {"1d": 2, "5d": 5, "1mo": 30, "3mo": 90, "1y": 365, "2y": 730}.get(period, 30)
+            tf   = {"1m": "1Min", "5m": "5Min", "15m": "15Min",
+                    "1h": "1Hour", "1d": "1Day", "1wk": "1Week"}.get(interval, "1Day")
+            start = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            r = requests.get(
+                f"{ALPACA_DATA_URL}/stocks/{ticker}/bars",
+                params={"timeframe": tf, "start": start, "feed": "iex", "limit": 1000},
+                headers=_alpaca_headers(settings.ALPACA_API_KEY, settings.ALPACA_API_SECRET),
+                timeout=12,
+            )
+            if r.ok:
+                bars = r.json().get("bars") or []
+                if bars:
+                    return [
+                        {"t": int(datetime.fromisoformat(b["t"].replace("Z", "+00:00")).timestamp() * 1000),
+                         "o": round(b["o"], 4), "h": round(b["h"], 4),
+                         "l": round(b["l"], 4), "c": round(b["c"], 4), "v": int(b["v"])}
+                        for b in bars
+                    ]
+        except Exception as e:
+            logger.warning(f"Alpaca bars {ticker}: {e}")
+
+    # ── Fuente secundaria: Yahoo Finance ─────────────────
     try:
         import yfinance as yf
         df = yf.download(ticker, period=period, interval=interval,
                          progress=False, auto_adjust=True)
-        if df.empty:
-            return _fallback_candles(ticker, period)
-        return [{"t": int(ts.timestamp() * 1000),
+        if not df.empty:
+            return [
+                {"t": int(ts.timestamp() * 1000),
                  "o": round(float(row["Open"]), 4), "h": round(float(row["High"]), 4),
                  "l": round(float(row["Low"]), 4), "c": round(float(row["Close"]), 4),
-                 "v": int(row["Volume"])} for ts, row in df.iterrows()]
-    except Exception:
-        return _fallback_candles(ticker, period)
+                 "v": int(row["Volume"])}
+                for ts, row in df.iterrows()
+            ]
+    except Exception as e:
+        logger.warning(f"yfinance candles {ticker}: {e}")
 
-def _fallback_candles(ticker: str, period: str) -> list:
-    n = {"1d": 390, "5d": 100, "1mo": 22, "3mo": 66, "1y": 252}.get(period, 22)
-    price = _BASE_PRICES.get(ticker, 100)
-    candles = []
-    for i in range(n):
-        ts = datetime.now(timezone.utc) - timedelta(minutes=(n - i) * 5)
-        o = price; chg = random.gauss(0, 0.5)
-        c = round(o * (1 + chg / 100), 4)
-        h = round(max(o, c) * (1 + abs(random.gauss(0, 0.2)) / 100), 4)
-        l = round(min(o, c) * (1 - abs(random.gauss(0, 0.2)) / 100), 4)
-        candles.append({"t": int(ts.timestamp() * 1000), "o": o, "h": h, "l": l, "c": c,
-                        "v": random.randint(10000, 500000)})
-        price = c
-    return candles
+    return []
 
 # ─────────────────────────────────────────────────────────
 # 2. BROKER — Alpaca Paper Trading con Circuit Breaker
 # ─────────────────────────────────────────────────────────
 ALPACA_BASE = "https://paper-api.alpaca.markets/v2"
-
-def _alpaca_headers(key: str, secret: str) -> dict:
-    return {"APCA-API-KEY-ID": key, "APCA-API-SECRET-KEY": secret,
-            "Content-Type": "application/json"}
-
-def _is_demo(key: str) -> bool:
-    return not key or key in ("DEMO_KEY", "demo", "")
 
 def alpaca_get_account(key: str, secret: str) -> dict:
     if _is_demo(key):
