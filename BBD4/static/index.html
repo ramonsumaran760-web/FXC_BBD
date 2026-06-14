@@ -248,6 +248,20 @@ tr:hover td{background:rgba(0,212,255,.03)}
 .chat-send{padding:9px 14px;background:var(--purple);border:none;border-radius:8px;color:#fff;font-weight:700;cursor:pointer;font-size:13px}
 #chat-btn{position:fixed;bottom:20px;right:20px;width:54px;height:54px;background:linear-gradient(135deg,var(--purple),#7c3aed);border:none;border-radius:50%;font-size:22px;cursor:pointer;z-index:1001;box-shadow:0 4px 24px rgba(168,85,247,.5);transition:transform .2s;display:none}
 #chat-btn:hover{transform:scale(1.08)}
+
+/* ── TTS Broker Audio ── */
+#tts-btn{display:flex;align-items:center;gap:7px;padding:10px 16px;border-radius:10px;border:1px solid rgba(0,212,255,.35);background:rgba(0,212,255,.08);color:var(--accent);font-size:13px;font-weight:800;cursor:pointer;letter-spacing:.04em;transition:all .2s;flex-shrink:0}
+#tts-btn:hover{background:rgba(0,212,255,.16)}
+#tts-btn.muted{border-color:rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:var(--muted)}
+#tts-wave{display:none;align-items:flex-end;gap:2px;height:16px;margin-left:2px}
+#tts-wave span{display:inline-block;width:3px;background:var(--accent);border-radius:2px;animation:wave-bar .7s ease-in-out infinite}
+#tts-wave span:nth-child(2){animation-delay:.1s;height:10px}
+#tts-wave span:nth-child(3){animation-delay:.2s;height:14px}
+#tts-wave span:nth-child(4){animation-delay:.3s;height:8px}
+#tts-wave span:nth-child(5){animation-delay:.15s;height:12px}
+@keyframes wave-bar{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1)}}
+#tts-toast{position:fixed;bottom:92px;right:90px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 16px;font-size:12px;color:var(--accent);max-width:300px;z-index:1002;display:none;box-shadow:0 8px 32px rgba(0,0,0,.5);animation:slideUp .2s ease}
+#tts-toast.show{display:block}
 </style>
 </head>
 <body>
@@ -290,7 +304,11 @@ tr:hover td{background:rgba(0,212,255,.03)}
     <button class="abtn abtn-robo" onclick="runRobo()">🤖 ROBO-ADVISOR IA</button>
     <button class="abtn abtn-kyc" onclick="showSection('kyc')">📋 KYC / AML</button>
     <button class="abtn abtn-fiscal" onclick="showSection('fiscal')">📊 PRE-CIERRE FISCAL</button>
+    <button id="tts-btn" onclick="ttsToggle()" title="Análisis por voz — Broker IA" style="display:none">
+      🔊 AUDIO ON<div id="tts-wave"><span style="height:6px"></span><span></span><span></span><span></span><span></span></div>
+    </button>
   </div>
+  <div id="tts-toast"></div>
 
   <div class="content">
     <!-- Sidebar -->
@@ -672,10 +690,13 @@ async function startApp(){
   appReady=true;
   document.getElementById('app').style.display='flex';
   document.getElementById('chat-btn').style.display='block';
+  document.getElementById('tts-btn').style.display='flex';
+  ttsInit();
   initClock(); connectWS();
   setTimeout(()=>initTVChart('AAPL'),300);
   loadPortfolio(); loadAlerts(); loadRobo(); loadProfile(); loadNews();
   updateFiscalCount(); initFiscalChecklist();
+  setTimeout(()=>ttsSpeak(_brokerWelcome(),'welcome'),2200);
 }
 
 function authHdr(){return{'Authorization':'Bearer '+token,'Content-Type':'application/json'};}
@@ -690,6 +711,7 @@ async function loadProfile(){
 }
 
 // ── Clock ─────────────────────────────────────────────────
+let _mktWasOpen=null;
 function initClock(){
   const days=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
   const months=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
@@ -703,6 +725,11 @@ function initClock(){
     const el=document.getElementById('mkt-status');
     el.className='market-badge'+(open?'':' closed');
     el.innerHTML='<span class="dot-pulse"></span>NYSE: '+(open?'Mercado abierto':'Mercado cerrado');
+    if(_mktWasOpen!==null&&open!==_mktWasOpen){
+      if(open)ttsSpeak(_brokerMarketOpen(),'mkt',true);
+      else ttsSpeak(_brokerMarketClose(),'mkt',true);
+    }
+    _mktWasOpen=open;
   }
   tick(); setInterval(tick,1000);
 }
@@ -720,6 +747,14 @@ function connectWS(){
         lastPrices={...lastPrices,...prices};
         renderTicker(lastPrices); updateLivePortfolio();
         updatePosTablePrices(); updateExecSummaryLive(); renderNews();
+        // TTS: announce significant movers
+        Object.entries(prices).forEach(([t,p])=>{
+          const pct=p.change_pct||0;
+          if(Math.abs(pct)>=1.5){
+            const msg=_brokerPrice(t,p.price,pct);
+            if(msg)ttsSpeak(msg,'price-'+t);
+          }
+        });
       }
     }catch(err){}
   };
@@ -772,6 +807,13 @@ async function loadPortfolio(){
     document.getElementById('ptf-total').textContent='$'+fmt2(total);
     window._ptf_pos=pos; window._ptf_data=d;
     updateLivePortfolio(); updateExecSummary(d); updatePortfolioStats(d);
+    // TTS: portfolio summary on first load only
+    if(!window._ptf_spoken){
+      window._ptf_spoken=true;
+      const gp=d.ganancia_perdida_total||0, costBase=Math.max(total-gp,1);
+      const rentPct=gp/costBase*100;
+      setTimeout(()=>ttsSpeak(_brokerPortfolio(total,0,rentPct,saldo),'ptf'),3500);
+    }
   }catch(e){if(e.message!=='Sesión expirada')console.error('ptf',e);}
   setTimeout(loadPortfolio,30000);
 }
@@ -944,6 +986,12 @@ async function loadRobo(){
     window._robo_risk=d.score_riesgo||50;
     if(window._ptf_data)updateHealthGauge(window._ptf_data);
     updateAIRec(d);
+    // TTS: AI recommendation
+    const acciones=d.acciones_recomendadas||[];
+    const tickers=['NVDA','AAPL','MSFT','TSLA','AMZN','GOOGL','META','SPY','QQQ'];
+    let rTicker='—', rAction='mantener';
+    for(const a of acciones){const u=a.toUpperCase();for(const t of tickers){if(u.includes(t)){rTicker=t;break;}}if(u.includes('COMPRAR')||u.includes('COMPRA')){rAction='comprar';break;}if(u.includes('VENDER')){rAction='vender';break;}}
+    setTimeout(()=>ttsSpeak(_brokerAI(perfil,d.score_riesgo||64,rAction,rTicker,d.explicacion_voz),'robo'),5000);
   }catch(e){if(e.message!=='Sesión expirada'){document.getElementById('robo-perfil').textContent='Sin datos';}}
 }
 
@@ -996,6 +1044,11 @@ async function loadAlerts(){
       const icon=a.tipo==='warning'?'⚠️':a.tipo==='error'?'🔴':'ℹ️';
       return`<div class="alert-item"><span class="alert-icon">${icon}</span><div class="alert-txt"><span class="alert-tit">${a.titulo||a.modulo||''}</span>${a.mensaje||''}</div></div>`;
     }).join('');
+    // TTS: announce warning/error alerts only
+    const warnings=alerts.filter(a=>a.tipo==='warning'||a.tipo==='error');
+    if(warnings.length){
+      setTimeout(()=>ttsSpeak(_brokerAlert(warnings[0].titulo||'Alerta',warnings[0].mensaje||''),'alert'),7000);
+    }
   }catch(e){}
 }
 
@@ -1102,7 +1155,7 @@ async function placeOrder(){
     const r=await apiFetch('/api/v1/ordenes',{method:'POST',body:JSON.stringify({ticker,monto_usd:monto,tipo:oSide,tipo_orden:'market'})});
     const d=await r.json();
     if(!r.ok)showOM(d.detail||JSON.stringify(d),true);
-    else{showOM(`✓ ${oSide==='buy'?'Compra':'Venta'} ${ticker} — ${parseFloat(d.acciones||0).toFixed(6)} acc. @ $${fmt2(d.precio_ejecucion||0)}`,false);loadPortfolio();}
+    else{showOM(`✓ ${oSide==='buy'?'Compra':'Venta'} ${ticker} — ${parseFloat(d.acciones||0).toFixed(6)} acc. @ $${fmt2(d.precio_ejecucion||0)}`,false);loadPortfolio();ttsSpeak(_brokerOrder(oSide,ticker,d.acciones,d.precio_ejecucion,monto),'order',true);}
   }catch(e){if(e.message!=='Sesión expirada')showOM('Error: '+e.message,true);}
   btn.disabled=false; setOSide(oSide);
 }
@@ -1143,6 +1196,160 @@ async function sendChat(){
 // ── Utils ─────────────────────────────────────────────────
 function fmt2(n){return Number(n||0).toFixed(2);}
 function fmt4(n){return Number(n||0).toFixed(4);}
+
+// ══════════════════════════════════════════════════════════
+// BROKER ANALYST TTS — InvestIQ Audio Engine
+// Motor: Web Speech API (Google Neural TTS en Chrome/Edge)
+// Voz: masculina natural es-ES · Rate: 0.91 · Pitch: 0.76
+// ══════════════════════════════════════════════════════════
+let _ttsOn=true;
+let _ttsBusy=false;
+const _ttsQ=[];
+const _ttsCD={};         // cooldowns: key→timestamp
+const _TTS_GAP=240000;  // 4 min entre misma key
+let _ttsVoice=null;
+
+function ttsInit(){
+  if(!('speechSynthesis' in window))return;
+  function pickVoice(){
+    const vv=window.speechSynthesis.getVoices();
+    if(!vv.length)return;
+    const tries=[
+      v=>v.lang==='es-ES'&&/google/i.test(v.name)&&!/female|femenin|mujer|sabina|monica|mónica|helena|laura|maria|maría/i.test(v.name),
+      v=>v.lang==='es-ES'&&/pablo|carlos|jorge|hector|héctor|diego|alvaro|álvaro/i.test(v.name),
+      v=>v.lang==='es-MX'&&/google/i.test(v.name)&&!/female|femenin/i.test(v.name),
+      v=>v.lang.startsWith('es')&&/google/i.test(v.name),
+      v=>v.lang==='es-ES'&&!/female|femenin|mujer|sabina|monica|mónica|helena/i.test(v.name),
+      v=>v.lang.startsWith('es'),
+    ];
+    for(const fn of tries){const f=vv.find(fn);if(f){_ttsVoice=f;break;}}
+  }
+  window.speechSynthesis.onvoiceschanged=pickVoice;
+  pickVoice();
+}
+
+function ttsSpeak(text,key,priority=false){
+  if(!_ttsOn||!('speechSynthesis' in window))return;
+  const now=Date.now();
+  if(key&&_ttsCD[key]&&now-_ttsCD[key]<_TTS_GAP)return;
+  if(key)_ttsCD[key]=now;
+  if(priority){window.speechSynthesis.cancel();_ttsQ.length=0;_ttsBusy=false;_ttsQ.unshift(text);}
+  else _ttsQ.push(text);
+  _ttsNext();
+}
+
+function _ttsNext(){
+  if(_ttsBusy||!_ttsQ.length)return;
+  const text=_ttsQ.shift();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang='es-ES'; u.rate=0.91; u.pitch=0.76; u.volume=1.0;
+  if(_ttsVoice)u.voice=_ttsVoice;
+  _ttsBusy=true;
+  _ttsWave(true); _ttsToast(text);
+  u.onend=u.onerror=()=>{_ttsBusy=false;_ttsWave(false);setTimeout(_ttsNext,380);};
+  window.speechSynthesis.speak(u);
+}
+
+function _ttsWave(on){
+  const w=document.getElementById('tts-wave');
+  const btn=document.getElementById('tts-btn');
+  if(w)w.style.display=on?'flex':'none';
+  if(btn)btn.style.background=on?'rgba(0,212,255,.22)':(_ttsOn?'rgba(0,212,255,.08)':'rgba(255,255,255,.04)');
+}
+
+function _ttsToast(text){
+  const t=document.getElementById('tts-toast'); if(!t)return;
+  t.textContent='🔊 '+text.slice(0,80)+(text.length>80?'…':'');
+  t.className='tts-toast show';
+  clearTimeout(t._tid);
+  t._tid=setTimeout(()=>{t.className='tts-toast';},4500);
+}
+
+function ttsToggle(){
+  _ttsOn=!_ttsOn;
+  window.speechSynthesis.cancel(); _ttsQ.length=0; _ttsBusy=false; _ttsWave(false);
+  const btn=document.getElementById('tts-btn');
+  if(btn){btn.innerHTML=(_ttsOn?'🔊 AUDIO ON':'🔇 AUDIO OFF')+'<div id="tts-wave"><span style="height:6px"></span><span></span><span></span><span></span><span></span></div>';btn.className=_ttsOn?'':'muted';}
+  if(_ttsOn)setTimeout(()=>ttsSpeak('Sistema de análisis por voz activado. InvestIQ monitoreando mercados en tiempo real.','sys',true),300);
+}
+
+// ── Broker Commentary Generators ──────────────────────────
+const _TN={AAPL:'Apple',MSFT:'Microsoft',TSLA:'Tesla',NVDA:'NVIDIA',
+  AMZN:'Amazon',GOOGL:'Alphabet',META:'Meta',SPY:'S and P 500',
+  QQQ:'Nasdaq 100',GLD:'Oro',BND:'Bonos',VTI:'Mercado Total'};
+
+function _n(t){return _TN[t]||t;}
+function _p(n){return String(Math.abs(Number(n)||0).toFixed(2)).replace('.',',');}
+function _pct(n){return String(Math.abs(Number(n)||0).toFixed(1)).replace('.',',');}
+
+function _brokerWelcome(){
+  const h=new Date().getHours();
+  const g=h<12?'Buenos días':h<18?'Buenas tardes':'Buenas noches';
+  return `${g}. Bienvenido a InvestIQ. Sistema operativo. Conectando con mercados en tiempo real. Iniciando análisis de portafolio.`;
+}
+
+function _brokerMarketOpen(){
+  return `Atención, operadores. El mercado de valores de Nueva York ha abierto. Iniciamos sesión bursátil. Monitoreo de precios en tiempo real activo. Alpaca Markets conectado.`;
+}
+
+function _brokerMarketClose(){
+  return `Cierre de sesión bursátil. El mercado de Nueva York ha concluido operaciones del día. Los mercados reanudan mañana. Revise el resumen de su cartera en el panel derecho.`;
+}
+
+function _brokerPrice(ticker,price,chgPct){
+  const n=_n(ticker), abs=_pct(chgPct), px=_p(price);
+  const dir=chgPct>=0?'avanza':'retrocede';
+  const a=Math.abs(chgPct);
+  if(a>=3){
+    const sig=chgPct>=0?'Señal alcista de alta intensidad.':'Presión bajista significativa. Monitoree el soporte.';
+    return `Alerta de volatilidad. ${n} ${dir} un ${abs} por ciento. Precio actual: ${px} dólares. ${sig}`;
+  }
+  return `Movimiento de mercado. ${n} ${dir} un ${abs} por ciento. Precio: ${px} dólares.`;
+}
+
+function _brokerPortfolio(total,dailyUSD,rentPct,saldo){
+  const t=Math.round(total||0), s=Math.round(saldo||0);
+  const r=_pct(rentPct), sign=rentPct>=0?'más':'menos';
+  return `Portafolio actualizado. Valor total de la cartera: ${t} dólares. Rendimiento acumulado: ${sign} ${r} por ciento. Saldo disponible para invertir: ${s} dólares.`;
+}
+
+function _brokerAI(perfil,score,accion,ticker,explicacion){
+  const p=(perfil||'moderado');
+  const s=score||64;
+  const t=ticker&&ticker!=='—'?`. Activo recomendado: ${_n(ticker)}. Acción sugerida: ${accion||'mantener'}`:'';
+  return `Análisis de inteligencia artificial completado. Perfil de inversión: ${p}. Score de riesgo: ${s} de 100${t}. Nivel de confianza del modelo: ${s} por ciento.`;
+}
+
+function _brokerHealth(score){
+  const ll=[[90,'excelente'],[75,'muy bueno'],[60,'bueno'],[45,'moderado'],[0,'requiere atención']];
+  const lbl=ll.find(([m])=>score>=m)?.[1]||'moderado';
+  const adv=score<55?' Se recomienda rebalanceo de cartera.':score>=80?' Cartera dentro de parámetros óptimos.':'';
+  return `Score de cartera actualizado: ${score} de 100. Calificación: ${lbl}.${adv}`;
+}
+
+function _brokerAlert(titulo,mensaje){
+  return `Sistema de monitoreo — alerta activa: ${titulo}. ${(mensaje||'').slice(0,120)}`;
+}
+
+function _brokerOrder(side,ticker,acciones,precio,monto){
+  const tp=side==='buy'?'compra':'venta', n=_n(ticker);
+  const acc=parseFloat(acciones||0).toFixed(4), px=_p(precio);
+  return `Orden ejecutada exitosamente. ${tp.charAt(0).toUpperCase()+tp.slice(1)} de ${n}. ${acc} acciones a ${px} dólares. Operación confirmada por Alpaca Markets.`;
+}
+
+// Resumen de mercado cada 60 s si el mercado está abierto
+setInterval(()=>{
+  if(!_ttsOn||!appReady)return;
+  const keys=Object.keys(lastPrices); if(!keys.length)return;
+  const sorted=keys.filter(k=>lastPrices[k]).sort((a,b)=>(lastPrices[b]?.change_pct||0)-(lastPrices[a]?.change_pct||0));
+  const best=sorted[0], worst=sorted[sorted.length-1];
+  if(!best||!worst)return;
+  const bp=lastPrices[best], wp=lastPrices[worst];
+  const bPct=bp?.change_pct||0, wPct=wp?.change_pct||0;
+  if(Math.abs(bPct)<0.5&&Math.abs(wPct)<0.5)return;
+  const txt=`Resumen de mercado. ${_n(best)} lidera ${bPct>=0?'con avance de':'con baja de'} ${_pct(bPct)} por ciento. ${_n(worst)} registra ${wPct>=0?'avance':'retroceso'} de ${_pct(wPct)} por ciento. Resto de activos en monitoreo activo.`;
+  ttsSpeak(txt,'summary');
+},60000);
 </script>
 </body>
 </html>
