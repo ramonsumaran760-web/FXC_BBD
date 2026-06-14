@@ -56,7 +56,7 @@ mercadopago==2.2.2               # MercadoPago (LATAM)
 # ── Notificaciones push ──────────────────────────────────────
 pywebpush==2.0.0                 # Web Push VAPID (Chrome, Firefox, Edge)
 py-vapid==1.9.1                  # Generación de claves VAPID
-twilio==8.16.0                   # SMS (OTP + alertas críticas)
+twilio==8.14.0                   # SMS (OTP + alertas críticas)
 
 # ── Notificaciones email ─────────────────────────────────────
 # SendGrid se usa vía requests (ya incluido arriba)
