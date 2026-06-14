@@ -6,7 +6,6 @@ Toda la lógica de negocio vive en api/v1/routes/*.py y services/*.py
 import os, sys, asyncio, json
 from datetime import datetime, timedelta, timezone
 from contextlib import asynccontextmanager
-import random
 import logging
 
 sys.path.insert(0, os.path.dirname(__file__))
@@ -39,10 +38,9 @@ for _noisy in ("yfinance", "yfinance.base", "yfinance.utils", "yfinance.cache",
 
 # ── Seed data ─────────────────────────────────────────────
 async def seed_inicial():
+    """Crea los usuarios base y los activos registrables. Sin datos inventados."""
     from sqlalchemy import select, func
-    from models.models import (Usuario, Activo, PosicionPortafolio, Orden,
-                                Transaccion, Dividendo, Alerta, AuditLog, TaxLot)
-    from core.security import firmar_orden, generar_nonce
+    from models.models import (Usuario, Activo, Alerta, AuditLog)
     from services.services import get_market_prices
 
     async with AsyncSessionLocal() as db:
@@ -50,14 +48,14 @@ async def seed_inicial():
         if res.scalar() > 0:
             return
 
-        # Usuarios demo
+        # Usuarios base
         u = Usuario(
-            nombre="Inversionista Demo", email="demo@investiq.co",
+            nombre="Inversionista", email="demo@investiq.co",
             password_hash=hash_password("InvestIQ2026!"),
             rol="investor", kyc_nivel="full", kyc_verificado=True,
             aml_status="clear", mfa_activo=False, edad=30,
             ingresos_anuales_usd=25000, tolerancia_riesgo="moderada",
-            saldo_usd=3421.10
+            saldo_usd=0
         )
         admin = Usuario(
             nombre="Administrador", email="admin@investiq.co",
@@ -68,7 +66,7 @@ async def seed_inicial():
         db.add_all([u, admin])
         await db.flush()
 
-        # Activos
+        # Activos registrables (catálogo)
         tickers_data = [
             ("AAPL","Apple Inc.","stock","Tecnología","NASDAQ"),
             ("MSFT","Microsoft Corp.","stock","Tecnología","NASDAQ"),
@@ -88,75 +86,93 @@ async def seed_inicial():
             p = precios.get(ticker, {})
             db.add(Activo(ticker=ticker, nombre=nombre, tipo=tipo,
                           sector=sector, mercado=mercado,
-                          precio_actual=p.get("price", 100),
-                          precio_apertura=p.get("open", 100),
+                          precio_actual=p.get("price", 0),
+                          precio_apertura=p.get("open", 0),
                           variacion_pct=p.get("change_pct", 0)))
 
-        # Posiciones demo
-        posiciones_demo = [
-            ("AAPL","Apple Inc.",2.3456,189.50,195.20),
-            ("NVDA","NVIDIA Corp.",0.8721,850.0,912.40),
-            ("MSFT","Microsoft Corp.",1.0543,410.0,432.10),
-            ("TSLA","Tesla Inc.",3.12,220.0,248.30),
-            ("SPY","SPDR S&P 500",1.5,520.0,541.0),
-        ]
-        for ticker, nombre, acc, pc, pa in posiciones_demo:
-            pos = PosicionPortafolio(
-                usuario_id=u.id, ticker=ticker, nombre=nombre,
-                acciones=acc, precio_promedio_compra=pc, precio_actual=pa)
-            pos.recalcular()
-            db.add(pos)
-            # Tax lots para las posiciones demo
-            db.add(TaxLot(
-                usuario_id=u.id, ticker=ticker,
-                acciones_originales=acc, acciones_restantes=acc,
-                precio_costo=pc,
-                fecha_compra=datetime.now(timezone.utc) - timedelta(days=random.randint(30, 365))))
-
-        # Órdenes históricas
-        for i in range(20):
-            d = datetime.now(timezone.utc) - timedelta(days=random.randint(0, 90))
-            tick = random.choice(["AAPL","NVDA","MSFT","TSLA","SPY"])
-            monto = round(random.uniform(10, 500), 2)
-            price = round(random.uniform(100, 950), 2)
-            fracs = round(monto / price, 8)
-            datos_firma = {"ticker": tick, "monto": monto, "tipo": "buy",
-                           "ts": str(d), "nonce": generar_nonce()}
-            firma = firmar_orden(datos_firma)
-            db.add(Orden(
-                usuario_id=u.id, ticker=tick, tipo="buy", tipo_orden="market",
-                monto_usd=monto, acciones=fracs, precio_ejecucion=price,
-                estado="filled", broker="alpaca_paper",
-                broker_order_id=f"ord_{i:04d}",
-                firma_ecdsa=firma, firma_verificada=True,
-                nonce=datos_firma["nonce"], aml_check="clear",
-                creado=d, ejecutado=d))
-
-        # Transacciones y dividendos demo
-        db.add(Transaccion(usuario_id=u.id, tipo="deposito", monto_usd=5000,
-                           estado="completed", metodo="bank_transfer",
-                           descripcion="Depósito inicial"))
-        db.add(Transaccion(usuario_id=u.id, tipo="deposito", monto_usd=3000,
-                           estado="completed", metodo="bank_transfer",
-                           descripcion="Depósito adicional"))
-        for tick in ["AAPL","SPY","MSFT"]:
-            db.add(Dividendo(usuario_id=u.id, ticker=tick,
-                             monto_usd=round(random.uniform(0.5, 8), 4),
-                             acciones_en_fecha=round(random.uniform(0.5, 3), 4),
-                             pago_date=datetime.now(timezone.utc) - timedelta(days=random.randint(10, 60))))
-
-        # Alertas iniciales
-        for tipo, mod, titulo, msg in [
-            ("warning","portafolio","Concentración alta","TSLA representa el 28% del portafolio."),
-            ("info","mercado","Mercado abierto","NYSE y NASDAQ operando normalmente."),
-            ("info","ia","Robo-Advisor","Análisis de riesgo disponible."),
-        ]:
-            db.add(Alerta(usuario_id=u.id, tipo=tipo, modulo=mod, titulo=titulo, mensaje=msg))
+        # Alerta de bienvenida del sistema
+        db.add(Alerta(usuario_id=u.id, tipo="info", modulo="sistema",
+                      titulo="Plataforma lista",
+                      mensaje="InvestIQ conectado. Precios en tiempo real vía Alpaca IEX."))
 
         db.add(AuditLog(usuario_id=admin.id, accion="SISTEMA_INIT", modulo="sistema",
                         detalle="InvestIQ v2.0.0 inicializado", ip="127.0.0.1"))
         await db.commit()
-        logger.info("✓ Seed InvestIQ v2.0 completado")
+        logger.info("✓ Seed limpio completado — sin datos de prueba")
+
+
+async def limpiar_datos_demo():
+    """
+    Elimina datos de prueba generados por seed antiguo en deployments existentes.
+    Identifica órdenes demo por broker_order_id='ord_XXXX', posiciones sin
+    origen real (broker_order_id NULL), transacciones de seed y dividendos inventados.
+    """
+    from sqlalchemy import select, delete, update
+    from models.models import (Usuario, PosicionPortafolio, Orden,
+                                Transaccion, Dividendo, Alerta, TaxLot)
+
+    async with AsyncSessionLocal() as db:
+        # Obtener usuario demo
+        res = await db.execute(select(Usuario).where(Usuario.email == "demo@investiq.co"))
+        u = res.scalar_one_or_none()
+        if not u:
+            return
+
+        uid = u.id
+
+        # Órdenes con ID de seed (ord_0000 … ord_0019)
+        await db.execute(
+            delete(Orden).where(
+                Orden.usuario_id == uid,
+                Orden.broker_order_id.like("ord_%")
+            )
+        )
+
+        # Posiciones: eliminar las que vinieron del seed (precio_promedio_compra exacto a los valores del seed)
+        seed_pc = {189.50, 850.0, 410.0, 220.0, 520.0}
+        res2 = await db.execute(
+            select(PosicionPortafolio).where(PosicionPortafolio.usuario_id == uid)
+        )
+        for pos in res2.scalars().all():
+            if round(pos.precio_promedio_compra, 2) in seed_pc:
+                await db.execute(
+                    delete(TaxLot).where(
+                        TaxLot.usuario_id == uid,
+                        TaxLot.ticker == pos.ticker,
+                        TaxLot.precio_costo == pos.precio_promedio_compra
+                    )
+                )
+                await db.delete(pos)
+
+        # Transacciones de seed (descripción exacta)
+        await db.execute(
+            delete(Transaccion).where(
+                Transaccion.usuario_id == uid,
+                Transaccion.descripcion.in_(["Depósito inicial", "Depósito adicional"])
+            )
+        )
+
+        # Dividendos inventados del seed (los tres tickers exactos)
+        await db.execute(
+            delete(Dividendo).where(Dividendo.usuario_id == uid)
+        )
+
+        # Alerta de concentración falsa
+        await db.execute(
+            delete(Alerta).where(
+                Alerta.usuario_id == uid,
+                Alerta.titulo == "Concentración alta"
+            )
+        )
+
+        # Resetear saldo ficticio a 0
+        if u.saldo_usd == 3421.10:
+            await db.execute(
+                update(Usuario).where(Usuario.id == uid).values(saldo_usd=0)
+            )
+
+        await db.commit()
+        logger.info("✓ Datos de prueba eliminados de la DB existente")
 
 # ── Lifespan ──────────────────────────────────────────────
 @asynccontextmanager
@@ -167,6 +183,7 @@ async def lifespan(app: FastAPI):
     init_sentry(app)
     # seed e yfinance corren en background para no bloquear el port binding
     asyncio.create_task(seed_inicial())
+    asyncio.create_task(limpiar_datos_demo())
     asyncio.create_task(price_broadcaster())
     logger.info("InvestIQ v2.0 listo — seed y broadcaster arrancando en background")
     yield
