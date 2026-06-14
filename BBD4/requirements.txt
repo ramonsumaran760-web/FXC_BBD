@@ -1,0 +1,101 @@
+# ============================================================
+# InvestIQ v2.0 — Dependencias de producción
+# Python 3.11+  |  Instalar: pip install -r requirements.txt
+# ============================================================
+
+# ── Framework principal ──────────────────────────────────────
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+python-multipart==0.0.9          # uploads multipart/form-data
+websockets==12.0                 # WebSocket soporte
+
+# ── Base de datos ────────────────────────────────────────────
+sqlalchemy[asyncio]==2.0.30      # ORM async
+aiosqlite==0.20.0                # SQLite async (desarrollo)
+asyncpg==0.29.0                  # PostgreSQL async (producción)
+psycopg2-binary==2.9.9           # PostgreSQL sync (Alembic)
+alembic==1.13.1                  # Migraciones de schema
+
+# ── Cache y mensajería ───────────────────────────────────────
+redis==5.0.4                     # Cliente Redis (cache + blacklist JWT + CB)
+celery[redis]==5.3.6             # Cola de tareas asíncronas
+kombu==5.3.4                     # Backend de mensajes para Celery
+
+# ── Autenticación y seguridad ────────────────────────────────
+python-jose[cryptography]==3.3.0 # JWT (encode/decode tokens)
+passlib[bcrypt]==1.7.4           # Hashing de contraseñas
+bcrypt==4.1.3                    # bcrypt backend
+pyotp==2.9.0                     # TOTP MFA (Google Authenticator)
+qrcode[pil]==7.4.2               # Generación de QR para MFA
+Pillow>=10.3.0                   # Procesamiento de imágenes (QR)
+cryptography>=42.0.0             # ECDSA P-256 + Fernet AES-128 (PII)
+
+# ── Validación y configuración ───────────────────────────────
+pydantic-settings==2.2.1         # Settings desde .env
+pydantic[email]==2.7.1           # Validación de datos
+
+# ── Rate Limiting ────────────────────────────────────────────
+slowapi==0.1.9                   # Rate limiting para FastAPI
+
+# ── Datos de mercado ─────────────────────────────────────────
+yfinance==0.2.38                 # Yahoo Finance (precios, velas)
+requests==2.31.0                 # HTTP síncrono (Alpaca, Claude, AML)
+httpx==0.27.0                    # HTTP asíncrono (tests, webhooks)
+
+# ── Generación de reportes ────────────────────────────────────
+reportlab==4.2.0                 # PDF ejecutivo
+openpyxl==3.1.2                  # Excel multi-hoja
+
+# ── Monitoreo y observabilidad ───────────────────────────────
+sentry-sdk[fastapi,sqlalchemy,redis,logging]==2.5.1
+
+# ── Pagos ────────────────────────────────────────────────────
+stripe==9.12.0                   # Stripe (tarjetas, PaymentIntent)
+mercadopago==2.2.2               # MercadoPago (LATAM)
+
+# ── Notificaciones push ──────────────────────────────────────
+pywebpush==2.0.0                 # Web Push VAPID (Chrome, Firefox, Edge)
+py-vapid==1.9.1                  # Generación de claves VAPID
+twilio==8.16.0                   # SMS (OTP + alertas críticas)
+
+# ── Notificaciones email ─────────────────────────────────────
+# SendGrid se usa vía requests (ya incluido arriba)
+# Para plantillas HTML avanzadas (opcional):
+# jinja2==3.1.4
+
+# ── Firebase Cloud Messaging ─────────────────────────────────
+# FCM se usa vía requests (ya incluido arriba)
+# Para SDK oficial de Firebase Admin (opcional):
+# firebase-admin==6.5.0
+
+# ── Backups S3 ───────────────────────────────────────────────
+boto3==1.34.129                  # AWS S3 (backups automáticos)
+botocore==1.34.129               # Dependencia de boto3
+
+# ── Testing ──────────────────────────────────────────────────
+pytest==8.2.2
+pytest-asyncio==0.23.7           # Tests asíncronos con asyncio
+pytest-cov==5.0.0                # Cobertura de código
+anyio[trio]==4.4.0               # Backend asyncio para httpx en tests
+
+# ── Desarrollo y calidad ─────────────────────────────────────
+# (solo instalar en dev, no en producción)
+# Descomentar si se necesitan en dev:
+# black==24.4.2                  # Formatter
+# ruff==0.4.7                    # Linter ultra-rápido
+# mypy==1.10.0                   # Type checking
+# pre-commit==3.7.1              # Git hooks
+
+# ── Notas de instalación ─────────────────────────────────────
+# PostgreSQL + TimescaleDB (producción):
+#   Requiere libpq-dev en Linux: apt install libpq-dev
+#   Docker: ver docker-compose.yml
+#
+# Variables de entorno requeridas:
+#   Ver .env.example para lista completa
+#
+# Instalación mínima (sin opcionales):
+#   pip install fastapi uvicorn sqlalchemy[asyncio] aiosqlite redis \
+#     python-jose[cryptography] passlib[bcrypt] pyotp qrcode[pil] \
+#     cryptography pydantic-settings slowapi yfinance requests httpx \
+#     reportlab openpyxl sentry-sdk[fastapi]
