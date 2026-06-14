@@ -249,6 +249,111 @@ tr:hover td{background:rgba(0,212,255,.03)}
 #chat-btn{position:fixed;bottom:20px;right:20px;width:54px;height:54px;background:linear-gradient(135deg,var(--purple),#7c3aed);border:none;border-radius:50%;font-size:22px;cursor:pointer;z-index:1001;box-shadow:0 4px 24px rgba(168,85,247,.5);transition:transform .2s;display:none}
 #chat-btn:hover{transform:scale(1.08)}
 
+/* ── Notification Bell ── */
+.bell-wrap{position:relative;flex-shrink:0}
+#bell-btn{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:10px;padding:9px 14px;font-size:16px;cursor:pointer;color:var(--amber);transition:all .2s;display:flex;align-items:center;gap:6px}
+#bell-btn:hover{background:rgba(245,158,11,.16)}
+.bell-badge{background:var(--red);color:#fff;font-size:9px;font-weight:900;padding:1px 5px;border-radius:8px;min-width:16px;text-align:center;line-height:14px}
+#bell-panel{position:absolute;top:calc(100% + 10px);right:0;width:320px;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 20px 60px rgba(0,0,0,.6);z-index:2000;display:none}
+#bell-panel.open{display:block;animation:slideUp .15s ease}
+.bell-hdr{padding:14px 16px;border-bottom:1px solid var(--border);font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:space-between}
+.bell-item{padding:10px 16px;border-bottom:1px solid rgba(26,46,80,.4);display:flex;align-items:flex-start;gap:10px;cursor:pointer}
+.bell-item:hover{background:rgba(0,212,255,.03)}
+.bell-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.bell-item-body{flex:1;min-width:0}
+.bell-item-title{font-size:12px;font-weight:700;margin-bottom:2px}
+.bell-item-msg{font-size:11px;color:var(--muted);line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* ── User Chip ── */
+.user-chip{display:flex;align-items:center;gap:8px;padding:6px 12px;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all .2s;flex-shrink:0}
+.user-chip:hover{background:rgba(255,255,255,.08)}
+.user-av{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;background:linear-gradient(135deg,var(--accent),var(--purple));color:#fff;flex-shrink:0}
+.user-chip-name{font-size:12px;font-weight:700;line-height:1.2}
+.user-chip-role{font-size:10px;color:var(--muted)}
+
+/* ── Content sections ── */
+.main-section{display:none;flex-direction:column;gap:14px}
+.main-section.active{display:flex}
+#section-dashboard{display:flex;flex-direction:column;gap:14px;flex-shrink:0}
+
+/* ── Chat IA full section ── */
+.chat-full-wrap{background:var(--card);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;overflow:hidden;flex:1;min-height:0}
+.chat-full-hdr{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;flex-shrink:0}
+.chat-full-avatar{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--purple),#7c3aed);display:flex;align-items:center;justify-content:center;font-size:22px}
+.chat-full-title{font-size:16px;font-weight:900}
+.chat-full-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.chat-full-presets{display:flex;flex-wrap:wrap;gap:8px;padding:16px 22px;border-bottom:1px solid var(--border);flex-shrink:0}
+.chat-full-preset{padding:8px 16px;background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.25);border-radius:20px;color:var(--purple);font-size:12px;font-weight:700;cursor:pointer;transition:all .2s}
+.chat-full-preset:hover{background:rgba(168,85,247,.2)}
+.chat-full-msgs{flex:1;overflow-y:auto;padding:18px 22px;display:flex;flex-direction:column;gap:12px}
+.chat-full-msgs::-webkit-scrollbar{width:4px}.chat-full-msgs::-webkit-scrollbar-thumb{background:var(--border)}
+.chat-full-input{padding:14px 22px;border-top:1px solid var(--border);display:flex;gap:10px;flex-shrink:0}
+.chat-full-input input{flex:1;padding:12px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;outline:none}
+.chat-full-input input:focus{border-color:var(--purple)}
+.chat-full-send{padding:12px 20px;background:var(--purple);border:none;border-radius:10px;color:#fff;font-weight:800;cursor:pointer;font-size:14px}
+
+/* ── Donut chart ── */
+.donut-section{padding:14px 16px;border-bottom:1px solid var(--border)}
+.donut-wrap{display:flex;align-items:center;gap:16px;margin-top:10px}
+.donut-legend{flex:1;display:flex;flex-direction:column;gap:5px}
+.donut-legend-item{display:flex;align-items:center;gap:7px;font-size:11px}
+.donut-legend-dot{width:9px;height:9px;border-radius:3px;flex-shrink:0}
+.donut-legend-lbl{color:var(--muted);flex:1}
+.donut-legend-pct{font-weight:800;font-size:12px}
+
+/* ── Wallet ── */
+.wallet-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.wallet-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px}
+.wallet-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:6px}
+.wallet-val{font-size:20px;font-weight:900}
+.wallet-sub{font-size:11px;color:var(--muted);margin-top:3px}
+.tx-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid rgba(26,46,80,.4);font-size:12px}
+.tx-row:last-child{border-bottom:none}
+.tx-type{font-weight:800;font-size:11px;padding:2px 8px;border-radius:4px;flex-shrink:0}
+.tx-dep{background:rgba(34,197,94,.15);color:var(--green)}
+.tx-ret{background:rgba(239,68,68,.15);color:var(--red)}
+
+/* ── Historial órdenes ── */
+.hist-hdr{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:700;padding:10px 16px;background:var(--surface);display:grid;grid-template-columns:80px 60px 55px 80px 80px 60px;gap:4px}
+.hist-row{display:grid;grid-template-columns:80px 60px 55px 80px 80px 60px;gap:4px;padding:10px 16px;border-top:1px solid rgba(26,46,80,.4);font-size:11px;align-items:center}
+.hist-row:hover{background:rgba(0,212,255,.02)}
+.hist-badge{font-size:9px;font-weight:800;padding:2px 6px;border-radius:4px}
+.hist-buy{background:rgba(34,197,94,.15);color:var(--green)}
+.hist-sell{background:rgba(239,68,68,.15);color:var(--red)}
+.hist-filled{background:rgba(34,197,94,.1);color:var(--green)}
+.hist-pending{background:rgba(245,158,11,.1);color:var(--amber)}
+
+/* ── Admin dashboard ── */
+.admin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px}
+.admin-stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;position:relative;overflow:hidden}
+.admin-stat::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.admin-stat:nth-child(1)::before{background:var(--accent)}
+.admin-stat:nth-child(2)::before{background:var(--green)}
+.admin-stat:nth-child(3)::before{background:var(--purple)}
+.admin-stat:nth-child(4)::before{background:var(--amber)}
+.admin-stat:nth-child(5)::before{background:var(--red)}
+.admin-stat-icon{font-size:22px;margin-bottom:8px}
+.admin-stat-lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;font-weight:700}
+.admin-stat-val{font-size:28px;font-weight:900;line-height:1}
+.admin-users-table{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.admin-users-hdr{font-size:13px;font-weight:700;padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+
+/* ── Perfil de usuario ── */
+.profile-hero{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;display:flex;align-items:center;gap:22px;flex-shrink:0}
+.profile-av-big{width:72px;height:72px;border-radius:18px;background:linear-gradient(135deg,var(--accent),var(--purple));display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:900;color:#fff;flex-shrink:0}
+.profile-name{font-size:22px;font-weight:900;margin-bottom:4px}
+.profile-email{font-size:13px;color:var(--muted);margin-bottom:10px}
+.profile-badges{display:flex;gap:8px;flex-wrap:wrap}
+.profile-badge{font-size:10px;font-weight:800;padding:3px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.06em}
+.badge-kyc{background:rgba(34,197,94,.15);color:var(--green);border:1px solid rgba(34,197,94,.3)}
+.badge-aml{background:rgba(0,212,255,.1);color:var(--accent);border:1px solid rgba(0,212,255,.25)}
+.badge-plan{background:rgba(168,85,247,.1);color:var(--purple);border:1px solid rgba(168,85,247,.25)}
+.badge-rol{background:rgba(245,158,11,.1);color:var(--amber);border:1px solid rgba(245,158,11,.25)}
+.profile-info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px}
+.profile-info-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px}
+.profile-info-lbl{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin-bottom:5px}
+.profile-info-val{font-size:14px;font-weight:800}
+
 /* ── TTS Broker Audio ── */
 #tts-btn{display:flex;align-items:center;gap:7px;padding:10px 16px;border-radius:10px;border:1px solid rgba(0,212,255,.35);background:rgba(0,212,255,.08);color:var(--accent);font-size:13px;font-weight:800;cursor:pointer;letter-spacing:.04em;transition:all .2s;flex-shrink:0}
 #tts-btn:hover{background:rgba(0,212,255,.16)}
@@ -307,6 +412,23 @@ tr:hover td{background:rgba(0,212,255,.03)}
     <button id="tts-btn" onclick="ttsToggle()" title="Análisis por voz — Broker IA" style="display:none">
       🔊 AUDIO ON<div id="tts-wave"><span style="height:6px"></span><span></span><span></span><span></span><span></span></div>
     </button>
+    <div style="flex:1"></div>
+    <!-- Bell notifications -->
+    <div class="bell-wrap">
+      <button id="bell-btn" onclick="toggleBell()">🔔 <span class="bell-badge" id="bell-count">0</span></button>
+      <div id="bell-panel">
+        <div class="bell-hdr">Notificaciones <span style="font-size:10px;color:var(--muted);cursor:pointer" onclick="markAllRead()">Marcar leídas</span></div>
+        <div id="bell-list"></div>
+      </div>
+    </div>
+    <!-- User chip -->
+    <div class="user-chip" id="user-chip" onclick="showSection('perfil')" style="display:none">
+      <div class="user-av" id="user-av-initials">??</div>
+      <div>
+        <div class="user-chip-name" id="user-chip-name">—</div>
+        <div class="user-chip-role" id="user-chip-role">—</div>
+      </div>
+    </div>
   </div>
   <div id="tts-toast"></div>
 
@@ -328,8 +450,10 @@ tr:hover td{background:rgba(0,212,255,.03)}
       <a class="sb-item" onclick="showSection('mercado')"><span class="sb-icon">📈</span>Mercado Live</a>
       <a class="sb-item" onclick="showSection('portafolio')"><span class="sb-icon">💼</span>Portafolio</a>
       <a class="sb-item" onclick="showSection('robo')"><span class="sb-icon">🤖</span>Robo-Advisor IA<span class="sb-badge sb-badge-ia">IA</span></a>
+      <a class="sb-item" onclick="showSection('chat')"><span class="sb-icon">💬</span>Chat IA Financiero<span class="sb-badge sb-badge-ia">GPT</span></a>
       <a class="sb-item" onclick="showSection('ordenes')"><span class="sb-icon">⚡</span>Órdenes<span class="sb-badge" id="sb-orders-count">—</span></a>
-      <a class="sb-item" onclick="showSection('depositos')"><span class="sb-icon">💳</span>Depósitos / Retiros</a>
+      <a class="sb-item" onclick="showSection('historial')"><span class="sb-icon">📋</span>Historial Órdenes</a>
+      <a class="sb-item" onclick="showSection('wallet')"><span class="sb-icon">💳</span>Wallet / Caja</a>
       <a class="sb-item" onclick="showSection('dividendos')"><span class="sb-icon">💰</span>Dividendos</a>
 
       <div class="sb-section">Seguridad</div>
@@ -342,7 +466,12 @@ tr:hover td{background:rgba(0,212,255,.03)}
       <a class="sb-item" onclick="showSection('fiscal')"><span class="sb-icon">📊</span>Reportes Fiscales</a>
       <a class="sb-item"><span class="sb-icon">🔍</span>Auditoría</a>
       <a class="sb-item"><span class="sb-icon">👤</span>Owner Portal</a>
+      <a class="sb-item" onclick="showSection('perfil')"><span class="sb-icon">👤</span>Mi Perfil</a>
       <a class="sb-item" onclick="logout()"><span class="sb-icon">🚪</span>Cerrar sesión</a>
+
+      <div class="sb-section" id="sb-admin-section" style="display:none">Admin</div>
+      <a class="sb-item" id="sb-admin-link" onclick="showSection('admin')" style="display:none"><span class="sb-icon">⚙️</span>Dashboard Admin</a>
+      <a class="sb-item" id="sb-users-link" onclick="showSection('usuarios')" style="display:none"><span class="sb-icon">👥</span>Usuarios</a>
 
       <div class="sb-bottom">
         <div class="stack-badge"><span class="stack-dot"></span>FastAPI · SQLAlchemy · Redis</div>
@@ -357,6 +486,9 @@ tr:hover td{background:rgba(0,212,255,.03)}
 
     <!-- Main -->
     <div class="main" id="main-content">
+
+    <!-- ══ SECCIÓN: Dashboard (default) ══ -->
+    <div id="section-dashboard">
 
       <!-- KPI Cards -->
       <div class="exec-bar">
@@ -474,7 +606,132 @@ tr:hover td{background:rgba(0,212,255,.03)}
         </div>
         <div id="o-msg" style="display:none;margin-top:12px;font-size:12px;padding:10px 14px;border-radius:8px"></div>
       </div>
+    </div><!-- /section-dashboard -->
+
+    <!-- ══ SECCIÓN: Chat IA ══ -->
+    <div id="section-chat" class="main-section" style="height:calc(100vh - 180px)">
+      <div class="chat-full-wrap">
+        <div class="chat-full-hdr">
+          <div class="chat-full-avatar">🤖</div>
+          <div>
+            <div class="chat-full-title">InvestIQ AI — Asistente Financiero</div>
+            <div class="chat-full-sub">Powered by Claude Haiku · Analizo tu portafolio en tiempo real</div>
+          </div>
+          <div style="margin-left:auto;font-size:11px;color:var(--green);font-weight:700">● Conectado</div>
+        </div>
+        <div class="chat-full-presets">
+          <button class="chat-full-preset" onclick="fullChat('Analiza mi cartera completa y dame un resumen ejecutivo')">📊 Analiza mi cartera</button>
+          <button class="chat-full-preset" onclick="fullChat('¿Debo vender NVDA ahora o esperar?')">🤔 ¿Vender NVDA?</button>
+          <button class="chat-full-preset" onclick="fullChat('¿Qué riesgos tiene mi portafolio actual?')">⚠️ ¿Qué riesgo tengo?</button>
+          <button class="chat-full-preset" onclick="fullChat('Rebalancea mi portafolio para perfil moderado')">⚖️ Rebalancea mi portafolio</button>
+          <button class="chat-full-preset" onclick="fullChat('¿Cuál es la mejor acción para comprar esta semana?')">🎯 Mejor acción hoy</button>
+          <button class="chat-full-preset" onclick="fullChat('¿Cómo está el mercado hoy?')">📈 Estado del mercado</button>
+        </div>
+        <div class="chat-full-msgs" id="full-chat-msgs">
+          <div class="chat-bubble-ai">¡Hola! Soy tu asesor financiero IA. Analizo tu portafolio en tiempo real con datos de Alpaca Markets y el motor Claude Haiku. ¿En qué te ayudo hoy?</div>
+        </div>
+        <div class="chat-full-input">
+          <input id="full-chat-input" type="text" placeholder="Escribe tu pregunta sobre inversiones, riesgos, mercado..." onkeydown="if(event.key==='Enter')fullChat()">
+          <button class="chat-full-send" onclick="fullChat()">→ Enviar</button>
+        </div>
+      </div>
     </div>
+
+    <!-- ══ SECCIÓN: Wallet / Caja ══ -->
+    <div id="section-wallet" class="main-section">
+      <div class="pos-card" style="overflow:visible">
+        <div class="pos-hdr">💳 Wallet — Saldo y movimientos</div>
+        <div style="padding:18px">
+          <div class="wallet-grid">
+            <div class="wallet-card">
+              <div class="wallet-lbl">💰 Saldo disponible</div>
+              <div class="wallet-val up" id="w-saldo">$—</div>
+              <div class="wallet-sub">Listo para invertir</div>
+            </div>
+            <div class="wallet-card">
+              <div class="wallet-lbl">💼 Capital invertido</div>
+              <div class="wallet-val" id="w-invertido">$—</div>
+              <div class="wallet-sub">En posiciones abiertas</div>
+            </div>
+            <div class="wallet-card">
+              <div class="wallet-lbl">📈 Valor total</div>
+              <div class="wallet-val" id="w-total">$—</div>
+              <div class="wallet-sub">Portafolio + saldo</div>
+            </div>
+            <div class="wallet-card">
+              <div class="wallet-lbl">🏦 Cuenta broker</div>
+              <div class="wallet-val" style="font-size:14px;color:var(--accent)" id="w-broker">Alpaca Paper</div>
+              <div class="wallet-sub" id="w-broker-status">Paper Trading</div>
+            </div>
+          </div>
+          <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Movimientos recientes</div>
+          <div id="wallet-tx-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Cargando…</div></div>
+          <div style="margin-top:16px;padding:14px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:10px;font-size:12px;color:var(--amber)">
+            🏦 <strong>MercadoPago</strong> — Gateway de pagos en configuración. Próximamente: depósitos y retiros en tiempo real vía MercadoPago Peru.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ SECCIÓN: Historial de Órdenes ══ -->
+    <div id="section-historial" class="main-section">
+      <div class="pos-card" style="overflow:visible">
+        <div class="pos-hdr">📋 Historial de órdenes <span id="hist-count">—</span></div>
+        <div class="hist-hdr"><span>Fecha</span><span>Activo</span><span>Tipo</span><span>Cantidad</span><span>Precio</span><span>Estado</span></div>
+        <div id="hist-body"><div style="text-align:center;padding:24px;color:var(--muted);font-size:12px">Cargando…</div></div>
+      </div>
+    </div>
+
+    <!-- ══ SECCIÓN: Perfil de usuario ══ -->
+    <div id="section-perfil" class="main-section">
+      <div class="profile-hero">
+        <div class="profile-av-big" id="profile-av">??</div>
+        <div>
+          <div class="profile-name" id="profile-name">—</div>
+          <div class="profile-email" id="profile-email">—</div>
+          <div class="profile-badges">
+            <span class="profile-badge badge-kyc" id="profile-kyc">KYC —</span>
+            <span class="profile-badge badge-aml" id="profile-aml">AML —</span>
+            <span class="profile-badge badge-plan" id="profile-plan">Plan Inversor</span>
+            <span class="profile-badge badge-rol" id="profile-rol">—</span>
+          </div>
+        </div>
+      </div>
+      <div class="profile-info-grid">
+        <div class="profile-info-box"><div class="profile-info-lbl">Edad</div><div class="profile-info-val" id="profile-edad">—</div></div>
+        <div class="profile-info-box"><div class="profile-info-lbl">Ingresos anuales</div><div class="profile-info-val" id="profile-ingresos">—</div></div>
+        <div class="profile-info-box"><div class="profile-info-lbl">Tolerancia riesgo</div><div class="profile-info-val" id="profile-tolerancia">—</div></div>
+        <div class="profile-info-box"><div class="profile-info-lbl">MFA / 2FA</div><div class="profile-info-val" id="profile-mfa">—</div></div>
+        <div class="profile-info-box"><div class="profile-info-lbl">KYC Nivel</div><div class="profile-info-val" id="profile-kyc-nivel">—</div></div>
+        <div class="profile-info-box"><div class="profile-info-lbl">AML Status</div><div class="profile-info-val" id="profile-aml-status">—</div></div>
+      </div>
+    </div>
+
+    <!-- ══ SECCIÓN: Dashboard Admin ══ -->
+    <div id="section-admin" class="main-section">
+      <div style="background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);border-radius:10px;padding:12px 18px;font-size:12px;color:var(--red);margin-bottom:4px">🔐 Acceso restringido — Solo administradores del sistema</div>
+      <div class="admin-grid" id="admin-stats-grid">
+        <div class="admin-stat"><div class="admin-stat-icon">👥</div><div class="admin-stat-lbl">Usuarios totales</div><div class="admin-stat-val" id="admin-users">—</div></div>
+        <div class="admin-stat"><div class="admin-stat-icon">✅</div><div class="admin-stat-lbl">Usuarios activos</div><div class="admin-stat-val" id="admin-active">—</div></div>
+        <div class="admin-stat"><div class="admin-stat-icon">⚡</div><div class="admin-stat-lbl">Órdenes totales</div><div class="admin-stat-val" id="admin-orders">—</div></div>
+        <div class="admin-stat"><div class="admin-stat-icon">💰</div><div class="admin-stat-lbl">Capital administrado</div><div class="admin-stat-val" id="admin-capital">$—</div></div>
+        <div class="admin-stat"><div class="admin-stat-icon">🛡️</div><div class="admin-stat-lbl">Bloqueados AML</div><div class="admin-stat-val" id="admin-aml" style="color:var(--red)">—</div></div>
+      </div>
+      <div class="admin-users-table">
+        <div class="admin-users-hdr">👥 Usuarios registrados <span id="admin-users-count" style="font-size:11px;color:var(--muted);font-weight:400">—</span></div>
+        <div id="admin-users-list"><div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Cargando…</div></div>
+      </div>
+    </div>
+
+    <!-- ══ SECCIÓN: Usuarios Admin ══ -->
+    <div id="section-usuarios" class="main-section">
+      <div class="admin-users-table">
+        <div class="admin-users-hdr">👥 Gestión de usuarios</div>
+        <div id="admin-all-users"><div style="padding:20px;text-align:center;color:var(--muted);font-size:12px">Cargando…</div></div>
+      </div>
+    </div>
+
+    </div><!-- /main-content -->
 
     <!-- Right Panel -->
     <div class="right-panel">
@@ -514,6 +771,19 @@ tr:hover td{background:rgba(0,212,255,.03)}
             <div class="stat-label">Drawdown</div>
             <div class="stat-val dn" id="stat-dd">—</div>
           </div>
+        </div>
+      </div>
+
+      <!-- Donut distribución -->
+      <div class="donut-section">
+        <div class="rp-title">🍩 Distribución del portafolio</div>
+        <div class="donut-wrap">
+          <svg id="donut-svg" viewBox="0 0 120 120" width="110" height="110">
+            <circle cx="60" cy="60" r="42" fill="none" stroke="#1a2e50" stroke-width="16"/>
+            <text x="60" y="58" text-anchor="middle" fill="#e2e8f0" font-size="13" font-weight="900" font-family="system-ui" id="donut-center-val">—</text>
+            <text x="60" y="72" text-anchor="middle" fill="#4a6080" font-size="9" font-family="system-ui">USD</text>
+          </svg>
+          <div class="donut-legend" id="donut-legend"><div style="font-size:11px;color:var(--muted)">Sin datos</div></div>
         </div>
       </div>
 
@@ -645,7 +915,8 @@ let tickerReady = false;
 let tvWidget = null;
 const AVATARS = {AAPL:'#16a34a',MSFT:'#2563eb',TSLA:'#b45309',NVDA:'#7c3aed',AMZN:'#ea580c',GOOGL:'#0891b2',META:'#1d4ed8',SPY:'#15803d',QQQ:'#0e7490',BND:'#64748b',VTI:'#4ade80',GLD:'#d97706'};
 const TV_EX = {AAPL:'NASDAQ',MSFT:'NASDAQ',TSLA:'NASDAQ',NVDA:'NASDAQ',AMZN:'NASDAQ',GOOGL:'NASDAQ',META:'NASDAQ',QQQ:'NASDAQ',SPY:'AMEX',BND:'AMEX',VTI:'AMEX',GLD:'AMEX'};
-const SB_IDX = {dashboard:0,mercado:1,portafolio:2,robo:3,ordenes:4,depositos:5,dividendos:6,kyc:7,aml:8,fiscal:11};
+const SB_IDX = {dashboard:0,mercado:1,portafolio:2,robo:3,chat:4,ordenes:5,historial:6,wallet:7,dividendos:8,kyc:9,aml:10,fiscal:13,perfil:14};
+const ALL_SECTIONS = ['dashboard','chat','wallet','historial','perfil','admin','usuarios'];
 
 // ── Boot ──────────────────────────────────────────────────
 // Show splash 1.5s then decide: login or app
@@ -691,12 +962,32 @@ async function startApp(){
   document.getElementById('app').style.display='flex';
   document.getElementById('chat-btn').style.display='block';
   document.getElementById('tts-btn').style.display='flex';
-  ttsInit();
-  initClock(); connectWS();
+  ttsInit(); initClock(); connectWS();
   setTimeout(()=>initTVChart('AAPL'),300);
-  loadPortfolio(); loadAlerts(); loadRobo(); loadProfile(); loadNews();
+  loadPortfolio(); loadAlerts(); loadRobo(); loadProfile(); loadNews(); loadNotifications();
   updateFiscalCount(); initFiscalChecklist();
   setTimeout(()=>ttsSpeak(_brokerWelcome(),'welcome'),2200);
+}
+
+async function loadProfile(){
+  try{
+    const r=await apiFetch('/api/v1/auth/me'); const d=await r.json();
+    window._userProfile=d;
+    const name=d.nombre||d.email||'—';
+    const initials=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    document.getElementById('sb-user').textContent=name.split(' ')[0];
+    // User chip
+    const chip=document.getElementById('user-chip');
+    document.getElementById('user-av-initials').textContent=initials;
+    document.getElementById('user-chip-name').textContent=name.split(' ')[0];
+    document.getElementById('user-chip-role').textContent=(d.rol==='admin'?'Admin':'Inversor')+' · KYC '+(d.kyc_nivel||'—');
+    if(chip)chip.style.display='flex';
+    // Show admin links if admin
+    if(d.rol==='admin'){
+      ['sb-admin-section','sb-admin-link','sb-users-link'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='block';});
+    }
+    renderProfile(d);
+  }catch(e){}
 }
 
 function authHdr(){return{'Authorization':'Bearer '+token,'Content-Type':'application/json'};}
@@ -705,10 +996,7 @@ async function apiFetch(url,opts={}){
   if(r.status===401){logout();throw new Error('Sesión expirada');}
   return r;
 }
-async function loadProfile(){
-  try{const r=await apiFetch('/api/v1/auth/me');const d=await r.json();
-    document.getElementById('sb-user').textContent=(d.nombre||d.email||'—').split(' ')[0];}catch(e){}
-}
+/* loadProfile now defined in startApp block above */
 
 // ── Clock ─────────────────────────────────────────────────
 let _mktWasOpen=null;
@@ -806,7 +1094,7 @@ async function loadPortfolio(){
     document.getElementById('pos-update').textContent=new Date().toLocaleTimeString('es');
     document.getElementById('ptf-total').textContent='$'+fmt2(total);
     window._ptf_pos=pos; window._ptf_data=d;
-    updateLivePortfolio(); updateExecSummary(d); updatePortfolioStats(d);
+    updateLivePortfolio(); updateExecSummary(d); updatePortfolioStats(d); _updateDonut(d);
     // TTS: portfolio summary on first load only
     if(!window._ptf_spoken){
       window._ptf_spoken=true;
@@ -1100,21 +1388,55 @@ function getOrCreateDynPanel(){
 }
 
 function showSection(s){
+  // Sidebar active state
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   const idx=SB_IDX[s]; const sbItems=document.querySelectorAll('.sb-item');
   if(idx!==undefined&&sbItems[idx])sbItems[idx].classList.add('active');
+  // Close bell panel if open
+  document.getElementById('bell-panel')?.classList.remove('open');
+
+  // Show/hide main content sections
+  const dash=document.getElementById('section-dashboard');
+  ALL_SECTIONS.forEach(sec=>{
+    const el=document.getElementById('section-'+sec);
+    if(el)el.classList.remove('active');
+  });
+  if(dash)dash.style.display='none';
+
   const orderEl=document.getElementById('order-section'), dynPanel=getOrCreateDynPanel();
-  if(s==='ordenes'){dynPanel.style.display='none';orderEl.style.display='block';setTimeout(()=>orderEl.scrollIntoView({behavior:'smooth',block:'nearest'}),50);return;}
-  orderEl.style.display='none';
+  orderEl.style.display='none'; dynPanel.style.display='none';
+
+  if(s==='dashboard'||s==='mercado'||s==='portafolio'){
+    if(dash)dash.style.display='flex';
+    if(s==='mercado')setTVTicker(chartTicker);
+    if(s==='portafolio')loadPortfolio();
+    return;
+  }
+  if(s==='ordenes'){
+    if(dash)dash.style.display='flex';
+    orderEl.style.display='block';
+    setTimeout(()=>orderEl.scrollIntoView({behavior:'smooth',block:'nearest'}),50); return;
+  }
+  if(s==='robo'){
+    if(dash)dash.style.display='flex'; runRobo(); return;
+  }
+  if(s==='chat'){ showNewSection('chat'); return; }
+  if(s==='historial'){ showNewSection('historial'); loadHistorial(); return; }
+  if(s==='wallet'){ showNewSection('wallet'); loadWallet(); return; }
+  if(s==='perfil'){ showNewSection('perfil'); if(window._userProfile)renderProfile(window._userProfile); return; }
+  if(s==='admin'){ showNewSection('admin'); loadAdminDashboard(); return; }
+  if(s==='usuarios'){ showNewSection('usuarios'); loadAdminUsuarios(); return; }
   if(DYN_SECTIONS.has(s)){
+    if(dash)dash.style.display='flex';
     dynPanel.style.display='block';
     dynPanel.innerHTML=`<div style="font-size:14px;font-weight:700;margin-bottom:16px">${SECTION_TITLES[s]}</div><div id="dyn-content" style="color:var(--muted);font-size:13px">Cargando…</div>`;
-    loadDynSection(s); setTimeout(()=>dynPanel.scrollIntoView({behavior:'smooth',block:'nearest'}),50); return;
+    loadDynSection(s); setTimeout(()=>dynPanel.scrollIntoView({behavior:'smooth',block:'nearest'}),50);
   }
-  dynPanel.style.display='none';
-  if(s==='robo')runRobo();
-  if(s==='mercado')setTVTicker(chartTicker);
-  if(s==='portafolio')loadPortfolio();
+}
+
+function showNewSection(s){
+  const el=document.getElementById('section-'+s);
+  if(el)el.classList.add('active');
 }
 
 async function loadDynSection(s){
@@ -1191,6 +1513,217 @@ async function sendChat(){
     }
   }catch(e){const el=document.getElementById(tid);if(el)el.textContent=e.message==='Sesión expirada'?'Sesión expirada':'Error al conectar con IA';}
   msgs.scrollTop=msgs.scrollHeight;
+}
+
+// ── Notifications Bell ────────────────────────────────────
+let _bellOpen=false;
+function toggleBell(){
+  _bellOpen=!_bellOpen;
+  document.getElementById('bell-panel').classList.toggle('open',_bellOpen);
+  if(_bellOpen)document.addEventListener('click',_closeBellOutside,{once:true,capture:true});
+}
+function _closeBellOutside(e){
+  const p=document.getElementById('bell-panel');
+  if(p&&!p.contains(e.target)&&e.target.id!=='bell-btn'){p.classList.remove('open');_bellOpen=false;}
+}
+function markAllRead(){
+  document.getElementById('bell-badge').textContent='0';
+  document.getElementById('bell-panel').classList.remove('open'); _bellOpen=false;
+}
+async function loadNotifications(){
+  try{
+    const r=await apiFetch('/api/v1/alertas'); const d=await r.json();
+    const alerts=(Array.isArray(d)?d:(d.alertas||[])).slice(0,8);
+    const count=alerts.filter(a=>a.tipo==='warning'||a.tipo==='error').length;
+    document.getElementById('bell-count').textContent=count||alerts.length||'0';
+    const list=document.getElementById('bell-list');
+    if(!alerts.length){list.innerHTML='<div style="padding:14px;text-align:center;font-size:12px;color:var(--muted)">Sin notificaciones</div>';return;}
+    list.innerHTML=alerts.map(a=>{
+      const color=a.tipo==='warning'?'var(--amber)':a.tipo==='error'?'var(--red)':'var(--accent)';
+      const icon=a.tipo==='warning'?'⚠️':a.tipo==='error'?'🔴':'ℹ️';
+      return`<div class="bell-item"><div class="bell-dot" style="background:${color}"></div><div class="bell-item-body"><div class="bell-item-title">${icon} ${a.titulo||a.modulo||'Alerta'}</div><div class="bell-item-msg">${a.mensaje||''}</div></div></div>`;
+    }).join('');
+  }catch(e){}
+}
+
+// ── Donut Chart ───────────────────────────────────────────
+function renderDonut(positions,total,saldo){
+  const CIRC=263.9, R=42;
+  if(!positions||!positions.length)return;
+  const grandTotal=total+(saldo||0);
+  let items=positions.map(p=>({
+    ticker:p.ticker, val:p.valor_total_usd||0,
+    pct:(p.valor_total_usd||0)/grandTotal*100,
+    color:AVATARS[p.ticker]||'#334155'
+  }));
+  if(saldo>0)items.push({ticker:'Cash',val:saldo,pct:saldo/grandTotal*100,color:'#64748b'});
+  items=items.filter(i=>i.pct>0.5);
+  const svg=document.getElementById('donut-svg');
+  const existingArcs=svg.querySelectorAll('.donut-arc');
+  existingArcs.forEach(e=>e.remove());
+  let cum=0;
+  items.forEach(item=>{
+    const arc=item.pct/100*CIRC;
+    const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    circle.setAttribute('class','donut-arc');
+    circle.setAttribute('cx','60'); circle.setAttribute('cy','60');
+    circle.setAttribute('r',String(R)); circle.setAttribute('fill','none');
+    circle.setAttribute('stroke',item.color); circle.setAttribute('stroke-width','16');
+    circle.setAttribute('stroke-dasharray',`${arc.toFixed(2)} ${(CIRC-arc).toFixed(2)}`);
+    circle.setAttribute('stroke-dashoffset',String((CIRC-cum).toFixed(2)));
+    circle.setAttribute('transform','rotate(-90 60 60)');
+    circle.style.transition='stroke-dasharray .6s';
+    svg.insertBefore(circle,svg.querySelector('text'));
+    cum+=arc;
+  });
+  document.getElementById('donut-center-val').textContent='$'+Math.round(grandTotal).toLocaleString();
+  const legend=document.getElementById('donut-legend');
+  legend.innerHTML=items.map(i=>`<div class="donut-legend-item"><div class="donut-legend-dot" style="background:${i.color}"></div><span class="donut-legend-lbl">${i.ticker}</span><span class="donut-legend-pct" style="color:${i.color}">${i.pct.toFixed(1)}%</span></div>`).join('');
+}
+
+// ── Historial de órdenes ──────────────────────────────────
+async function loadHistorial(){
+  const body=document.getElementById('hist-body');
+  try{
+    const r=await apiFetch('/api/v1/ordenes?limit=50'); const d=await r.json();
+    const orders=Array.isArray(d)?d:[];
+    document.getElementById('hist-count').textContent=orders.length+' órdenes';
+    if(!orders.length){body.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">Sin órdenes</div>';return;}
+    body.innerHTML=orders.map(o=>{
+      const fecha=new Date(o.creado||'').toLocaleDateString('es',{day:'2-digit',month:'2-digit',year:'2-digit'});
+      const tipo=o.tipo||'buy', isBuy=tipo==='buy';
+      const status=o.estado||'filled';
+      return`<div class="hist-row">
+        <span style="color:var(--muted)">${fecha}</span>
+        <span style="font-weight:800">${o.ticker||'—'}</span>
+        <span><span class="hist-badge ${isBuy?'hist-buy':'hist-sell'}">${isBuy?'COMPRA':'VENTA'}</span></span>
+        <span>${Number(o.acciones||0).toFixed(5)}</span>
+        <span>$${fmt2(o.precio_ejecucion)}</span>
+        <span><span class="hist-badge ${status==='filled'?'hist-filled':'hist-pending'}">${status}</span></span>
+      </div>`;
+    }).join('');
+  }catch(e){body.innerHTML=`<div style="padding:18px;color:var(--red);font-size:12px">Error: ${e.message}</div>`;}
+}
+
+// ── Wallet ────────────────────────────────────────────────
+async function loadWallet(){
+  const ptf=window._ptf_data;
+  if(ptf){
+    document.getElementById('w-saldo').textContent='$'+fmt2(ptf.saldo_disponible||0);
+    document.getElementById('w-invertido').textContent='$'+fmt2(ptf.total_valor_usd||0);
+    document.getElementById('w-total').textContent='$'+fmt2((ptf.total_valor_usd||0)+(ptf.saldo_disponible||0));
+    const ca=ptf.cuenta_broker;
+    if(ca&&!ca.error){document.getElementById('w-broker-status').textContent='Equity: $'+fmt2(ca.equity||ca.portfolio_value||0);}
+  }
+  try{
+    const r=await apiFetch('/api/v1/transacciones'); const d=await r.json();
+    const txs=(Array.isArray(d)?d:(d.transacciones||[])).slice(0,20);
+    const list=document.getElementById('wallet-tx-list');
+    if(!txs.length){list.innerHTML='<div style="padding:16px;text-align:center;color:var(--muted);font-size:12px">Sin movimientos</div>';return;}
+    list.innerHTML=txs.map(t=>{
+      const isDep=t.tipo==='deposito';
+      const fecha=new Date(t.creado||'').toLocaleDateString('es');
+      return`<div class="tx-row">
+        <span class="tx-type ${isDep?'tx-dep':'tx-ret'}">${t.tipo}</span>
+        <span style="flex:1;color:#8aadcc">${t.descripcion||t.metodo||'—'}</span>
+        <span style="color:var(--muted);font-size:10px">${fecha}</span>
+        <span style="font-weight:800;color:${isDep?'var(--green)':'var(--red)'};margin-left:8px">${isDep?'+':'-'}$${fmt2(t.monto_usd)}</span>
+        <span style="margin-left:8px;font-size:10px;color:var(--muted)">${t.estado||''}</span>
+      </div>`;
+    }).join('');
+  }catch(e){}
+}
+
+// ── Perfil de usuario ─────────────────────────────────────
+function renderProfile(d){
+  const name=d.nombre||d.email||'—';
+  const initials=name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  const av=document.getElementById('profile-av'); if(av)av.textContent=initials;
+  const pn=document.getElementById('profile-name'); if(pn)pn.textContent=name;
+  const pe=document.getElementById('profile-email'); if(pe)pe.textContent=d.email||'—';
+  const kyc=document.getElementById('profile-kyc'); if(kyc)kyc.textContent='KYC '+(d.kyc_nivel||'—')+' '+(d.kyc_verificado?'✓':'⏳');
+  const aml=document.getElementById('profile-aml'); if(aml)aml.textContent='AML: '+(d.aml_status||'—');
+  const rol=document.getElementById('profile-rol'); if(rol)rol.textContent=d.rol||'investor';
+  const edad=document.getElementById('profile-edad'); if(edad)edad.textContent=(d.edad||'—')+' años';
+  const ing=document.getElementById('profile-ingresos'); if(ing)ing.textContent='$'+fmt2(d.ingresos_anuales_usd||0);
+  const tol=document.getElementById('profile-tolerancia'); if(tol)tol.textContent=d.tolerancia_riesgo||'—';
+  const mfa=document.getElementById('profile-mfa'); if(mfa){mfa.textContent=d.mfa_activo?'Activo ✓':'Inactivo';mfa.style.color=d.mfa_activo?'var(--green)':'var(--amber)';}
+  const kn=document.getElementById('profile-kyc-nivel'); if(kn)kn.textContent=d.kyc_nivel||'—';
+  const as=document.getElementById('profile-aml-status'); if(as){as.textContent=d.aml_status||'—';as.style.color=d.aml_status==='clear'?'var(--green)':'var(--amber)';}
+}
+
+// ── Admin Dashboard ───────────────────────────────────────
+async function loadAdminDashboard(){
+  try{
+    const r=await apiFetch('/api/v1/admin/dashboard');
+    if(r.status===403){document.getElementById('section-admin').querySelector('.admin-grid').innerHTML='<div style="color:var(--red);font-size:13px;padding:12px">Sin permisos de administrador.</div>';return;}
+    const d=await r.json();
+    document.getElementById('admin-users').textContent=d.usuarios_total||'—';
+    document.getElementById('admin-active').textContent=d.usuarios_activos||'—';
+    document.getElementById('admin-orders').textContent=d.ordenes_total||'—';
+    document.getElementById('admin-capital').textContent='$'+fmt2(d.depositos_totales_usd||0);
+    document.getElementById('admin-aml').textContent=d.bloqueados_aml||'0';
+    // Load users list
+    const r2=await apiFetch('/api/v1/admin/usuarios');
+    const users=await r2.json();
+    document.getElementById('admin-users-count').textContent=users.length+' usuarios';
+    document.getElementById('admin-users-list').innerHTML=users.slice(0,20).map(u=>
+      `<div style="display:grid;grid-template-columns:1fr 160px 80px 70px 70px;gap:8px;padding:10px 18px;border-top:1px solid rgba(26,46,80,.4);font-size:11px;align-items:center">
+        <div><div style="font-weight:700">${u.nombre||'—'}</div><div style="color:var(--muted);font-size:10px">${u.email||''}</div></div>
+        <div style="color:var(--muted)">${u.email||'—'}</div>
+        <div><span style="padding:2px 7px;border-radius:4px;font-size:9px;font-weight:800;background:${u.kyc_verificado?'rgba(34,197,94,.1)':'rgba(245,158,11,.1)'};color:${u.kyc_verificado?'var(--green)':'var(--amber)'}">KYC ${u.kyc_nivel||'—'}</span></div>
+        <div style="color:${u.aml_status==='clear'?'var(--green)':'var(--red)'};">${u.aml_status||'—'}</div>
+        <div style="color:var(--muted)">${u.rol||'—'}</div>
+      </div>`
+    ).join('');
+  }catch(e){if(e.message!=='Sesión expirada'){const el=document.getElementById('admin-users-list');if(el)el.innerHTML=`<div style="padding:18px;color:var(--red);font-size:12px">Error: ${e.message}</div>`;}}
+}
+async function loadAdminUsuarios(){
+  const el=document.getElementById('admin-all-users'); if(!el)return;
+  try{
+    const r=await apiFetch('/api/v1/admin/usuarios'); const users=await r.json();
+    el.innerHTML=users.map(u=>
+      `<div style="display:grid;grid-template-columns:1fr 200px 80px 70px 80px;gap:8px;padding:12px 18px;border-top:1px solid rgba(26,46,80,.4);font-size:12px;align-items:center">
+        <div><div style="font-weight:700">${u.nombre||'—'}</div><div style="color:var(--muted);font-size:10px">ID: ${u.id}</div></div>
+        <div style="color:var(--muted);font-size:11px">${u.email||'—'}</div>
+        <div><span style="padding:2px 7px;border-radius:4px;font-size:9px;font-weight:800;background:${u.kyc_verificado?'rgba(34,197,94,.1)':'rgba(245,158,11,.1)'};color:${u.kyc_verificado?'var(--green)':'var(--amber)'}">KYC</span></div>
+        <div style="color:${u.aml_status==='clear'?'var(--green)':'var(--red)'};">${u.aml_status||'—'}</div>
+        <div><span style="padding:3px 9px;border-radius:4px;font-size:9px;font-weight:800;background:${u.activo!==false?'rgba(34,197,94,.1)':'rgba(239,68,68,.1)'};color:${u.activo!==false?'var(--green)':'var(--red)'}">${u.activo!==false?'Activo':'Bloqueado'}</span></div>
+      </div>`
+    ).join('');
+  }catch(e){el.innerHTML=`<div style="padding:18px;color:var(--red);font-size:12px">Error: ${e.message}</div>`;}
+}
+
+// ── Full Chat IA ──────────────────────────────────────────
+async function fullChat(preset){
+  const input=document.getElementById('full-chat-input');
+  const question=preset||input.value.trim(); if(!question)return;
+  if(input)input.value='';
+  const msgs=document.getElementById('full-chat-msgs');
+  msgs.innerHTML+=`<div class="chat-bubble-user">${question}</div>`;
+  const tid='fc'+Date.now();
+  msgs.innerHTML+=`<div class="chat-bubble-ai" id="${tid}">🤔 Analizando tu portafolio…</div>`;
+  msgs.scrollTop=msgs.scrollHeight;
+  try{
+    const pos=window._ptf_pos||[], ptf=window._ptf_data||{};
+    const context=pos.length?`Posiciones: ${pos.map(p=>`${p.ticker} ${Number(p.acciones).toFixed(4)} acc. @ $${fmt2(p.precio_promedio_compra)}, actual $${fmt2(lastPrices[p.ticker]?.price||p.precio_actual)}`).join('; ')}. Total: $${fmt2(ptf.total_valor_usd)}. Pregunta: ${question}`:`Pregunta: ${question}`;
+    const r=await apiFetch('/api/v1/robo-advisor',{method:'POST',body:JSON.stringify({pregunta_usuario:question,contexto_adicional:context})});
+    const d=await r.json();
+    const el=document.getElementById(tid); if(!el)return;
+    const voz=d.explicacion_voz||d.sugerencia_rebalanceo||'';
+    const perfil=(d.perfil||'moderado').charAt(0).toUpperCase()+(d.perfil||'moderado').slice(1);
+    let reply=`<strong>Perfil ${perfil}</strong> · Score ${d.score_riesgo||64}/100<br><br>${voz}`;
+    if(d.acciones_recomendadas?.length)reply+='<br><br><strong>Recomendaciones:</strong><br>'+d.acciones_recomendadas.slice(0,4).map(a=>'• '+a).join('<br>');
+    el.innerHTML=reply;
+    ttsSpeak(voz.slice(0,200),'chat',false);
+  }catch(e){const el=document.getElementById(tid);if(el)el.textContent=e.message==='Sesión expirada'?'Sesión expirada.':'Error al conectar con IA.';}
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+// ── Portfolio donut hook ──────────────────────────────────
+// Called from loadPortfolio success path
+function _updateDonut(d){
+  renderDonut(d.posiciones||[],d.total_valor_usd||0,d.saldo_disponible||0);
 }
 
 // ── Utils ─────────────────────────────────────────────────
