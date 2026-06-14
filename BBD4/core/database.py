@@ -3,20 +3,26 @@ Database — SQLAlchemy async con soporte PostgreSQL + TimescaleDB / SQLite dev
 """
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 from core.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
 
-engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=False,
-    pool_pre_ping=True,
-    pool_size=settings.DB_POOL_SIZE if "postgresql" in settings.DATABASE_URL else 1,
-    max_overflow=settings.DB_MAX_OVERFLOW if "postgresql" in settings.DATABASE_URL else 0,
-    pool_timeout=settings.DB_POOL_TIMEOUT,
-    connect_args={"check_same_thread": False} if "sqlite" in settings.DATABASE_URL else {},
-)
+_is_sqlite = "sqlite" in settings.DATABASE_URL
+
+# SQLite no acepta pool_size/max_overflow/pool_timeout — construir kwargs dinámicamente
+_engine_kwargs: dict = {"echo": False, "pool_pre_ping": True}
+
+if _is_sqlite:
+    _engine_kwargs["poolclass"] = NullPool
+    _engine_kwargs["connect_args"] = {"check_same_thread": False}
+else:
+    _engine_kwargs["pool_size"] = settings.DB_POOL_SIZE
+    _engine_kwargs["max_overflow"] = settings.DB_MAX_OVERFLOW
+    _engine_kwargs["pool_timeout"] = settings.DB_POOL_TIMEOUT
+
+engine = create_async_engine(settings.DATABASE_URL, **_engine_kwargs)
 
 AsyncSessionLocal = async_sessionmaker(
     engine, class_=AsyncSession,
