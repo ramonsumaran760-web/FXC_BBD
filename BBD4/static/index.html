@@ -2387,10 +2387,18 @@ async function adminCredito(signo=1){
 }
 
 async function acreditarmeAMi(){
-  if(window._userProfile?.email){
-    document.getElementById('cr-email').value=window._userProfile.email;
-    adminCredito(1);
-  }
+  const email=window._userProfile?.email; if(!email)return;
+  const monto=parseFloat(document.getElementById('cr-monto').value)||10;
+  const concepto=document.getElementById('cr-concepto').value.trim()||'Crédito administrativo';
+  const msg=document.getElementById('cr-msg');
+  document.getElementById('cr-email').value=email;
+  try{
+    const r=await apiFetch('/api/v1/pagos/admin/credito',{method:'POST',body:JSON.stringify({email_usuario:email,monto,concepto})});
+    const d=await r.json();
+    if(!r.ok){showMsg(msg,d.detail||'Error','err');return;}
+    showMsg(msg,`✅ Se acreditaron $${monto} USD a tu cuenta. Saldo nuevo: $${fmt2(d.saldo_nuevo)} USD`,'ok');
+    loadWallet(); loadPortfolio();
+  }catch(e){showMsg(msg,'Error: '+e.message,'err');}
 }
 
 function showMsg(el,text,type){
