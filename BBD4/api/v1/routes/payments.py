@@ -27,11 +27,24 @@ class DepositoMPSchema(BaseModel):
 
 @router.get("/config")
 async def config_pagos():
+    mp_token = os.getenv("MERCADOPAGO_ACCESS_TOKEN", "")
+    mp_modo = "no_configurado"
+    if mp_token.startswith("APP_USR-"):
+        mp_modo = "PRODUCCION"
+    elif mp_token.startswith("TEST-"):
+        mp_modo = "PRUEBA_TEST"
+    elif mp_token:
+        mp_modo = "token_desconocido"
     return {
         "stripe": {"activo": bool(os.getenv("STRIPE_SECRET_KEY")), "moneda": "usd"},
-        "mercadopago": {"activo": bool(os.getenv("MERCADOPAGO_ACCESS_TOKEN")), "moneda": "usd"},
+        "mercadopago": {
+            "activo": bool(mp_token),
+            "moneda": "pen",
+            "modo": mp_modo,
+            "token_prefix": mp_token[:12] + "..." if mp_token else "vacío"
+        },
         "crypto": {"activo": False},
-        "monto_minimo": 1.0, "monto_maximo": 50000.0
+        "monto_minimo": 1.0, "monto_maximo": 200000.0
     }
 
 
