@@ -3,11 +3,21 @@ Models — SQLAlchemy ORM completo v2.0
 Nuevos modelos: EquityCurve, OrdenAutomatica (stop-loss/take-profit),
 TaxLot (FIFO/LIFO), PushSubscription, WebhookLog
 """
-from sqlalchemy import (Column, Integer, String, Float, Boolean, DateTime,
+from sqlalchemy import (Column, Integer, String, Float, Boolean,
                         ForeignKey, Text, Index, UniqueConstraint)
+from sqlalchemy import DateTime as _BaseDT
+
+# Timezone-aware DateTime para compatibilidad con PostgreSQL
+class DateTime(_BaseDT):
+    def __init__(self, *a, **kw):
+        kw.setdefault('timezone', True)
+        super().__init__(*a, **kw)
 from sqlalchemy.orm import relationship
 from core.database import Base
 from datetime import datetime, timezone
+
+def _now():
+    return datetime.now(timezone.utc)
 
 
 # ── Usuario ───────────────────────────────────────────────
@@ -42,7 +52,7 @@ class Usuario(Base):
     saldo_reservado = Column(Float, default=0.0)
     # Sesión
     ultimo_login = Column(DateTime)
-    creado = Column(DateTime, default=datetime.utcnow)
+    creado = Column(DateTime, default=_now)
     # Relaciones
     portafolio = relationship("PosicionPortafolio", back_populates="usuario", lazy="select")
     ordenes = relationship("Orden", back_populates="usuario", lazy="select")
@@ -80,7 +90,7 @@ class Activo(Base):
     dividendo_yield = Column(Float, default=0)
     fracciones_disponibles = Column(Boolean, default=True)
     activo = Column(Boolean, default=True)
-    ultima_actualizacion = Column(DateTime, default=datetime.utcnow)
+    ultima_actualizacion = Column(DateTime, default=_now)
 
     def to_dict(self):
         return {"id": self.id, "ticker": self.ticker, "nombre": self.nombre,
@@ -118,7 +128,7 @@ class EquityCurve(Base):
     __tablename__ = "equity_curve"
     id = Column(Integer, primary_key=True)
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
-    timestamp = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    timestamp = Column(DateTime, default=_now, nullable=False, index=True)
     valor_portafolio_usd = Column(Float, nullable=False, default=0)
     saldo_disponible_usd = Column(Float, default=0)
     ganancia_perdida_usd = Column(Float, default=0)
@@ -160,7 +170,7 @@ class Orden(Base):
     # AML
     aml_check = Column(String(20), default="pending")
     # Timestamps
-    creado = Column(DateTime, default=datetime.utcnow)
+    creado = Column(DateTime, default=_now)
     ejecutado = Column(DateTime)
     # Relaciones
     usuario = relationship("Usuario", back_populates="ordenes")
@@ -197,7 +207,7 @@ class OrdenAutomatica(Base):
     activa = Column(Boolean, default=True, index=True)
     ejecutada = Column(Boolean, default=False)
     orden_id = Column(Integer, ForeignKey("ordenes.id"))
-    creado = Column(DateTime, default=datetime.utcnow)
+    creado = Column(DateTime, default=_now)
     ejecutado_ts = Column(DateTime)
 
     usuario = relationship("Usuario", back_populates="ordenes_automaticas")
@@ -226,8 +236,8 @@ class PosicionPortafolio(Base):
     valor_total_usd = Column(Float, default=0)
     ganancia_perdida_usd = Column(Float, default=0)
     ganancia_perdida_pct = Column(Float, default=0)
-    primera_compra = Column(DateTime, default=datetime.utcnow)
-    ultima_actualizacion = Column(DateTime, default=datetime.utcnow)
+    primera_compra = Column(DateTime, default=_now)
+    ultima_actualizacion = Column(DateTime, default=_now)
 
     usuario = relationship("Usuario", back_populates="portafolio")
     __table_args__ = (UniqueConstraint("usuario_id", "ticker", name="uq_user_ticker"),)
@@ -295,7 +305,7 @@ class AnalisisRoboAdvisor(Base):
     prompt_json_enviado = Column(Text)
     respuesta_json = Column(Text)
     modelo_ia = Column(String(40), default="claude-sonnet-4-6")
-    fecha = Column(DateTime, default=datetime.utcnow)
+    fecha = Column(DateTime, default=_now)
 
     def to_dict(self):
         import json as _json
@@ -322,7 +332,7 @@ class KYCVerificacion(Base):
     nivel_alcanzado = Column(String(20), default="none")
     proveedor = Column(String(30), default="local")
     resultado = Column(String(20))
-    fecha = Column(DateTime, default=datetime.utcnow)
+    fecha = Column(DateTime, default=_now)
 
 
 # ── AML Log ───────────────────────────────────────────────
@@ -336,7 +346,7 @@ class AMLLog(Base):
     score = Column(Float, default=0)
     detalle = Column(Text)
     fuente = Column(String(50))
-    fecha = Column(DateTime, default=datetime.utcnow)
+    fecha = Column(DateTime, default=_now)
 
     def to_dict(self):
         return {"id": self.id, "entidad": self.entidad, "tipo_check": self.tipo_check,
@@ -355,7 +365,7 @@ class Transaccion(Base):
     metodo = Column(String(30))
     referencia_externa = Column(String(100))
     descripcion = Column(String(200))
-    fecha = Column(DateTime, default=datetime.utcnow)
+    fecha = Column(DateTime, default=_now)
 
     def to_dict(self):
         return {"id": self.id, "tipo": self.tipo, "monto_usd": round(self.monto_usd or 0, 2),
@@ -373,7 +383,7 @@ class Dividendo(Base):
     monto_usd = Column(Float)
     acciones_en_fecha = Column(Float)
     ex_dividend_date = Column(DateTime)
-    pago_date = Column(DateTime, default=datetime.utcnow)
+    pago_date = Column(DateTime, default=_now)
 
     def to_dict(self):
         return {"id": self.id, "ticker": self.ticker, "monto_usd": round(self.monto_usd or 0, 4),
@@ -396,7 +406,7 @@ class ReporteFiscal(Base):
     detalle_json = Column(Text)                    # array de transacciones fiscales
     archivo_pdf_path = Column(String(200))
     archivo_excel_path = Column(String(200))
-    generado = Column(DateTime, default=datetime.utcnow)
+    generado = Column(DateTime, default=_now)
 
     def to_dict(self):
         import json as _json
@@ -421,7 +431,7 @@ class AuditLog(Base):
     detalle = Column(Text)
     ip = Column(String(45))
     user_agent = Column(String(200))
-    fecha = Column(DateTime, default=datetime.utcnow, index=True)
+    fecha = Column(DateTime, default=_now, index=True)
 
     def to_dict(self):
         return {"id": self.id, "accion": self.accion, "modulo": self.modulo,
@@ -439,7 +449,7 @@ class Alerta(Base):
     titulo = Column(String(100))
     mensaje = Column(String(500))
     leida = Column(Boolean, default=False)
-    fecha = Column(DateTime, default=datetime.utcnow, index=True)
+    fecha = Column(DateTime, default=_now, index=True)
 
     def to_dict(self):
         return {"id": self.id, "tipo": self.tipo, "modulo": self.modulo,
@@ -459,7 +469,7 @@ class PushSubscription(Base):
     fcm_token = Column(String(300))        # Firebase Cloud Messaging token
     plataforma = Column(String(20))        # web, android, ios
     activa = Column(Boolean, default=True)
-    creada = Column(DateTime, default=datetime.utcnow)
+    creada = Column(DateTime, default=_now)
 
     __table_args__ = (UniqueConstraint("usuario_id", "endpoint", name="uq_push_user_endpoint"),)
 
@@ -475,7 +485,7 @@ class WebhookLog(Base):
     broker_order_id = Column(String(100), index=True)
     procesado = Column(Boolean, default=False)
     error = Column(String(200))
-    recibido = Column(DateTime, default=datetime.utcnow)
+    recibido = Column(DateTime, default=_now)
 
     def to_dict(self):
         return {"id": self.id, "fuente": self.fuente, "evento": self.evento,
