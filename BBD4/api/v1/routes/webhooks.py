@@ -1,10 +1,7 @@
 """
-Webhooks routes — recibe eventos de Alpaca y Stripe en tiempo real.
-
-Alpaca envía: fill, partial_fill, cancelled, expired, replaced
-Validación: HMAC-SHA256 del body con ALPACA_WEBHOOK_SECRET
+Webhooks routes — recibe eventos de Alpaca, Stripe y MercadoPago en tiempo real.
 """
-import hashlib, hmac, json
+import hashlib, hmac, json, os, requests as req_lib
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import select
@@ -12,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
 from core.config import settings
-from models.models import Orden, WebhookLog, AuditLog
+from models.models import Orden, WebhookLog, AuditLog, Transaccion, Usuario
 from services.notification_service import notificar_orden_ejecutada
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
@@ -119,3 +116,108 @@ async def stripe_webhook(request: Request, db: AsyncSession = Depends(get_db)):
     db.add(log)
     await db.commit()
     return {"ok": True, "evento": event.get("type")}
+
+
+@router.post("/mercadopago")
+async def mercadopago_webhook(request: Request, db: AsyncSession = Depends(get_db)):
+    """
+    IPN/Webhook de MercadoPago. Recibe notificaciones de pago y acredita saldo.
+    Configurar en MercadoPago → Notificaciones → URL:
+    https://fxc-bbd.onrender.com/api/v1/webhooks/mercadopago
+    """
+    body = await request.body()
+    try:
+        event = json.loads(body)
+    except Exception:
+        raise HTTPException(400, "Payload inválido")
+
+    log = WebhookLog(fuente="mercadopago", evento=event.get("type", "unknown"),
+                     payload_json=body.decode())
+    db.add(log)
+
+    # Solo procesamos eventos de tipo "payment"
+    if event.get("type") != "payment":
+        await db.commit()
+        return {"ok": True, "ignorado": True}
+
+    payment_id = event.get("data", {}).get("id")
+    if not payment_id:
+        await db.commit()
+        return {"ok": True, "ignorado": True}
+
+    # Verificar el pago con la API de MercadoPago
+    mp_token = os.getenv("MERCADOPAGO_ACCESS_TOKEN", "")
+    if not mp_token:
+        await db.commit()
+        return {"ok": False, "error": "token_not_configured"}
+
+    try:
+        resp = req_lib.get(
+            f"https://api.mercadopago.com/v1/payments/{payment_id}",
+            headers={"Authorization": f"Bearer {mp_token}"},
+            timeout=10,
+        )
+        if not resp.ok:
+            raise Exception(f"MP API {resp.status_code}")
+        pago = resp.json()
+    except Exception as e:
+        log.procesado = False
+        await db.commit()
+        raise HTTPException(502, f"Error verificando pago MP: {e}")
+
+    status = pago.get("status")
+    external_ref = pago.get("external_reference")  # usuario_id
+    monto = float(pago.get("transaction_amount", 0))
+
+    if status != "approved" or not external_ref or monto <= 0:
+        log.procesado = True
+        await db.commit()
+        return {"ok": True, "status": status, "procesado": False}
+
+    # Buscar transacción pendiente por preference_id o crear nueva
+    pref_id = str(pago.get("order", {}).get("id", ""))
+    res_tx = await db.execute(
+        select(Transaccion).where(
+            Transaccion.referencia_externa == pref_id,
+            Transaccion.estado == "pending"
+        )
+    )
+    tx = res_tx.scalar_one_or_none()
+
+    res_u = await db.execute(select(Usuario).where(Usuario.id == int(external_ref)))
+    usuario = res_u.scalar_one_or_none()
+    if not usuario:
+        await db.commit()
+        return {"ok": False, "error": "usuario_no_encontrado"}
+
+    # Evitar doble crédito
+    res_dup = await db.execute(
+        select(Transaccion).where(
+            Transaccion.referencia_externa == str(payment_id),
+            Transaccion.estado == "completed"
+        )
+    )
+    if res_dup.scalar_one_or_none():
+        await db.commit()
+        return {"ok": True, "duplicado": True}
+
+    if tx:
+        tx.estado = "completed"
+        tx.referencia_externa = str(payment_id)
+    else:
+        tx = Transaccion(
+            usuario_id=usuario.id, tipo="deposito", monto_usd=monto,
+            estado="completed", metodo="mercadopago",
+            referencia_externa=str(payment_id),
+            descripcion=f"Depósito MercadoPago #{payment_id}"
+        )
+        db.add(tx)
+
+    usuario.saldo_usd = round(usuario.saldo_usd + monto, 2)
+    db.add(AuditLog(
+        usuario_id=usuario.id, accion="PAGO_MP_CONFIRMADO",
+        modulo="pagos", detalle=f"MercadoPago #{payment_id} ${monto}"
+    ))
+    log.procesado = True
+    await db.commit()
+    return {"ok": True, "acreditado": monto, "saldo_nuevo": usuario.saldo_usd}
