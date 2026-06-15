@@ -726,47 +726,90 @@ tr:hover td{background:rgba(0,212,255,.03)}
 
     <!-- ══ SECCIÓN: Wallet / Caja ══ -->
     <div id="section-wallet" class="main-section">
-      <div class="pos-card" style="overflow:visible">
-        <div class="pos-hdr">💳 Wallet — Saldo y movimientos</div>
-        <div style="padding:18px">
-          <div class="wallet-grid">
-            <div class="wallet-card">
-              <div class="wallet-lbl">💰 Saldo disponible</div>
-              <div class="wallet-val up" id="w-saldo">$—</div>
-              <div class="wallet-sub">Listo para invertir</div>
-            </div>
-            <div class="wallet-card">
-              <div class="wallet-lbl">💼 Capital invertido</div>
-              <div class="wallet-val" id="w-invertido">$—</div>
-              <div class="wallet-sub">En posiciones abiertas</div>
-            </div>
-            <div class="wallet-card">
-              <div class="wallet-lbl">📈 Valor total</div>
-              <div class="wallet-val" id="w-total">$—</div>
-              <div class="wallet-sub">Portafolio + saldo</div>
-            </div>
-            <div class="wallet-card">
-              <div class="wallet-lbl">🏦 Cuenta broker</div>
-              <div class="wallet-val" style="font-size:14px;color:var(--accent)" id="w-broker">Alpaca Paper</div>
-              <div class="wallet-sub" id="w-broker-status">Paper Trading</div>
-            </div>
+
+      <!-- Saldo total -->
+      <div style="background:linear-gradient(135deg,#0b1629,#0f1e35);border:1px solid var(--border);border-radius:16px;padding:28px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+        <div>
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.09em;margin-bottom:8px">Saldo disponible</div>
+          <div style="font-size:42px;font-weight:900;color:var(--green);line-height:1" id="w-saldo">$—</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:6px">Listo para invertir · Cuenta InvestIQ</div>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap">
+          <div style="text-align:center">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Capital invertido</div>
+            <div style="font-size:20px;font-weight:800;color:var(--accent)" id="w-invertido">$—</div>
           </div>
-          <!-- Depósito MercadoPago -->
-          <div style="margin-bottom:20px;padding:18px;background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.2);border-radius:12px">
-            <div style="font-size:13px;font-weight:800;color:var(--accent);margin-bottom:12px">💳 Depositar con MercadoPago</div>
-            <div style="display:flex;gap:10px;align-items:flex-end">
-              <div style="flex:1">
-                <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Monto USD</div>
-                <input type="number" id="dep-monto" value="100" min="1" max="50000" style="width:100%;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;outline:none">
-              </div>
-              <button onclick="depositarMP()" id="dep-btn" style="padding:10px 22px;background:linear-gradient(135deg,#009ee3,#0070c0);color:#fff;border:none;border-radius:8px;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap;height:42px">Pagar con MercadoPago →</button>
-            </div>
-            <div id="dep-msg" style="display:none;margin-top:10px;font-size:12px;padding:10px;border-radius:8px"></div>
+          <div style="width:1px;background:var(--border)"></div>
+          <div style="text-align:center">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Valor total</div>
+            <div style="font-size:20px;font-weight:800;color:var(--text)" id="w-total">$—</div>
           </div>
-          <div style="font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px">Movimientos recientes</div>
-          <div id="wallet-tx-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Cargando…</div></div>
+          <div style="width:1px;background:var(--border)"></div>
+          <div style="text-align:center">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Broker</div>
+            <div style="font-size:13px;font-weight:700;color:var(--accent)" id="w-broker">Alpaca</div>
+            <div style="font-size:10px;color:var(--muted)" id="w-broker-status">Paper</div>
+          </div>
         </div>
       </div>
+
+      <!-- Botones principales -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <button onclick="toggleDepForm()" style="padding:20px;background:linear-gradient(135deg,rgba(34,197,94,.15),rgba(34,197,94,.08));border:2px solid rgba(34,197,94,.4);border-radius:14px;color:var(--green);font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s;letter-spacing:.02em">
+          <span style="font-size:22px">⬇️</span> Depositar fondos
+        </button>
+        <button onclick="toggleRetForm()" style="padding:20px;background:linear-gradient(135deg,rgba(245,158,11,.15),rgba(245,158,11,.08));border:2px solid rgba(245,158,11,.4);border-radius:14px;color:var(--amber);font-size:16px;font-weight:900;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s;letter-spacing:.02em">
+          <span style="font-size:22px">⬆️</span> Retirar fondos
+        </button>
+      </div>
+
+      <!-- Panel Depositar -->
+      <div id="dep-panel" style="display:none;background:var(--card);border:1px solid rgba(34,197,94,.3);border-radius:14px;padding:24px">
+        <div style="font-size:15px;font-weight:800;color:var(--green);margin-bottom:18px">⬇️ Depositar fondos — MercadoPago</div>
+        <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end">
+          <div>
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px">Monto a depositar (USD)</div>
+            <input type="number" id="dep-monto" value="100" min="1" max="50000"
+              style="width:100%;padding:13px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;font-weight:700;outline:none">
+          </div>
+          <button onclick="depositarMP()" id="dep-btn"
+            style="padding:13px 28px;background:linear-gradient(135deg,#009ee3,#0070c0);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer;white-space:nowrap">
+            Ir a pagar →
+          </button>
+        </div>
+        <div style="margin-top:12px;font-size:11px;color:var(--muted)">Tarjeta de crédito/débito · PSE · Efectivo · Billeteras digitales</div>
+        <div id="dep-msg" style="display:none;margin-top:12px;font-size:12px;padding:12px;border-radius:8px"></div>
+      </div>
+
+      <!-- Panel Retirar -->
+      <div id="ret-panel" style="display:none;background:var(--card);border:1px solid rgba(245,158,11,.3);border-radius:14px;padding:24px">
+        <div style="font-size:15px;font-weight:800;color:var(--amber);margin-bottom:18px">⬆️ Retirar fondos</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:12px;align-items:end">
+          <div>
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px">Monto a retirar (USD)</div>
+            <input type="number" id="ret-monto" value="50" min="1"
+              style="width:100%;padding:13px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;font-weight:700;outline:none">
+          </div>
+          <div>
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px">Destino / referencia</div>
+            <input type="text" id="ret-dest" placeholder="Cuenta bancaria / CBU / IBAN"
+              style="width:100%;padding:13px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:13px;outline:none">
+          </div>
+          <button onclick="solicitarRetiro()" id="ret-btn"
+            style="padding:13px 22px;background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;border:none;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer;white-space:nowrap">
+            Solicitar →
+          </button>
+        </div>
+        <div style="margin-top:12px;font-size:11px;color:var(--muted)">Procesamiento en 1-3 días hábiles · Mínimo $10 USD</div>
+        <div id="ret-msg" style="display:none;margin-top:12px;font-size:12px;padding:12px;border-radius:8px"></div>
+      </div>
+
+      <!-- Historial movimientos -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px">
+        <div style="font-size:13px;font-weight:800;color:var(--text);margin-bottom:14px">📋 Movimientos recientes</div>
+        <div id="wallet-tx-list"><div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Cargando…</div></div>
+      </div>
+
     </div>
 
     <!-- ══ SECCIÓN: Historial de Órdenes ══ -->
@@ -1836,6 +1879,50 @@ async function loadHistorial(){
       </div>`;
     }).join('');
   }catch(e){body.innerHTML=`<div style="padding:18px;color:var(--red);font-size:12px">Error: ${e.message}</div>`;}
+}
+
+// ── Wallet toggles ────────────────────────────────────────
+function toggleDepForm(){
+  const p=document.getElementById('dep-panel');
+  const r=document.getElementById('ret-panel');
+  r.style.display='none';
+  p.style.display=p.style.display==='none'?'block':'none';
+  if(p.style.display==='block')document.getElementById('dep-monto').focus();
+}
+function toggleRetForm(){
+  const p=document.getElementById('ret-panel');
+  const d=document.getElementById('dep-panel');
+  d.style.display='none';
+  p.style.display=p.style.display==='none'?'block':'none';
+  if(p.style.display==='block')document.getElementById('ret-monto').focus();
+}
+
+async function solicitarRetiro(){
+  const monto=parseFloat(document.getElementById('ret-monto').value);
+  const dest=document.getElementById('ret-dest').value.trim();
+  if(!monto||monto<10){_retMsg('Monto mínimo $10 USD',true);return;}
+  if(!dest){_retMsg('Ingresa el destino / cuenta bancaria',true);return;}
+  const btn=document.getElementById('ret-btn');
+  btn.disabled=true; btn.textContent='Procesando…';
+  try{
+    const r=await apiFetch('/api/v1/transacciones',{
+      method:'POST',
+      body:JSON.stringify({tipo:'retiro',monto_usd:monto,metodo:'bank_transfer',descripcion:`Retiro a: ${dest}`})
+    });
+    const d=await r.json();
+    if(!r.ok){_retMsg(d.detail||'Error al procesar retiro',true);return;}
+    _retMsg(`✓ Solicitud enviada — $${monto} USD en camino a tu cuenta. 1-3 días hábiles.`,false);
+    setTimeout(()=>loadWallet(),1500);
+  }catch(e){
+    if(e.message!=='Sesión expirada')_retMsg('Error: '+e.message,true);
+  }finally{
+    btn.disabled=false; btn.textContent='Solicitar →';
+  }
+}
+function _retMsg(txt,err){
+  const el=document.getElementById('ret-msg'); if(!el)return;
+  el.textContent=txt; el.style.display='block';
+  el.style.cssText=`display:block;margin-top:12px;font-size:12px;padding:12px;border-radius:8px;${err?'background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3)':'background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.3)'}`;
 }
 
 // ── Depósito MercadoPago ──────────────────────────────────
