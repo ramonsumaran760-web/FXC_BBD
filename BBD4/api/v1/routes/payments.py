@@ -142,7 +142,6 @@ async def crear_mp_preferencia(data: DepositoMPSchema,
         db.add(tx)
         await db.commit()
         return {"init_point": pref.get("init_point"),
-                "sandbox_init_point": pref.get("sandbox_init_point"),
                 "preference_id": pref.get("id"),
                 "monto": data.monto_usd,
                 "currency": "PEN"}

@@ -71,7 +71,7 @@ export default function Fiscal() {
     try {
       const r = await fetch("/api/v1/pagos/mercadopago/preferencia",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({monto_usd:depositoMonto})}).then(r=>r.json());
       if(r.error) throw new Error(r.error);
-      setMpURL(r.sandbox_init_point || r.init_point);
+      setMpURL(r.init_point);
       actions.toast("Preferencia MercadoPago creada");
     } catch(e){ actions.toast(e.message,"error"); }
     setLoadingDeposito(false);
