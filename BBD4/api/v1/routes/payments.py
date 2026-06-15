@@ -179,9 +179,9 @@ async def admin_credito_manual(
     from sqlalchemy import select
     if current_user.rol != "admin":
         raise HTTPException(403, "Solo administradores")
-    if data.monto <= 0:
-        raise HTTPException(400, "Monto debe ser positivo")
-    if data.monto > 100000:
+    if data.monto == 0:
+        raise HTTPException(400, "Monto no puede ser cero")
+    if abs(data.monto) > 100000:
         raise HTTPException(400, "Monto máximo: $100,000")
 
     res = await db.execute(select(Usuario).where(Usuario.email == data.email_usuario))
@@ -189,11 +189,14 @@ async def admin_credito_manual(
     if not usuario:
         raise HTTPException(404, f"Usuario '{data.email_usuario}' no encontrado")
 
-    usuario.saldo_usd = round(usuario.saldo_usd + data.monto, 2)
+    nuevo_saldo = round(usuario.saldo_usd + data.monto, 2)
+    if nuevo_saldo < 0:
+        raise HTTPException(400, f"Saldo insuficiente. Saldo actual: ${usuario.saldo_usd:.2f}")
+    usuario.saldo_usd = nuevo_saldo
     tx = Transaccion(
         usuario_id=usuario.id,
-        tipo="deposito",
-        monto_usd=data.monto,
+        tipo="deposito" if data.monto > 0 else "retiro",
+        monto_usd=abs(data.monto),
         estado="completed",
         metodo="credito_admin",
         referencia_externa=f"ADMIN-{current_user.id}",

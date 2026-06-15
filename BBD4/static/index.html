@@ -986,9 +986,14 @@ tr:hover td{background:rgba(0,212,255,.03)}
             <input type="text" id="cr-concepto" value="Crédito administrativo"
               style="width:100%;padding:11px 13px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;outline:none">
           </div>
-          <button onclick="adminCredito()" style="padding:11px 18px;background:linear-gradient(135deg,var(--green),#16a34a);color:#000;border:none;border-radius:8px;font-weight:900;font-size:13px;cursor:pointer;white-space:nowrap">
-            Acreditar →
-          </button>
+          <div style="display:flex;gap:6px">
+            <button onclick="adminCredito(1)" style="padding:11px 16px;background:linear-gradient(135deg,var(--green),#16a34a);color:#000;border:none;border-radius:8px;font-weight:900;font-size:13px;cursor:pointer;white-space:nowrap">
+              + Acreditar
+            </button>
+            <button onclick="adminCredito(-1)" style="padding:11px 16px;background:linear-gradient(135deg,#ef4444,#b91c1c);color:#fff;border:none;border-radius:8px;font-weight:900;font-size:13px;cursor:pointer;white-space:nowrap">
+              − Debitar
+            </button>
+          </div>
         </div>
         <div id="cr-msg" style="display:none;margin-top:12px;font-size:12px;padding:10px;border-radius:8px"></div>
         <div style="margin-top:12px;padding:10px;background:rgba(99,102,241,.06);border-radius:8px;font-size:11px;color:#818cf8">
@@ -2351,30 +2356,30 @@ async function confirmarTransf(txId){
 }
 
 // ── Admin crédito manual ──────────────────────────────────
-async function adminCredito(){
+async function adminCredito(signo=1){
   const email=document.getElementById('cr-email').value.trim();
-  const monto=parseFloat(document.getElementById('cr-monto').value);
-  const concepto=document.getElementById('cr-concepto').value.trim()||'Crédito administrativo';
+  const montoAbs=parseFloat(document.getElementById('cr-monto').value);
+  const concepto=document.getElementById('cr-concepto').value.trim()||(signo>0?'Crédito administrativo':'Débito administrativo');
   const msg=document.getElementById('cr-msg');
   if(!email){showMsg(msg,'Ingresa el email del usuario','err');return;}
-  if(!monto||monto<=0){showMsg(msg,'Ingresa un monto válido','err');return;}
-  if(!confirm(`¿Acreditar $${monto} USD a ${email}?\n\nConcepto: ${concepto}`))return;
+  if(!montoAbs||montoAbs<=0){showMsg(msg,'Ingresa un monto válido','err');return;}
+  const monto=montoAbs*signo;
+  const accion=signo>0?'Acreditar':'Debitar (quitar)';
+  if(!confirm(`¿${accion} $${montoAbs} USD a ${email}?\n\nConcepto: ${concepto}`))return;
   try{
     const r=await apiFetch('/api/v1/pagos/admin/credito',{method:'POST',body:JSON.stringify({email_usuario:email,monto,concepto})});
     const d=await r.json();
-    if(!r.ok){showMsg(msg,d.detail||'Error al acreditar','err');return;}
-    showMsg(msg,`✅ Se acreditaron $${monto} USD a ${d.usuario}. Saldo nuevo: $${fmt2(d.saldo_nuevo)} USD`,'ok');
+    if(!r.ok){showMsg(msg,d.detail||'Error','err');return;}
+    const verb=signo>0?'acreditaron':'debitaron';
+    showMsg(msg,`✅ Se ${verb} $${montoAbs} USD a ${d.usuario}. Saldo nuevo: $${fmt2(d.saldo_nuevo)} USD`,'ok');
     if(d.usuario===window._userProfile?.email)loadWallet();
   }catch(e){showMsg(msg,'Error: '+e.message,'err');}
 }
 
 async function acreditarmeAMi(){
-  const monto=parseFloat(document.getElementById('cr-monto').value)||100;
-  const concepto=document.getElementById('cr-concepto').value.trim()||'Crédito administrativo';
   if(window._userProfile?.email){
     document.getElementById('cr-email').value=window._userProfile.email;
-    if(!confirm(`¿Acreditar $${monto} USD a tu propia cuenta (${window._userProfile.email})?`))return;
-    adminCredito();
+    adminCredito(1);
   }
 }
 
