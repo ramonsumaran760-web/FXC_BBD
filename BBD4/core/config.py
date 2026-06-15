@@ -71,6 +71,9 @@ class Settings(BaseSettings):
     STRIPE_SECRET_KEY: str = os.getenv("STRIPE_SECRET_KEY", "")
     STRIPE_WEBHOOK_SECRET: str = os.getenv("STRIPE_WEBHOOK_SECRET", "")
     MERCADOPAGO_ACCESS_TOKEN: str = os.getenv("MERCADOPAGO_ACCESS_TOKEN", "")
+    # Plin — número de celular registrado en Plin del negocio
+    PLIN_PHONE: str = os.getenv("PLIN_PHONE", "")
+    PLIN_TITULAR: str = os.getenv("PLIN_TITULAR", "InvestIQ")
 
     # Sentry
     SENTRY_DSN: str = os.getenv("SENTRY_DSN", "")

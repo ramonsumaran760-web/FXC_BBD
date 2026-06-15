@@ -160,3 +160,104 @@ async def crear_mp_preferencia(data: DepositoMPSchema,
                 "currency": "PEN"}
     except Exception as e:
         raise HTTPException(502, f"Error MercadoPago: {e}")
+
+
+# ── Plin ──────────────────────────────────────────────────
+
+class PlinSolicitudSchema(BaseModel):
+    monto_pen: float
+    numero_operacion: str
+
+class PlinConfirmarSchema(BaseModel):
+    tx_id: int
+
+@router.get("/plin/info")
+async def plin_info():
+    """Retorna los datos del número Plin del negocio para que el cliente pueda pagar."""
+    from core.config import settings
+    if not settings.PLIN_PHONE:
+        raise HTTPException(503, "Plin no configurado. Agrega PLIN_PHONE en variables de entorno.")
+    return {
+        "telefono": settings.PLIN_PHONE,
+        "titular": settings.PLIN_TITULAR,
+        "activo": True,
+        "instrucciones": [
+            f"Abre tu app bancaria (BBVA, Scotiabank, Interbank o BanBif)",
+            f"Selecciona 'Plin' y busca el número {settings.PLIN_PHONE}",
+            f"Envía el monto exacto en Soles (S/.)",
+            "Copia el número de operación y regístralo aquí",
+        ]
+    }
+
+@router.post("/plin/solicitud")
+async def plin_solicitud(
+    data: PlinSolicitudSchema,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """El usuario registra su pago Plin. Queda pendiente hasta que el admin confirme."""
+    from core.config import settings
+    if not settings.PLIN_PHONE:
+        raise HTTPException(503, "Plin no configurado")
+    if data.monto_pen < 5:
+        raise HTTPException(400, "Monto mínimo S/.5")
+    if not data.numero_operacion.strip():
+        raise HTTPException(400, "Ingresa el número de operación Plin")
+
+    tx = Transaccion(
+        usuario_id=current_user.id,
+        tipo="deposito",
+        monto_usd=data.monto_pen,          # se guarda en PEN, admin convierte si aplica
+        estado="pending",
+        metodo="plin",
+        referencia_externa=data.numero_operacion.strip(),
+        descripcion=f"Depósito Plin S/.{data.monto_pen} — Op.{data.numero_operacion.strip()}"
+    )
+    db.add(tx)
+    db.add(AuditLog(
+        usuario_id=current_user.id, accion="PLIN_SOLICITUD",
+        modulo="pagos",
+        detalle=f"Plin S/.{data.monto_pen} op:{data.numero_operacion}"
+    ))
+    await db.commit()
+    return {
+        "ok": True,
+        "tx_id": tx.id,
+        "estado": "pending",
+        "mensaje": "Solicitud recibida. El admin verificará tu pago y acreditará tu saldo en minutos."
+    }
+
+@router.post("/plin/confirmar")
+async def plin_confirmar(
+    data: PlinConfirmarSchema,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Admin confirma y acredita un depósito Plin pendiente."""
+    from sqlalchemy import select
+    if current_user.rol != "admin":
+        raise HTTPException(403, "Solo administradores")
+
+    res = await db.execute(select(Transaccion).where(
+        Transaccion.id == data.tx_id,
+        Transaccion.metodo == "plin",
+        Transaccion.estado == "pending"
+    ))
+    tx = res.scalar_one_or_none()
+    if not tx:
+        raise HTTPException(404, "Transacción no encontrada o ya procesada")
+
+    res_u = await db.execute(select(Usuario).where(Usuario.id == tx.usuario_id))
+    usuario = res_u.scalar_one_or_none()
+    if not usuario:
+        raise HTTPException(404, "Usuario no encontrado")
+
+    tx.estado = "completed"
+    usuario.saldo_usd = round(usuario.saldo_usd + tx.monto_usd, 2)
+    db.add(AuditLog(
+        usuario_id=current_user.id, accion="PLIN_CONFIRMADO",
+        modulo="pagos",
+        detalle=f"Plin tx#{tx.id} S/.{tx.monto_usd} → usuario {usuario.email}"
+    ))
+    await db.commit()
+    return {"ok": True, "saldo_nuevo": usuario.saldo_usd, "usuario": usuario.email}

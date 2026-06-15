@@ -765,23 +765,69 @@ tr:hover td{background:rgba(0,212,255,.03)}
 
       <!-- Panel Depositar -->
       <div id="dep-panel" style="display:none;background:var(--card);border:1px solid rgba(34,197,94,.3);border-radius:14px;padding:24px">
-        <div style="font-size:15px;font-weight:800;color:var(--green);margin-bottom:18px">⬇️ Depositar fondos — MercadoPago</div>
-        <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end">
-          <div>
-            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px">Monto a depositar (S/. Soles PEN)</div>
-            <input type="number" id="dep-monto" value="50" min="1" max="200000"
-              style="width:100%;padding:13px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;font-weight:700;outline:none">
-          </div>
-          <button onclick="depositarMP()" id="dep-btn"
-            style="padding:13px 28px;background:linear-gradient(135deg,#009ee3,#0070c0);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer;white-space:nowrap">
-            Ir a pagar →
+        <div style="font-size:15px;font-weight:800;color:var(--green);margin-bottom:18px">⬇️ Depositar fondos</div>
+
+        <!-- Tabs método -->
+        <div style="display:flex;gap:8px;margin-bottom:18px" id="dep-tabs">
+          <button onclick="switchDepTab('plin')" id="tab-plin"
+            style="flex:1;padding:10px;border-radius:8px;border:2px solid #6366f1;background:rgba(99,102,241,.15);color:#818cf8;font-weight:800;font-size:13px;cursor:pointer">
+            💜 Plin
+          </button>
+          <button onclick="switchDepTab('mp')" id="tab-mp"
+            style="flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-weight:700;font-size:13px;cursor:pointer">
+            🛒 MercadoPago
           </button>
         </div>
-        <div style="margin-top:12px;font-size:11px;color:var(--muted)">💜 Yape · Tarjeta · Transferencia · Agente · Kasnet · Efectivo</div>
-        <div style="margin-top:8px;padding:8px 12px;background:rgba(168,85,247,.08);border:1px solid rgba(168,85,247,.25);border-radius:8px;font-size:11px;color:#c084fc">
-          💡 Si el botón "Pagar" de MercadoPago está gris, selecciona <strong>"Otro medio de pago"</strong> y elige <strong>Yape</strong> — funciona inmediatamente.
+
+        <!-- Panel Plin -->
+        <div id="dep-plin">
+          <div id="plin-info-box" style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.3);border-radius:12px;padding:18px;margin-bottom:16px;text-align:center">
+            <div style="font-size:11px;color:#818cf8;text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Número Plin del negocio</div>
+            <div style="font-size:32px;font-weight:900;color:#a5b4fc;letter-spacing:.05em" id="plin-numero">Cargando…</div>
+            <div style="font-size:12px;color:var(--muted);margin-top:4px" id="plin-titular">InvestIQ</div>
+            <div style="margin-top:10px;font-size:11px;color:#818cf8">BBVA · Scotiabank · Interbank · BanBif</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.7">
+            1. Abre tu app bancaria → Plin → busca el número de arriba<br>
+            2. Envía el monto exacto en Soles (S/.)<br>
+            3. Copia el <strong style="color:var(--text)">número de operación</strong> y regístralo aquí
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:end">
+            <div>
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Monto enviado (S/.)</div>
+              <input type="number" id="plin-monto" value="50" min="5"
+                style="width:100%;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:15px;font-weight:700;outline:none">
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">N° de operación</div>
+              <input type="text" id="plin-op" placeholder="ej: 1234567890"
+                style="width:100%;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:9px;color:var(--text);font-size:13px;outline:none">
+            </div>
+            <button onclick="registrarPlin()" id="plin-btn"
+              style="padding:12px 20px;background:linear-gradient(135deg,#6366f1,#4f46e5);color:#fff;border:none;border-radius:9px;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap">
+              Registrar →
+            </button>
+          </div>
+          <div id="plin-msg" style="display:none;margin-top:12px;font-size:12px;padding:12px;border-radius:8px"></div>
         </div>
-        <div id="dep-msg" style="display:none;margin-top:12px;font-size:12px;padding:12px;border-radius:8px"></div>
+
+        <!-- Panel MercadoPago -->
+        <div id="dep-mp" style="display:none">
+          <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end">
+            <div>
+              <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px">Monto (S/. Soles)</div>
+              <input type="number" id="dep-monto" value="50" min="1" max="200000"
+                style="width:100%;padding:13px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;font-weight:700;outline:none">
+            </div>
+            <button onclick="depositarMP()" id="dep-btn"
+              style="padding:13px 28px;background:linear-gradient(135deg,#009ee3,#0070c0);color:#fff;border:none;border-radius:10px;font-weight:800;font-size:14px;cursor:pointer;white-space:nowrap">
+              Ir a pagar →
+            </button>
+          </div>
+          <div style="margin-top:10px;font-size:11px;color:var(--muted)">Yape · Tarjeta · Efectivo · Agente · Kasnet</div>
+          <div id="dep-msg" style="display:none;margin-top:12px;font-size:12px;padding:12px;border-radius:8px"></div>
+        </div>
+
       </div>
 
       <!-- Panel Retirar -->
@@ -858,6 +904,11 @@ tr:hover td{background:rgba(0,212,255,.03)}
         <div class="admin-stat"><div class="admin-stat-icon">⚡</div><div class="admin-stat-lbl">Órdenes totales</div><div class="admin-stat-val" id="admin-orders">—</div></div>
         <div class="admin-stat"><div class="admin-stat-icon">💰</div><div class="admin-stat-lbl">Capital administrado</div><div class="admin-stat-val" id="admin-capital">$—</div></div>
         <div class="admin-stat"><div class="admin-stat-icon">🛡️</div><div class="admin-stat-lbl">Bloqueados AML</div><div class="admin-stat-val" id="admin-aml" style="color:var(--red)">—</div></div>
+      </div>
+      <!-- Depósitos Plin pendientes -->
+      <div style="background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.25);border-radius:12px;padding:18px;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:800;color:#a5b4fc;margin-bottom:12px">💜 Depósitos Plin pendientes de confirmación</div>
+        <div id="admin-plin-list"><div style="font-size:12px;color:var(--muted);padding:8px">Cargando…</div></div>
       </div>
       <div class="admin-users-table">
         <div class="admin-users-hdr">👥 Usuarios registrados <span id="admin-users-count" style="font-size:11px;color:var(--muted);font-weight:400">—</span></div>
@@ -1902,13 +1953,72 @@ async function loadHistorial(){
   }catch(e){body.innerHTML=`<div style="padding:18px;color:var(--red);font-size:12px">Error: ${e.message}</div>`;}
 }
 
+// ── Plin ──────────────────────────────────────────────────
+function switchDepTab(t){
+  const isPlin=t==='plin';
+  document.getElementById('dep-plin').style.display=isPlin?'block':'none';
+  document.getElementById('dep-mp').style.display=isPlin?'none':'block';
+  const tPlin=document.getElementById('tab-plin'), tMp=document.getElementById('tab-mp');
+  if(isPlin){
+    tPlin.style.cssText='flex:1;padding:10px;border-radius:8px;border:2px solid #6366f1;background:rgba(99,102,241,.15);color:#818cf8;font-weight:800;font-size:13px;cursor:pointer';
+    tMp.style.cssText='flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-weight:700;font-size:13px;cursor:pointer';
+  }else{
+    tMp.style.cssText='flex:1;padding:10px;border-radius:8px;border:2px solid #009ee3;background:rgba(0,158,227,.12);color:#38bdf8;font-weight:800;font-size:13px;cursor:pointer';
+    tPlin.style.cssText='flex:1;padding:10px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--muted);font-weight:700;font-size:13px;cursor:pointer';
+  }
+}
+
+async function loadPlinInfo(){
+  try{
+    const r=await apiFetch('/api/v1/pagos/plin/info'); const d=await r.json();
+    if(r.ok&&d.telefono){
+      document.getElementById('plin-numero').textContent=d.telefono;
+      document.getElementById('plin-titular').textContent=d.titular||'InvestIQ';
+    }else{
+      document.getElementById('plin-numero').textContent='No configurado';
+      document.getElementById('plin-info-box').style.borderColor='rgba(239,68,68,.3)';
+    }
+  }catch(e){document.getElementById('plin-numero').textContent='—';}
+}
+
+async function registrarPlin(){
+  const monto=parseFloat(document.getElementById('plin-monto').value);
+  const op=document.getElementById('plin-op').value.trim();
+  if(!monto||monto<5){_plinMsg('Monto mínimo S/.5',true);return;}
+  if(!op){_plinMsg('Ingresa el número de operación Plin',true);return;}
+  const btn=document.getElementById('plin-btn');
+  btn.disabled=true; btn.textContent='Enviando…';
+  try{
+    const r=await apiFetch('/api/v1/pagos/plin/solicitud',{
+      method:'POST',
+      body:JSON.stringify({monto_pen:monto, numero_operacion:op})
+    });
+    const d=await r.json();
+    if(!r.ok){_plinMsg(d.detail||'Error al registrar',true);return;}
+    _plinMsg(`✅ Solicitud registrada (S/.${monto}). El equipo verificará tu pago y acreditará tu saldo en minutos.`,false);
+    document.getElementById('plin-op').value='';
+    ttsSpeak(`Plin registrado. ${d.mensaje}`,'plin',true);
+  }catch(e){
+    if(e.message!=='Sesión expirada')_plinMsg('Error: '+e.message,true);
+  }finally{
+    btn.disabled=false; btn.textContent='Registrar →';
+  }
+}
+function _plinMsg(txt,err){
+  const el=document.getElementById('plin-msg'); if(!el)return;
+  el.textContent=txt; el.style.display='block';
+  el.style.cssText=`display:block;margin-top:12px;font-size:12px;padding:12px;border-radius:8px;${err?'background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3)':'background:rgba(99,102,241,.1);color:#a5b4fc;border:1px solid rgba(99,102,241,.3)'}`;
+  if(!err)setTimeout(()=>{el.style.display='none';},10000);
+}
+
 // ── Wallet toggles ────────────────────────────────────────
 function toggleDepForm(){
   const p=document.getElementById('dep-panel');
   const r=document.getElementById('ret-panel');
   r.style.display='none';
-  p.style.display=p.style.display==='none'?'block':'none';
-  if(p.style.display==='block')document.getElementById('dep-monto').focus();
+  const opening=p.style.display==='none';
+  p.style.display=opening?'block':'none';
+  if(opening){ switchDepTab('plin'); loadPlinInfo(); }
 }
 function toggleRetForm(){
   const p=document.getElementById('ret-panel');
@@ -2023,6 +2133,39 @@ function renderProfile(d){
   const as=document.getElementById('profile-aml-status'); if(as){as.textContent=d.aml_status||'—';as.style.color=d.aml_status==='clear'?'var(--green)':'var(--amber)';}
 }
 
+// ── Admin Plin ────────────────────────────────────────────
+async function loadPlinPendientes(){
+  const el=document.getElementById('admin-plin-list'); if(!el)return;
+  try{
+    const r=await apiFetch('/api/v1/transacciones?metodo=plin&estado=pending');
+    const d=await r.json();
+    const txs=Array.isArray(d)?d:(d.transacciones||[]);
+    const plin=txs.filter(t=>t.metodo==='plin'&&t.estado==='pending');
+    if(!plin.length){el.innerHTML='<div style="font-size:12px;color:var(--muted);padding:8px">Sin depósitos Plin pendientes ✓</div>';return;}
+    el.innerHTML=plin.map(t=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid rgba(99,102,241,.15);gap:12px">
+        <div>
+          <div style="font-size:12px;font-weight:700;color:var(--text)">S/.${fmt2(t.monto_usd)} · Op: <span style="color:#a5b4fc">${t.referencia_externa||'—'}</span></div>
+          <div style="font-size:10px;color:var(--muted)">${t.descripcion||''} · ${new Date(t.creado||'').toLocaleString('es')}</div>
+        </div>
+        <button onclick="confirmarPlin(${t.id})" style="padding:7px 14px;background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);border-radius:7px;color:#a5b4fc;font-weight:800;font-size:11px;cursor:pointer">
+          ✓ Confirmar
+        </button>
+      </div>`).join('');
+  }catch(e){el.innerHTML='<div style="font-size:11px;color:var(--muted)">—</div>';}
+}
+
+async function confirmarPlin(txId){
+  if(!confirm('¿Confirmar este depósito Plin y acreditar el saldo?'))return;
+  try{
+    const r=await apiFetch('/api/v1/pagos/plin/confirmar',{method:'POST',body:JSON.stringify({tx_id:txId})});
+    const d=await r.json();
+    if(!r.ok){alert(d.detail||'Error');return;}
+    alert(`✅ Saldo acreditado. Nuevo saldo: S/.${fmt2(d.saldo_nuevo)}`);
+    loadPlinPendientes();
+  }catch(e){alert('Error: '+e.message);}
+}
+
 // ── Admin Dashboard ───────────────────────────────────────
 async function loadAdminDashboard(){
   try{
@@ -2034,6 +2177,7 @@ async function loadAdminDashboard(){
     document.getElementById('admin-orders').textContent=d.ordenes_total||'—';
     document.getElementById('admin-capital').textContent='$'+fmt2(d.depositos_totales_usd||0);
     document.getElementById('admin-aml').textContent=d.bloqueados_aml||'0';
+    loadPlinPendientes();
     // Load users list
     const r2=await apiFetch('/api/v1/admin/usuarios');
     const users=await r2.json();
