@@ -224,6 +224,97 @@ class PlinSolicitudSchema(BaseModel):
 class PlinConfirmarSchema(BaseModel):
     tx_id: int
 
+@router.get("/transf/info")
+async def transf_info():
+    """Retorna los datos bancarios para transferencias interbancarias (CCI)."""
+    from core.config import settings
+    return {
+        "banco": settings.BANK_NOMBRE,
+        "titular": settings.BANK_TITULAR,
+        "cuenta": settings.BANK_CUENTA,
+        "cci": settings.BANK_CCI,
+        "moneda": settings.BANK_MONEDA,
+        "activo": bool(settings.BANK_CCI),
+    }
+
+class TransfSolicitudSchema(BaseModel):
+    monto_pen: float
+    numero_operacion: str
+
+@router.post("/transf/solicitud")
+async def transf_solicitud(
+    data: TransfSolicitudSchema,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """El usuario registra una transferencia bancaria pendiente de confirmación por el admin."""
+    if data.monto_pen < 5:
+        raise HTTPException(400, "Monto mínimo S/.5")
+    if not data.numero_operacion.strip():
+        raise HTTPException(400, "Ingresa el número de operación")
+
+    tx = Transaccion(
+        usuario_id=current_user.id,
+        tipo="deposito",
+        monto_usd=data.monto_pen,
+        estado="pending",
+        metodo="transferencia",
+        referencia_externa=data.numero_operacion.strip(),
+        descripcion=f"Transferencia bancaria S/.{data.monto_pen} — Op.{data.numero_operacion.strip()}"
+    )
+    db.add(tx)
+    db.add(AuditLog(
+        usuario_id=current_user.id, accion="TRANSF_SOLICITUD",
+        modulo="pagos",
+        detalle=f"Transferencia S/.{data.monto_pen} op:{data.numero_operacion}"
+    ))
+    await db.commit()
+    return {
+        "ok": True,
+        "tx_id": tx.id,
+        "estado": "pending",
+        "mensaje": "Solicitud registrada. El admin verificará tu transferencia y acreditará tu saldo en minutos."
+    }
+
+class TransfConfirmarSchema(BaseModel):
+    tx_id: int
+
+@router.post("/transf/confirmar")
+async def transf_confirmar(
+    data: TransfConfirmarSchema,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Admin confirma y acredita una transferencia bancaria pendiente."""
+    from sqlalchemy import select
+    if current_user.rol != "admin":
+        raise HTTPException(403, "Solo administradores")
+
+    res = await db.execute(select(Transaccion).where(
+        Transaccion.id == data.tx_id,
+        Transaccion.metodo == "transferencia",
+        Transaccion.estado == "pending"
+    ))
+    tx = res.scalar_one_or_none()
+    if not tx:
+        raise HTTPException(404, "Transacción no encontrada o ya procesada")
+
+    res_u = await db.execute(select(Usuario).where(Usuario.id == tx.usuario_id))
+    usuario = res_u.scalar_one_or_none()
+    if not usuario:
+        raise HTTPException(404, "Usuario no encontrado")
+
+    tx.estado = "completed"
+    usuario.saldo_usd = round(usuario.saldo_usd + tx.monto_usd, 2)
+    db.add(AuditLog(
+        usuario_id=current_user.id, accion="TRANSF_CONFIRMADA",
+        modulo="pagos",
+        detalle=f"Transferencia tx#{tx.id} S/.{tx.monto_usd} → usuario {usuario.email}"
+    ))
+    await db.commit()
+    return {"ok": True, "saldo_nuevo": usuario.saldo_usd, "usuario": usuario.email}
+
+
 @router.get("/plin/info")
 async def plin_info():
     """Retorna los datos del número Plin del negocio para que el cliente pueda pagar."""

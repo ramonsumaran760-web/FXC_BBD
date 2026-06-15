@@ -74,6 +74,12 @@ class Settings(BaseSettings):
     # Plin — número de celular registrado en Plin del negocio
     PLIN_PHONE: str = os.getenv("PLIN_PHONE", "")
     PLIN_TITULAR: str = os.getenv("PLIN_TITULAR", "InvestIQ")
+    # Transferencia bancaria (CCI)
+    BANK_CUENTA: str = os.getenv("BANK_CUENTA", "")
+    BANK_CCI: str = os.getenv("BANK_CCI", "")
+    BANK_TITULAR: str = os.getenv("BANK_TITULAR", "InvestIQ SAC")
+    BANK_NOMBRE: str = os.getenv("BANK_NOMBRE", "BBVA Continental")
+    BANK_MONEDA: str = os.getenv("BANK_MONEDA", "Soles (PEN)")
 
     # Sentry
     SENTRY_DSN: str = os.getenv("SENTRY_DSN", "")
