@@ -108,13 +108,33 @@ async def crear_mp_preferencia(data: DepositoMPSchema,
     try:
         import mercadopago
         sdk = mercadopago.SDK(mp_token)
+
+        # PEN para cuentas Perú — back_urls y notification_url obligatorios
+        # para que el botón "Pagar" se active en el checkout de MP.
+        # El monto se acepta en soles (PEN); el equivalente USD se guarda aparte.
         preference_data = {
-            "items": [{"title": data.descripcion, "quantity": 1,
-                        "unit_price": data.monto_usd, "currency_id": "USD"}],
+            "items": [{
+                "title": data.descripcion,
+                "quantity": 1,
+                "unit_price": float(data.monto_usd),
+                "currency_id": "PEN",
+            }],
             "external_reference": str(current_user.id),
+            "back_urls": {
+                "success": "https://fxc-bbd.onrender.com/?dep=ok",
+                "failure": "https://fxc-bbd.onrender.com/?dep=fail",
+                "pending": "https://fxc-bbd.onrender.com/?dep=pending",
+            },
+            "auto_return": "approved",
+            "notification_url": "https://fxc-bbd.onrender.com/api/v1/webhooks/mercadopago",
+            "statement_descriptor": "InvestIQ",
+            "binary_mode": True,          # aprobado/rechazado (sin pendiente)
         }
         result = sdk.preference().create(preference_data)
         pref = result["response"]
+        if not pref.get("id"):
+            raise Exception(f"MP no devolvió preference_id: {pref}")
+
         tx = Transaccion(usuario_id=current_user.id, tipo="deposito",
                          monto_usd=data.monto_usd, estado="pending",
                          metodo="mercadopago", referencia_externa=pref.get("id"),
@@ -122,6 +142,9 @@ async def crear_mp_preferencia(data: DepositoMPSchema,
         db.add(tx)
         await db.commit()
         return {"init_point": pref.get("init_point"),
-                "preference_id": pref.get("id"), "monto_usd": data.monto_usd}
+                "sandbox_init_point": pref.get("sandbox_init_point"),
+                "preference_id": pref.get("id"),
+                "monto": data.monto_usd,
+                "currency": "PEN"}
     except Exception as e:
         raise HTTPException(502, f"Error MercadoPago: {e}")

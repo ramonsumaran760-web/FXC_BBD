@@ -768,8 +768,8 @@ tr:hover td{background:rgba(0,212,255,.03)}
         <div style="font-size:15px;font-weight:800;color:var(--green);margin-bottom:18px">⬇️ Depositar fondos — MercadoPago</div>
         <div style="display:grid;grid-template-columns:1fr auto;gap:12px;align-items:end">
           <div>
-            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px">Monto a depositar (USD)</div>
-            <input type="number" id="dep-monto" value="100" min="1" max="50000"
+            <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:7px">Monto a depositar (S/. Soles PEN)</div>
+            <input type="number" id="dep-monto" value="50" min="1" max="200000"
               style="width:100%;padding:13px 16px;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:16px;font-weight:700;outline:none">
           </div>
           <button onclick="depositarMP()" id="dep-btn"
@@ -1134,6 +1134,24 @@ async function startApp(){
   loadPortfolio(); loadAlerts(); loadRobo(); loadProfile(); loadNews(); loadNotifications();
   updateFiscalCount(); initFiscalChecklist();
   setTimeout(()=>ttsSpeak(_brokerWelcome(),'welcome'),2200);
+  // Detectar retorno de MercadoPago
+  const params=new URLSearchParams(window.location.search);
+  if(params.get('dep')==='ok'){
+    showSection('wallet');
+    setTimeout(()=>{
+      const el=document.getElementById('dep-msg');
+      if(el){el.textContent='✓ Pago aprobado por MercadoPago. Tu saldo se actualizará en segundos.';el.style.cssText='display:block;margin-top:12px;font-size:13px;padding:14px;border-radius:8px;background:rgba(34,197,94,.12);color:var(--green);border:1px solid rgba(34,197,94,.4);font-weight:700';}
+      loadWallet();
+    },800);
+    history.replaceState({},'','/');
+  }else if(params.get('dep')==='fail'){
+    showSection('wallet');
+    setTimeout(()=>{
+      const el=document.getElementById('dep-msg');
+      if(el){el.textContent='⚠️ El pago fue rechazado. Intenta con otro método de pago.';el.style.cssText='display:block;margin-top:12px;font-size:12px;padding:12px;border-radius:8px;background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.3)';}
+    },800);
+    history.replaceState({},'','/');
+  }
 }
 
 async function loadProfile(){
