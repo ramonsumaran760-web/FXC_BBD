@@ -32,6 +32,9 @@ class Settings(BaseSettings):
     REDIS_TTL_PORTFOLIO: int = 30
     REDIS_TTL_METRICS: int = 60
 
+    # Broker activo — "alpaca" (paper, default) | "ibkr" (live via Gateway local)
+    BROKER: str = os.getenv("BROKER", "alpaca")
+
     # Alpaca Paper Trading
     ALPACA_API_KEY: str = os.getenv("ALPACA_API_KEY", "DEMO_KEY")
     ALPACA_API_SECRET: str = os.getenv("ALPACA_API_SECRET", "DEMO_SECRET")
@@ -39,6 +42,10 @@ class Settings(BaseSettings):
     ALPACA_DATA_URL: str = "https://data.alpaca.markets/v2"
     ALPACA_WS_URL: str = "wss://stream.data.alpaca.markets/v2/iex"
     ALPACA_WEBHOOK_SECRET: str = os.getenv("ALPACA_WEBHOOK_SECRET", "")
+
+    # Interactive Brokers — Client Portal Gateway (corre local en tu PC)
+    IBKR_GATEWAY_URL: str = os.getenv("IBKR_GATEWAY_URL", "https://localhost:5000")
+    IBKR_ACCOUNT_ID: str = os.getenv("IBKR_ACCOUNT_ID", "")
 
     # Claude API — Robo-Advisor
     CLAUDE_API_KEY: str = os.getenv("CLAUDE_API_KEY", "")

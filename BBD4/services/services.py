@@ -280,93 +280,26 @@ def get_candles(ticker: str, period: str = "1mo", interval: str = "1d") -> list:
     return []
 
 # ─────────────────────────────────────────────────────────
-# 2. BROKER — Alpaca Paper Trading con Circuit Breaker
+# 2. BROKER — delegado al adapter activo (Alpaca | IBKR)
 # ─────────────────────────────────────────────────────────
-ALPACA_BASE = "https://paper-api.alpaca.markets/v2"
 
-def alpaca_get_account(key: str, secret: str) -> dict:
-    if _is_demo(key):
-        return {"equity": "12847.32", "cash": "3421.10", "buying_power": "6842.20",
-                "portfolio_value": "12847.32", "status": "ACTIVE",
-                "daytrade_count": 0, "source": "demo"}
-    from core.circuit_breaker import cb_alpaca
-    try:
-        @cb_alpaca
-        def _req():
-            r = requests.get(f"{ALPACA_BASE}/account",
-                             headers=_alpaca_headers(key, secret), timeout=8)
-            return r.json() if r.ok else {"error": r.text}
-        return _req()
-    except Exception as e:
-        return {"error": str(e)}
+def alpaca_get_account(key: str = None, secret: str = None) -> dict:
+    from brokers import get_broker
+    return get_broker().get_account()
 
-def alpaca_place_order(key: str, secret: str, ticker: str, monto_usd: float,
-                       side: str = "buy", tipo: str = "market",
-                       limit_price: float = None) -> dict:
-    prices = get_market_prices([ticker])
-    price = prices.get(ticker, {}).get("price", 100)
-    fracciones = round(monto_usd / price, 8) if price > 0 else 0
+def alpaca_place_order(key: str = None, secret: str = None, ticker: str = "",
+                       monto_usd: float = 0, side: str = "buy",
+                       tipo: str = "market", limit_price: float = None) -> dict:
+    from brokers import get_broker
+    return get_broker().place_order(ticker, monto_usd, side, tipo, limit_price)
 
-    if _is_demo(key):
-        return {"id": f"ord_{hashlib.md5(f'{ticker}{time.time()}'.encode()).hexdigest()[:12]}",
-                "symbol": ticker, "side": side, "type": tipo,
-                "notional": str(monto_usd), "filled_notional": str(monto_usd),
-                "filled_qty": str(fracciones), "filled_avg_price": str(round(price, 4)),
-                "status": "filled", "broker": "alpaca_paper_demo",
-                "submitted_at": datetime.now(timezone.utc).isoformat(),
-                "filled_at": datetime.now(timezone.utc).isoformat()}
+def alpaca_get_positions(key: str = None, secret: str = None) -> list:
+    from brokers import get_broker
+    return get_broker().get_positions()
 
-    from core.circuit_breaker import cb_alpaca
-    try:
-        @cb_alpaca
-        def _req():
-            payload = {"symbol": ticker, "side": side, "type": tipo,
-                       "time_in_force": "day" if tipo == "market" else "gtc",
-                       "notional": str(round(monto_usd, 2))}
-            if tipo == "limit" and limit_price:
-                payload["limit_price"] = str(limit_price)
-            r = requests.post(f"{ALPACA_BASE}/orders",
-                              headers=_alpaca_headers(key, secret),
-                              json=payload, timeout=12)
-            return r.json() if r.ok else {"error": r.text}
-        return _req()
-    except Exception as e:
-        return {"error": str(e)}
-
-def alpaca_get_positions(key: str, secret: str) -> list:
-    if _is_demo(key):
-        return [
-            {"symbol": "AAPL", "qty": "2.3456", "avg_entry_price": "189.50",
-             "current_price": "195.20", "market_value": "457.89",
-             "unrealized_pl": "13.38", "unrealized_plpc": "0.030"},
-            {"symbol": "NVDA", "qty": "0.8721", "avg_entry_price": "850.00",
-             "current_price": "912.40", "market_value": "795.27",
-             "unrealized_pl": "54.40", "unrealized_plpc": "0.073"},
-        ]
-    from core.circuit_breaker import cb_alpaca
-    try:
-        @cb_alpaca
-        def _req():
-            r = requests.get(f"{ALPACA_BASE}/positions",
-                             headers=_alpaca_headers(key, secret), timeout=8)
-            return r.json() if r.ok else []
-        return _req()
-    except Exception:
-        return []
-
-def alpaca_cancel_order(key: str, secret: str, order_id: str) -> dict:
-    if _is_demo(key):
-        return {"status": "cancelled", "id": order_id}
-    from core.circuit_breaker import cb_alpaca
-    try:
-        @cb_alpaca
-        def _req():
-            r = requests.delete(f"{ALPACA_BASE}/orders/{order_id}",
-                                headers=_alpaca_headers(key, secret), timeout=8)
-            return {"status": "cancelled"} if r.status_code == 204 else {"error": r.text}
-        return _req()
-    except Exception as e:
-        return {"error": str(e)}
+def alpaca_cancel_order(key: str = None, secret: str = None, order_id: str = "") -> dict:
+    from brokers import get_broker
+    return get_broker().cancel_order(order_id)
 
 # ─────────────────────────────────────────────────────────
 # 3. AML — OpenSanctions + OFAC local con Circuit Breaker

@@ -103,6 +103,7 @@ if CELERY_OK:
         """
         try:
             from services.services import get_market_prices, alpaca_place_order
+            from brokers import get_broker
             from services.notification_service import notificar_stop_loss
             from models.models import OrdenAutomatica, PosicionPortafolio, Orden, Usuario, AuditLog
             from core.security import firmar_orden, generar_nonce
@@ -155,9 +156,8 @@ if CELERY_OK:
                             oa.activa = False
                             continue
 
-                        # Ejecutar en broker
-                        broker_resp = alpaca_place_order(
-                            settings.ALPACA_API_KEY, settings.ALPACA_API_SECRET,
+                        # Ejecutar en broker activo
+                        broker_resp = get_broker().place_order(
                             oa.ticker, monto_usd, "sell", "market")
 
                         if "error" not in broker_resp:
@@ -172,7 +172,7 @@ if CELERY_OK:
                                 tipo="sell", tipo_orden="market",
                                 monto_usd=monto_usd, acciones=acc_vender,
                                 precio_ejecucion=precio_actual,
-                                estado="filled", broker="alpaca_paper",
+                                estado="filled", broker=get_broker().name,
                                 broker_order_id=broker_resp.get("id"),
                                 firma_ecdsa=firma, firma_verificada=True,
                                 nonce=nonce, aml_check="clear",

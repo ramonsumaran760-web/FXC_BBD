@@ -105,6 +105,7 @@ class ServiceUnavailableError(Exception):
 
 # ── Instancias globales ───────────────────────────────────
 cb_alpaca = CircuitBreaker("alpaca", threshold=5, timeout=60)
+cb_ibkr = CircuitBreaker("ibkr", threshold=5, timeout=60)
 cb_claude = CircuitBreaker("claude", threshold=3, timeout=120)
 cb_opensanctions = CircuitBreaker("opensanctions", threshold=5, timeout=300)
 cb_yfinance = CircuitBreaker("yfinance", threshold=10, timeout=30)

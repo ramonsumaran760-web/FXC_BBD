@@ -65,10 +65,10 @@ async def crear_orden(data: OrdenSchema, request: Request,
     firma = firmar_orden(datos_firma)
     firma_ok = verificar_firma(datos_firma, firma)
 
-    # Ejecutar en broker
+    # Ejecutar en broker activo (Alpaca paper o IBKR según BROKER en .env)
     broker_resp = alpaca_place_order(
-        settings.ALPACA_API_KEY, settings.ALPACA_API_SECRET,
-        data.ticker, data.monto_usd, data.tipo, data.tipo_orden, data.limit_price)
+        ticker=data.ticker, monto_usd=data.monto_usd,
+        side=data.tipo, tipo=data.tipo_orden, limit_price=data.limit_price)
 
     if "error" in broker_resp:
         raise HTTPException(502, f"Error broker: {broker_resp['error']}")
@@ -78,12 +78,13 @@ async def crear_orden(data: OrdenSchema, request: Request,
     if fracs == 0 and price > 0:
         fracs = round(data.monto_usd / price, 8)
 
+    from brokers import get_broker
     orden = Orden(
         usuario_id=current_user.id, ticker=data.ticker,
         tipo=data.tipo, tipo_orden=data.tipo_orden,
         monto_usd=data.monto_usd, acciones=fracs,
         precio_ejecucion=price, estado="filled",
-        broker="alpaca_paper", broker_order_id=broker_resp.get("id"),
+        broker=get_broker().name, broker_order_id=broker_resp.get("id"),
         firma_ecdsa=firma, firma_verificada=firma_ok,
         nonce=nonce, ip_origen=request.client.host if request.client else "",
         aml_check="clear", creado=datetime.now(timezone.utc), ejecutado=datetime.now(timezone.utc)
@@ -148,8 +149,7 @@ async def cancelar_orden(orden_id: int,
     if orden.estado == "filled":
         raise HTTPException(400, "Orden ya ejecutada, no se puede cancelar")
     if orden.broker_order_id:
-        alpaca_cancel_order(settings.ALPACA_API_KEY, settings.ALPACA_API_SECRET,
-                            orden.broker_order_id)
+        alpaca_cancel_order(order_id=orden.broker_order_id)
     orden.estado = "cancelled"
     await db.commit()
     return {"ok": True, "id": orden_id}
