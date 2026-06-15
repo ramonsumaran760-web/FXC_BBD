@@ -128,7 +128,7 @@ async def crear_mp_preferencia(data: DepositoMPSchema,
             "auto_return": "approved",
             "notification_url": "https://fxc-bbd.onrender.com/api/v1/webhooks/mercadopago",
             "statement_descriptor": "InvestIQ",
-            "binary_mode": True,          # aprobado/rechazado (sin pendiente)
+            "payer": {"email": current_user.email},
         }
         result = sdk.preference().create(preference_data)
         pref = result["response"]
