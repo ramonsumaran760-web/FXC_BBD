@@ -50,9 +50,9 @@ async def seed_inicial():
 
         # Usuarios base
         u = Usuario(
-            nombre="Inversionista", email="demo@investiq.co",
+            nombre="Administrador", email="demo@investiq.co",
             password_hash=hash_password("InvestIQ2026!"),
-            rol="investor", kyc_nivel="full", kyc_verificado=True,
+            rol="admin", kyc_nivel="biometric", kyc_verificado=True,
             aml_status="clear", mfa_activo=False, edad=30,
             ingresos_anuales_usd=25000, tolerancia_riesgo="moderada",
             saldo_usd=0
@@ -171,8 +171,14 @@ async def limpiar_datos_demo():
                 update(Usuario).where(Usuario.id == uid).values(saldo_usd=0)
             )
 
+        # Asegurar rol admin en demo@investiq.co
+        if u.rol != "admin":
+            await db.execute(
+                update(Usuario).where(Usuario.id == uid).values(rol="admin")
+            )
+
         await db.commit()
-        logger.info("✓ Datos de prueba eliminados de la DB existente")
+        logger.info("✓ Datos de prueba eliminados y rol admin aplicado")
 
 # ── Lifespan ──────────────────────────────────────────────
 @asynccontextmanager
