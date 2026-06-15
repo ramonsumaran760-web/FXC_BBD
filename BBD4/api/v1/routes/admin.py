@@ -26,12 +26,17 @@ async def admin_dashboard(admin=Depends(require_admin),
         select(func.sum(Transaccion.monto_usd)).where(
             Transaccion.tipo == "deposito",
             Transaccion.estado == "completed"))).scalar() or 0
+    total_comisiones = (await db.execute(
+        select(func.sum(Transaccion.monto_usd)).where(
+            Transaccion.metodo == "comision",
+            Transaccion.estado == "completed"))).scalar() or 0
     return {
         "usuarios_total": total_users,
         "usuarios_activos": active_users,
         "ordenes_total": total_orders,
         "bloqueados_aml": aml_blocked,
         "depositos_totales_usd": round(total_deposited, 2),
+        "comisiones_usd": round(float(total_comisiones), 4),
     }
 
 

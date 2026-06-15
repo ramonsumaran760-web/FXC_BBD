@@ -2408,19 +2408,12 @@ async function loadAdminDashboard(){
     const r=await apiFetch('/api/v1/admin/dashboard');
     if(r.status===403){document.getElementById('section-admin').querySelector('.admin-grid').innerHTML='<div style="color:var(--red);font-size:13px;padding:12px">Sin permisos de administrador.</div>';return;}
     const d=await r.json();
-    document.getElementById('admin-users').textContent=d.usuarios_total||'—';
-    document.getElementById('admin-active').textContent=d.usuarios_activos||'—';
-    document.getElementById('admin-orders').textContent=d.ordenes_total||'—';
+    document.getElementById('admin-users').textContent=d.usuarios_total??'—';
+    document.getElementById('admin-active').textContent=d.usuarios_activos??'—';
+    document.getElementById('admin-orders').textContent=d.ordenes_total??'—';
     document.getElementById('admin-capital').textContent='$'+fmt2(d.depositos_totales_usd||0);
-    document.getElementById('admin-aml').textContent=d.bloqueados_aml||'0';
-    // Comisiones: sumar transacciones de tipo comision del admin
-    try{
-      const rc=await apiFetch('/api/v1/transacciones');
-      const dc=await rc.json();
-      const txs=Array.isArray(dc)?dc:(dc.transacciones||[]);
-      const totalCom=txs.filter(t=>t.metodo==='comision'&&t.estado==='completed').reduce((a,t)=>a+parseFloat(t.monto_usd||0),0);
-      document.getElementById('admin-comisiones').textContent='$'+fmt2(totalCom);
-    }catch(e){}
+    document.getElementById('admin-aml').textContent=d.bloqueados_aml??'0';
+    document.getElementById('admin-comisiones').textContent='$'+fmt2(d.comisiones_usd||0);
     loadPlinPendientes();
     loadTransfPendientes();
     // Pre-fill admin credit form with own email
