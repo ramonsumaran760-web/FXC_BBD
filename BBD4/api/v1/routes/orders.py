@@ -46,15 +46,16 @@ async def crear_orden(data: OrdenSchema, request: Request,
     if current_user.aml_status == "blocked":
         raise HTTPException(403, "Cuenta bloqueada por AML")
 
-    # Comisión de la plataforma
-    comision = round(data.monto_usd * settings.COMISION_PCT, 4)
+    # Comisión de la plataforma (admin está exento)
+    es_admin = current_user.email == settings.ADMIN_EMAIL or current_user.rol == "admin"
+    comision = 0.0 if es_admin else round(data.monto_usd * settings.COMISION_PCT, 4)
     costo_total = round(data.monto_usd + comision, 2) if data.tipo == "buy" else 0
 
     if data.tipo == "buy" and current_user.saldo_usd < costo_total:
+        detalle = (f"Necesitas ${costo_total:.2f} (${data.monto_usd:.2f} + ${comision:.2f} comisión). "
+                   if comision > 0 else f"Necesitas ${costo_total:.2f}. ")
         raise HTTPException(400,
-            f"Saldo insuficiente. Necesitas ${costo_total:.2f} "
-            f"(${data.monto_usd:.2f} + ${comision:.2f} comisión). "
-            f"Disponible: ${current_user.saldo_usd:.2f}"
+            f"Saldo insuficiente. {detalle}Disponible: ${current_user.saldo_usd:.2f}"
         )
 
     # Firma ECDSA
