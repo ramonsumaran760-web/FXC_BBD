@@ -663,13 +663,15 @@ tr:hover td{background:rgba(0,212,255,.03)}
           </div>
           <div>
             <div style="font-size:11px;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.07em">Monto USD</div>
-            <input type="number" id="o-monto" value="100" min="1" style="width:100%;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none">
+            <input type="number" id="o-monto" value="100" min="1" oninput="updateComisionPreview()" style="width:100%;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;outline:none">
           </div>
           <button id="o-btn" onclick="placeOrder()" style="padding:10px 24px;background:var(--green);color:#fff;border:none;border-radius:8px;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap">Comprar</button>
         </div>
-        <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:8px">
-          <span style="font-size:11px;color:var(--muted)">Saldo disponible en wallet:</span>
+        <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:8px 14px;background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.15);border-radius:8px">
+          <span style="font-size:11px;color:var(--muted)">Saldo disponible:</span>
           <span style="font-size:14px;font-weight:900;color:var(--green)" id="order-saldo">$—</span>
+          <span style="font-size:11px;color:var(--muted)">Comisión (1%):</span>
+          <span style="font-size:12px;font-weight:700;color:var(--amber)" id="order-comision">$—</span>
           <a onclick="showSection('wallet');toggleDepForm()" style="font-size:10px;color:#60a5fa;cursor:pointer;text-decoration:underline">+ Depositar</a>
         </div>
         <div id="o-msg" style="display:none;margin-top:12px;font-size:12px;padding:10px 14px;border-radius:8px"></div>
@@ -964,6 +966,7 @@ tr:hover td{background:rgba(0,212,255,.03)}
         <div class="admin-stat"><div class="admin-stat-icon">✅</div><div class="admin-stat-lbl">Usuarios activos</div><div class="admin-stat-val" id="admin-active">—</div></div>
         <div class="admin-stat"><div class="admin-stat-icon">⚡</div><div class="admin-stat-lbl">Órdenes totales</div><div class="admin-stat-val" id="admin-orders">—</div></div>
         <div class="admin-stat"><div class="admin-stat-icon">💰</div><div class="admin-stat-lbl">Capital administrado</div><div class="admin-stat-val" id="admin-capital">$—</div></div>
+        <div class="admin-stat"><div class="admin-stat-icon">💵</div><div class="admin-stat-lbl">Comisiones ganadas</div><div class="admin-stat-val" id="admin-comisiones" style="color:var(--green)">$—</div></div>
         <div class="admin-stat"><div class="admin-stat-icon">🛡️</div><div class="admin-stat-lbl">Bloqueados AML</div><div class="admin-stat-val" id="admin-aml" style="color:var(--red)">—</div></div>
       </div>
       <!-- Crédito manual admin -->
@@ -1919,6 +1922,13 @@ async function loadDynSection(s){
 }
 
 // ── Order form ────────────────────────────────────────────
+function updateComisionPreview(){
+  const monto=parseFloat(document.getElementById('o-monto').value)||0;
+  const com=Math.round(monto*0.01*100)/100;
+  const el=document.getElementById('order-comision');
+  if(el)el.textContent='$'+fmt2(com);
+}
+
 function setOSide(s){
   oSide=s; const base='flex:1;padding:10px;border-radius:8px;font-weight:800;cursor:pointer;font-size:13px;';
   document.getElementById('ob-buy').style.cssText=base+(s==='buy'?'border:1px solid rgba(34,197,94,.4);background:rgba(34,197,94,.15);color:var(--green)':'border:1px solid var(--border);background:transparent;color:var(--muted)');
@@ -2403,6 +2413,14 @@ async function loadAdminDashboard(){
     document.getElementById('admin-orders').textContent=d.ordenes_total||'—';
     document.getElementById('admin-capital').textContent='$'+fmt2(d.depositos_totales_usd||0);
     document.getElementById('admin-aml').textContent=d.bloqueados_aml||'0';
+    // Comisiones: sumar transacciones de tipo comision del admin
+    try{
+      const rc=await apiFetch('/api/v1/transacciones');
+      const dc=await rc.json();
+      const txs=Array.isArray(dc)?dc:(dc.transacciones||[]);
+      const totalCom=txs.filter(t=>t.metodo==='comision'&&t.estado==='completed').reduce((a,t)=>a+parseFloat(t.monto_usd||0),0);
+      document.getElementById('admin-comisiones').textContent='$'+fmt2(totalCom);
+    }catch(e){}
     loadPlinPendientes();
     loadTransfPendientes();
     // Pre-fill admin credit form with own email

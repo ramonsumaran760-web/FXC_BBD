@@ -95,6 +95,10 @@ class Settings(BaseSettings):
     # Órdenes
     MIN_ORDER_USD: float = 1.0
     MAX_ORDER_USD: float = 50000.0
+    # Comisión por operación (porcentaje sobre el monto, ej: 0.01 = 1%)
+    COMISION_PCT: float = float(os.getenv("COMISION_PCT", "0.01"))
+    # Email del admin que recibe las comisiones
+    ADMIN_EMAIL: str = os.getenv("ADMIN_EMAIL", "demo@investiq.co")
 
     # Fiscalidad
     IVA_RATE: float = 0.19

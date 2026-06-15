@@ -45,8 +45,17 @@ async def crear_orden(data: OrdenSchema, request: Request,
         raise HTTPException(400, f"Monto mínimo: ${settings.MIN_ORDER_USD}")
     if current_user.aml_status == "blocked":
         raise HTTPException(403, "Cuenta bloqueada por AML")
-    if data.tipo == "buy" and current_user.saldo_usd < data.monto_usd:
-        raise HTTPException(400, f"Saldo insuficiente. Disponible: ${current_user.saldo_usd:.2f}")
+
+    # Comisión de la plataforma
+    comision = round(data.monto_usd * settings.COMISION_PCT, 4)
+    costo_total = round(data.monto_usd + comision, 2) if data.tipo == "buy" else 0
+
+    if data.tipo == "buy" and current_user.saldo_usd < costo_total:
+        raise HTTPException(400,
+            f"Saldo insuficiente. Necesitas ${costo_total:.2f} "
+            f"(${data.monto_usd:.2f} + ${comision:.2f} comisión). "
+            f"Disponible: ${current_user.saldo_usd:.2f}"
+        )
 
     # Firma ECDSA
     nonce = generar_nonce()
@@ -83,18 +92,23 @@ async def crear_orden(data: OrdenSchema, request: Request,
 
     # Actualizar saldo y posición
     if data.tipo == "buy":
-        current_user.saldo_usd = round(current_user.saldo_usd - data.monto_usd, 2)
+        current_user.saldo_usd = round(current_user.saldo_usd - data.monto_usd - comision, 2)
         await _actualizar_posicion_compra(db, current_user.id, data.ticker, fracs, price)
-        # Crear tax lot para FIFO/LIFO
         db.add(TaxLot(usuario_id=current_user.id, ticker=data.ticker,
                       acciones_originales=fracs, acciones_restantes=fracs,
                       precio_costo=price, fecha_compra=datetime.now(timezone.utc),
                       orden_id=orden.id))
 
     elif data.tipo == "sell":
-        current_user.saldo_usd = round(current_user.saldo_usd + data.monto_usd, 2)
+        ganancia_neta = round(data.monto_usd - comision, 2)
+        current_user.saldo_usd = round(current_user.saldo_usd + ganancia_neta, 2)
+        comision = round(data.monto_usd * settings.COMISION_PCT, 4)
         await _actualizar_posicion_venta(db, current_user.id, data.ticker, fracs, price)
         await _consumir_tax_lots_fifo(db, current_user.id, data.ticker, fracs)
+
+    # Acreditar comisión al admin
+    if comision > 0 and current_user.email != settings.ADMIN_EMAIL:
+        await _acreditar_comision(db, comision, data.ticker, data.tipo, orden.id)
 
     db.add(AuditLog(usuario_id=current_user.id, accion="ORDEN_EJECUTADA",
                     modulo="broker",
@@ -107,7 +121,9 @@ async def crear_orden(data: OrdenSchema, request: Request,
                                data.ticker, data.tipo, data.monto_usd)
 
     return {**orden.to_dict(), "firma_ok": firma_ok, "broker": broker_resp,
-            "saldo_nuevo": current_user.saldo_usd}
+            "saldo_nuevo": current_user.saldo_usd,
+            "comision_usd": comision,
+            "comision_pct": settings.COMISION_PCT * 100}
 
 
 @router.get("")
@@ -223,6 +239,25 @@ async def _actualizar_posicion_venta(db, usuario_id: int, ticker: str,
         pos.acciones = max(0, round(pos.acciones - fracs, 8))
         pos.precio_actual = price
         pos.recalcular()
+
+
+async def _acreditar_comision(db, monto: float, ticker: str, tipo: str, orden_id: int):
+    """Acredita la comisión de la operación al admin configurado."""
+    from models.models import Transaccion
+    res = await db.execute(select(Usuario).where(Usuario.email == settings.ADMIN_EMAIL))
+    admin = res.scalar_one_or_none()
+    if not admin:
+        return
+    admin.saldo_usd = round(admin.saldo_usd + monto, 4)
+    db.add(Transaccion(
+        usuario_id=admin.id,
+        tipo="deposito",
+        monto_usd=monto,
+        estado="completed",
+        metodo="comision",
+        referencia_externa=f"orden-{orden_id}",
+        descripcion=f"Comisión {tipo.upper()} {ticker} — Orden #{orden_id}"
+    ))
 
 
 async def _consumir_tax_lots_fifo(db, usuario_id: int, ticker: str, acciones: float):
