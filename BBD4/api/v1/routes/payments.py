@@ -162,6 +162,59 @@ async def crear_mp_preferencia(data: DepositoMPSchema,
         raise HTTPException(502, f"Error MercadoPago: {e}")
 
 
+# ── Crédito manual admin ──────────────────────────────────
+
+class CreditoManualSchema(BaseModel):
+    email_usuario: str
+    monto: float
+    concepto: str = "Crédito administrativo"
+
+@router.post("/admin/credito")
+async def admin_credito_manual(
+    data: CreditoManualSchema,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Admin acredita saldo directamente a cualquier usuario (incluyendo a sí mismo)."""
+    from sqlalchemy import select
+    if current_user.rol != "admin":
+        raise HTTPException(403, "Solo administradores")
+    if data.monto <= 0:
+        raise HTTPException(400, "Monto debe ser positivo")
+    if data.monto > 100000:
+        raise HTTPException(400, "Monto máximo: $100,000")
+
+    res = await db.execute(select(Usuario).where(Usuario.email == data.email_usuario))
+    usuario = res.scalar_one_or_none()
+    if not usuario:
+        raise HTTPException(404, f"Usuario '{data.email_usuario}' no encontrado")
+
+    usuario.saldo_usd = round(usuario.saldo_usd + data.monto, 2)
+    tx = Transaccion(
+        usuario_id=usuario.id,
+        tipo="deposito",
+        monto_usd=data.monto,
+        estado="completed",
+        metodo="credito_admin",
+        referencia_externa=f"ADMIN-{current_user.id}",
+        descripcion=data.concepto
+    )
+    db.add(tx)
+    db.add(AuditLog(
+        usuario_id=current_user.id,
+        accion="CREDITO_MANUAL",
+        modulo="pagos",
+        detalle=f"Admin acreditó ${data.monto} a {usuario.email} — {data.concepto}"
+    ))
+    await db.commit()
+    return {
+        "ok": True,
+        "usuario": usuario.email,
+        "monto_acreditado": data.monto,
+        "saldo_nuevo": usuario.saldo_usd
+    }
+
+
 # ── Plin ──────────────────────────────────────────────────
 
 class PlinSolicitudSchema(BaseModel):

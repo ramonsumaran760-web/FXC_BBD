@@ -905,6 +905,39 @@ tr:hover td{background:rgba(0,212,255,.03)}
         <div class="admin-stat"><div class="admin-stat-icon">💰</div><div class="admin-stat-lbl">Capital administrado</div><div class="admin-stat-val" id="admin-capital">$—</div></div>
         <div class="admin-stat"><div class="admin-stat-icon">🛡️</div><div class="admin-stat-lbl">Bloqueados AML</div><div class="admin-stat-val" id="admin-aml" style="color:var(--red)">—</div></div>
       </div>
+      <!-- Crédito manual admin -->
+      <div style="background:rgba(34,197,94,.06);border:1px solid rgba(34,197,94,.25);border-radius:12px;padding:18px;margin-bottom:14px">
+        <div style="font-size:13px;font-weight:800;color:var(--green);margin-bottom:4px">💵 Acreditar saldo directamente</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:14px">Como admin puedes acreditar fondos a cualquier cuenta (incluyendo la tuya) sin necesitar una transferencia.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end">
+          <div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Email usuario</div>
+            <input type="email" id="cr-email" placeholder="usuario@email.com"
+              style="width:100%;padding:11px 13px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;outline:none">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Monto (USD)</div>
+            <input type="number" id="cr-monto" value="100" min="1"
+              style="width:100%;padding:11px 13px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;font-weight:700;outline:none">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">Concepto</div>
+            <input type="text" id="cr-concepto" value="Crédito administrativo"
+              style="width:100%;padding:11px 13px;background:var(--surface);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;outline:none">
+          </div>
+          <button onclick="adminCredito()" style="padding:11px 18px;background:linear-gradient(135deg,var(--green),#16a34a);color:#000;border:none;border-radius:8px;font-weight:900;font-size:13px;cursor:pointer;white-space:nowrap">
+            Acreditar →
+          </button>
+        </div>
+        <div id="cr-msg" style="display:none;margin-top:12px;font-size:12px;padding:10px;border-radius:8px"></div>
+        <div style="margin-top:12px;padding:10px;background:rgba(99,102,241,.06);border-radius:8px;font-size:11px;color:#818cf8">
+          💡 <strong>Tu cuenta:</strong> <span id="cr-mi-email" style="color:#a5b4fc">cargando…</span>
+          <button onclick="acreditarmeAMi()" style="margin-left:10px;padding:4px 12px;background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);border-radius:6px;color:#a5b4fc;font-size:11px;font-weight:700;cursor:pointer">
+            Acreditar a mi cuenta →
+          </button>
+        </div>
+      </div>
+
       <!-- Depósitos Plin pendientes -->
       <div style="background:rgba(99,102,241,.06);border:1px solid rgba(99,102,241,.25);border-radius:12px;padding:18px;margin-bottom:14px">
         <div style="font-size:13px;font-weight:800;color:#a5b4fc;margin-bottom:12px">💜 Depósitos Plin pendientes de confirmación</div>
@@ -2166,6 +2199,43 @@ async function confirmarPlin(txId){
   }catch(e){alert('Error: '+e.message);}
 }
 
+// ── Admin crédito manual ──────────────────────────────────
+async function adminCredito(){
+  const email=document.getElementById('cr-email').value.trim();
+  const monto=parseFloat(document.getElementById('cr-monto').value);
+  const concepto=document.getElementById('cr-concepto').value.trim()||'Crédito administrativo';
+  const msg=document.getElementById('cr-msg');
+  if(!email){showMsg(msg,'Ingresa el email del usuario','err');return;}
+  if(!monto||monto<=0){showMsg(msg,'Ingresa un monto válido','err');return;}
+  if(!confirm(`¿Acreditar $${monto} USD a ${email}?\n\nConcepto: ${concepto}`))return;
+  try{
+    const r=await apiFetch('/api/v1/pagos/admin/credito',{method:'POST',body:JSON.stringify({email_usuario:email,monto,concepto})});
+    const d=await r.json();
+    if(!r.ok){showMsg(msg,d.detail||'Error al acreditar','err');return;}
+    showMsg(msg,`✅ Se acreditaron $${monto} USD a ${d.usuario}. Saldo nuevo: $${fmt2(d.saldo_nuevo)} USD`,'ok');
+    if(d.usuario===window._userProfile?.email)loadWallet();
+  }catch(e){showMsg(msg,'Error: '+e.message,'err');}
+}
+
+async function acreditarmeAMi(){
+  const monto=parseFloat(document.getElementById('cr-monto').value)||100;
+  const concepto=document.getElementById('cr-concepto').value.trim()||'Crédito administrativo';
+  if(window._userProfile?.email){
+    document.getElementById('cr-email').value=window._userProfile.email;
+    if(!confirm(`¿Acreditar $${monto} USD a tu propia cuenta (${window._userProfile.email})?`))return;
+    adminCredito();
+  }
+}
+
+function showMsg(el,text,type){
+  if(!el)return;
+  el.style.display='block';
+  el.style.background=type==='ok'?'rgba(34,197,94,.1)':'rgba(239,68,68,.1)';
+  el.style.border=`1px solid ${type==='ok'?'rgba(34,197,94,.3)':'rgba(239,68,68,.3)'}`;
+  el.style.color=type==='ok'?'var(--green)':'var(--red)';
+  el.textContent=text;
+}
+
 // ── Admin Dashboard ───────────────────────────────────────
 async function loadAdminDashboard(){
   try{
@@ -2178,6 +2248,13 @@ async function loadAdminDashboard(){
     document.getElementById('admin-capital').textContent='$'+fmt2(d.depositos_totales_usd||0);
     document.getElementById('admin-aml').textContent=d.bloqueados_aml||'0';
     loadPlinPendientes();
+    // Pre-fill admin credit form with own email
+    if(window._userProfile?.email){
+      const crEmail=document.getElementById('cr-email');
+      if(crEmail&&!crEmail.value)crEmail.value=window._userProfile.email;
+      const crMiEmail=document.getElementById('cr-mi-email');
+      if(crMiEmail)crMiEmail.textContent=window._userProfile.email;
+    }
     // Load users list
     const r2=await apiFetch('/api/v1/admin/usuarios');
     const users=await r2.json();
