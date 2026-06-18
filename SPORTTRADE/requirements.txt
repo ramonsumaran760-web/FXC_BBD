@@ -1,0 +1,202 @@
+# ═══════════════════════════════════════════════════════════════════════════════
+# FXC_BBD — Financial Exchange Center BBD
+# Dependencias completas: Finanzas · Estadística · Economía · IA/ML · Infraestructura
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# ─── FRAMEWORK WEB ───────────────────────────────────────────────────────────
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+gunicorn==23.0.0
+python-multipart==0.0.17
+httpx==0.28.1
+
+# ─── BASE DE DATOS ───────────────────────────────────────────────────────────
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0                    # PostgreSQL async driver
+aiosqlite==0.20.0                  # SQLite async (dev/testing)
+alembic==1.14.0                    # Migraciones de esquema
+
+# ─── CACHE Y WORKERS ─────────────────────────────────────────────────────────
+redis==5.2.1
+aioredis==2.0.1
+celery[redis]==5.4.0
+kombu==5.4.2
+flower==2.0.1                      # Celery monitoring UI
+
+# ─── WEBSOCKETS ──────────────────────────────────────────────────────────────
+websockets==14.1
+aiohttp==3.11.10
+
+# ─── VALIDACIÓN Y CONFIGURACIÓN ──────────────────────────────────────────────
+pydantic==2.10.3
+pydantic-settings==2.7.0
+python-dotenv==1.0.1
+
+# ─── AUTENTICACIÓN (compatible con InvestIQ / BBD4) ─────────────────────────
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-decouple==3.8
+
+# ════════════════════════════════════════════════════════════════════════════
+# FINANZAS — Kelly Criterion, análisis cuantitativo, gestión de portfolios
+# ════════════════════════════════════════════════════════════════════════════
+
+numpy==2.1.3
+scipy==1.14.1
+pandas==2.2.3
+
+# Finanzas cuantitativas
+numpy-financial==1.0.0             # NPV, IRR, funciones financieras
+empyrical==0.5.5                   # Sharpe, Sortino, Max Drawdown, Alpha/Beta
+pyfolio-reloaded==0.9.5            # Portfolio analytics
+quantlib==1.35                     # Librería de derivados / pricing financiero
+ffn==0.3.6                         # Financial functions for Python
+bt==0.2.9                          # Backtesting de portfolios
+pyportfolioopt==1.5.6              # Optimización de portfolios (Markowitz, HRP)
+riskfolio-lib==6.3.0               # Risk-parity, CVaR, portafolio robusto
+arch==7.1.0                        # ARCH/GARCH para volatilidad
+
+# Market microstructure
+pandas-ta==0.3.14b0                # Indicadores técnicos (RSI, MACD, Bollinger)
+ta-lib==0.5.1                      # TA-Lib wrapper (requiere TA-Lib C instalado)
+
+# ════════════════════════════════════════════════════════════════════════════
+# ESTADÍSTICA — Brier Score, regresión, series temporales, pruebas de hipótesis
+# ════════════════════════════════════════════════════════════════════════════
+
+statsmodels==0.14.4                # OLS, ARIMA, VAR, pruebas estadísticas
+pingouin==0.5.5                    # Estadística fácil (t-tests, ANOVA, correlaciones)
+pymc==5.19.1                       # Estadística Bayesiana (MCMC, inferencia)
+arviz==0.20.0                      # Visualización de modelos Bayesianos
+lifelines==0.29.0                  # Análisis de supervivencia (lesiones, rachas)
+scikit-posthocs==0.9.0             # Tests post-hoc (Dunn, Conover)
+
+# Distribuciones de probabilidad
+fitter==1.7.2                      # Ajuste automático de distribuciones
+distfit==1.8.1                     # Distribución fit con KL-divergence
+
+# ════════════════════════════════════════════════════════════════════════════
+# ECONOMÍA — Modelos econométricos, análisis de mercados, forecasting
+# ════════════════════════════════════════════════════════════════════════════
+
+linearmodels==6.1                  # OLS en panel, IV estimadores, SUR
+pmdarima==2.0.4                    # Auto-ARIMA / selección automática de orden
+prophet==1.1.6                     # Facebook Prophet para series temporales
+neuralprophet==0.9.5               # Prophet + redes neuronales
+darts==0.31.0                      # Time-series forecasting (100+ modelos)
+
+# ════════════════════════════════════════════════════════════════════════════
+# IA / MACHINE LEARNING — Agentes predictivos, features, clasificación
+# ════════════════════════════════════════════════════════════════════════════
+
+scikit-learn==1.5.2                # Clasificadores, pipeline, cross-validation
+xgboost==2.1.3                     # Gradient boosting — odds/racha/estadística
+lightgbm==4.5.0                    # LightGBM — más rápido en tabular
+catboost==1.2.7                    # CatBoost — manejo nativo de categóricas
+shap==0.46.0                       # Explainability (SHAP values por agente)
+
+# Redes Neuronales / Deep Learning
+torch==2.5.1                       # PyTorch base
+torchvision==0.20.1
+pytorch-lightning==2.4.0           # Training loops + checkpointing
+
+# Calibración de probabilidades (Brecha C)
+calibration-analysis==0.1.0        # Calibration curves, ECE, reliability diagrams
+betacal==0.1.0                     # Beta calibration para probabilidades
+
+# Reinforcement Learning (futuro: agente de market-making)
+stable-baselines3==2.4.0
+gymnasium==1.0.0
+
+# ════════════════════════════════════════════════════════════════════════════
+# NLP — Agente 4 Noticias: análisis de sentimiento, keyword extraction
+# ════════════════════════════════════════════════════════════════════════════
+
+transformers==4.47.1               # Hugging Face: BERT, RoBERTa, FinBERT
+torch-audio==2.5.1
+datasets==3.2.0
+tokenizers==0.21.0
+sentence-transformers==3.3.1       # Embeddings semánticos (para noticias similares)
+
+nltk==3.9.1
+textblob==0.18.0.post0
+vaderSentiment==3.3.2              # Sentimiento rápido en inglés
+pysentimiento==0.8.0               # Sentimiento en español (Twitter/noticias)
+spacy==3.8.3                       # NLP pipeline (entidades, tokens)
+
+# ════════════════════════════════════════════════════════════════════════════
+# MONTE CARLO Y SIMULACIÓN — Agente 8
+# ════════════════════════════════════════════════════════════════════════════
+
+numba==0.61.0                      # JIT compilation para simulación de alta velocidad
+cupy-cuda12x==13.3.0               # GPU arrays (opcional, si hay GPU disponible)
+joblib==1.4.2                      # Paralelización de simulaciones
+dask==2024.12.1                    # Parallel computing escalable
+ray==2.40.0                        # Distributed computing para MC masivo
+
+# ════════════════════════════════════════════════════════════════════════════
+# ANÁLISIS DE DATOS — Pipelines, transformaciones, visualización
+# ════════════════════════════════════════════════════════════════════════════
+
+polars==1.18.0                     # DataFrame ultra-rápido (alternativa pandas)
+pyarrow==18.1.0                    # Serialización columnar (Parquet, Arrow)
+fastparquet==2024.11.0             # I/O Parquet
+
+# Visualización (para dashboards internos y reportes)
+matplotlib==3.9.3
+seaborn==0.13.2
+plotly==5.24.1
+kaleido==0.2.1                     # Exportar gráficas Plotly a PNG/PDF
+
+# ════════════════════════════════════════════════════════════════════════════
+# DATOS DEPORTIVOS Y ODDS — Integración con fuentes de datos
+# ════════════════════════════════════════════════════════════════════════════
+
+aiofiles==24.1.0                   # I/O asíncrono de archivos
+beautifulsoup4==4.12.3             # Web scraping (odds, noticias)
+lxml==5.3.0                        # Parser HTML/XML rápido
+playwright==1.49.1                 # Browser automation para datos JS-rendered
+selenium==4.27.1                   # Alternativa para scraping
+fake-useragent==2.0.3              # User agent rotation
+
+# APIs especializadas (claves en .env)
+# football-data==1.0.3             # football-data.org API wrapper
+requests==2.32.3
+urllib3==2.2.3
+httpcore==1.0.7
+
+# ════════════════════════════════════════════════════════════════════════════
+# MONITOREO Y OBSERVABILIDAD
+# ════════════════════════════════════════════════════════════════════════════
+
+prometheus-client==0.21.1          # Métricas Prometheus (latencia, CB estado)
+sentry-sdk[fastapi]==2.19.2        # Error tracking en producción
+opentelemetry-api==1.29.0          # Trazas distribuidas
+opentelemetry-sdk==1.29.0
+opentelemetry-instrumentation-fastapi==0.50b0
+
+# ════════════════════════════════════════════════════════════════════════════
+# UTILIDADES
+# ════════════════════════════════════════════════════════════════════════════
+
+python-dateutil==2.9.0
+pytz==2024.2
+tenacity==9.0.0                    # Retry logic con backoff exponencial
+structlog==24.4.0                  # Structured logging
+rich==13.9.4                       # Terminal output bonito para CLI/debug
+typer==0.15.1                      # CLI tools (scripts de gestión)
+orjson==3.10.12                    # JSON serialización ultra-rápida
+
+# Testing
+pytest==8.3.4
+pytest-asyncio==0.24.0
+pytest-cov==6.0.0
+httpx==0.28.1                      # Test client para FastAPI
+factory-boy==3.3.1                 # Fixtures para tests
+faker==33.1.0                      # Datos sintéticos para pruebas
+
+# Desarrollo
+black==24.10.0
+ruff==0.8.4
+mypy==1.13.0
+pre-commit==4.0.1
