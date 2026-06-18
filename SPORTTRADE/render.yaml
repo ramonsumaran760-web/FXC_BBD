@@ -1,0 +1,82 @@
+services:
+  # ── API principal FXC_BBD ────────────────────────────────────────────────
+  - type: web
+    name: fxcbbd-api
+    runtime: python
+    rootDir: SPORTTRADE
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --workers 2
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fxcbbd-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: fxcbbd-redis
+          type: redis
+          property: connectionString
+      - key: DEBUG
+        value: "false"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: CORS_ORIGINS
+        value: "https://fxcbbd-api.onrender.com,http://localhost:3000"
+      - key: APP_HOST
+        value: "0.0.0.0"
+      - key: LATENCY_SLA_MS
+        value: "500"
+      - key: KELLY_DEFAULT_DIVISOR
+        value: "2.0"
+      - key: MAX_EXPOSICION_EVENTO
+        value: "0.08"
+      - key: MAX_EXPOSICION_TOTAL
+        value: "0.25"
+
+  # ── Celery Worker (recalibración + jobs) ─────────────────────────────────
+  - type: worker
+    name: fxcbbd-celery
+    runtime: python
+    rootDir: SPORTTRADE
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A workers.celery_worker worker --loglevel=info --concurrency=2
+    plan: starter
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fxcbbd-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: fxcbbd-redis
+          type: redis
+          property: connectionString
+
+  # ── Celery Beat (scheduler semanal) ─────────────────────────────────────
+  - type: worker
+    name: fxcbbd-beat
+    runtime: python
+    rootDir: SPORTTRADE
+    buildCommand: pip install -r requirements.txt
+    startCommand: celery -A workers.celery_worker beat --loglevel=info
+    plan: starter
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fxcbbd-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: fxcbbd-redis
+          type: redis
+          property: connectionString
+
+databases:
+  - name: fxcbbd-db
+    plan: starter
+
+  - name: fxcbbd-redis
+    plan: starter
+    ipAllowList: []
