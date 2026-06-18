@@ -62,6 +62,14 @@ async def login(data: LoginSchema, request: Request, db: AsyncSession = Depends(
             "token_type": "bearer", "usuario": user.to_dict()}
 
 
+@router.get("/check-user/{email}")
+async def check_user_exists(email: str, db: AsyncSession = Depends(get_db)):
+    """Diagnóstico: verifica si un email existe en la BD (sin exponer datos sensibles)."""
+    res = await db.execute(select(Usuario).where(Usuario.email == email))
+    user = res.scalar_one_or_none()
+    return {"exists": user is not None, "activo": user.activo if user else None, "rol": user.rol if user else None}
+
+
 @router.post("/register")
 async def register(data: RegisterSchema, request: Request, db: AsyncSession = Depends(get_db)):
     res = await db.execute(select(Usuario).where(Usuario.email == data.email))
