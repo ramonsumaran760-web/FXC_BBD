@@ -1,0 +1,909 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FXC_BBD — Sports Trading Desk</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#070a0e;--bg2:#0f151d;--bg3:#16202c;--bg4:#1e2938;
+  --bdr:#243242;--bdr2:#34465c;
+  --g:#10b981;--g2:#059669;--r:#ef4444;--b:#3b82f6;
+  --a:#f59e0b;--p:#8b5cf6;--t:#06b6d4;--pk:#ec4899;
+  --tx:#f1f5f9;--tx2:#94a3b8;--tx3:#64748b;--tx4:#475569;
+  --gold:#f59e0b;--silver:#94a3b8;--bronze:#c27c3b;
+}
+body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,sans-serif;font-size:11px;overflow:hidden;height:100vh}
+.app{display:grid;grid-template-rows:48px 40px 26px 1fr;height:100vh;width:100vw}
+
+/* ── TOPBAR ─────────────────────────────────────────────── */
+.topbar{display:flex;align-items:center;gap:8px;padding:0 14px;background:var(--bg2);border-bottom:1px solid var(--bdr);z-index:50}
+.logo{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800;white-space:nowrap;margin-right:6px}
+.logo-icon{width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:grid;place-items:center;flex-shrink:0}
+.nav-pills{display:flex;gap:3px;flex:1;overflow:hidden}
+.nav-pill{padding:5px 10px;border-radius:4px;font-size:10px;font-weight:600;cursor:pointer;color:var(--tx2);transition:all .2s;white-space:nowrap;border:1px solid transparent}
+.nav-pill:hover{color:var(--tx);background:var(--bg3)}
+.nav-pill.active{background:var(--bg3);color:var(--g);border-color:var(--bdr)}
+.ws-badge{display:flex;align-items:center;gap:5px;font-size:9px;color:var(--g);padding:3px 10px;border-radius:20px;background:rgba(16,185,129,.06);border:1px solid rgba(16,185,129,.25);white-space:nowrap;flex-shrink:0}
+.audio-btn{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:4px;font-size:9px;font-weight:700;cursor:pointer;border:1px solid var(--bdr);background:var(--bg3);color:var(--tx3);transition:all .2s;text-transform:uppercase;flex-shrink:0}
+.audio-btn.on{color:var(--t);border-color:rgba(6,182,212,.5);background:rgba(6,182,212,.07)}
+.clock{font-size:15px;font-weight:800;color:var(--g);letter-spacing:1px;font-variant-numeric:tabular-nums;background:var(--bg3);padding:3px 10px;border-radius:4px;border:1px solid var(--bdr);flex-shrink:0}
+
+/* ── ACTIONBAR ──────────────────────────────────────────── */
+.actionbar{display:flex;align-items:center;gap:5px;padding:0 12px;background:var(--bg2);border-bottom:1px solid var(--bdr);overflow-x:auto}
+.btn3{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:4px;border:none;cursor:pointer;font-size:10px;font-weight:700;color:#fff;text-transform:uppercase;letter-spacing:.3px;transition:opacity .15s;white-space:nowrap;flex-shrink:0}
+.btn3:hover{opacity:.85}
+.btn3:active{transform:scale(.97)}
+.sep{width:1px;height:20px;background:var(--bdr);flex-shrink:0}
+.cd-badge{display:inline-flex;align-items:center;gap:4px;font-size:9px;padding:3px 8px;border-radius:4px;font-weight:800;font-family:monospace;border:1px solid;white-space:nowrap}
+.cd-g{color:var(--g);border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.07)}
+.cd-a{color:var(--a);border-color:rgba(245,158,11,.35);background:rgba(245,158,11,.07)}
+.cd-r{color:var(--r);border-color:rgba(239,68,68,.35);background:rgba(239,68,68,.07);animation:pulse-bdr .6s infinite}
+
+/* ── TICKER TAPE ────────────────────────────────────────── */
+.ticker{background:var(--bg3);border-bottom:1px solid var(--bdr);overflow:hidden;display:flex;align-items:center}
+.ticker-track{display:flex;animation:ticker 40s linear infinite;white-space:nowrap}
+.tick-item{display:inline-flex;align-items:center;gap:6px;padding:0 20px;font-size:10px;border-right:1px solid var(--bdr);height:26px}
+.tick-id{font-weight:800;color:var(--t);font-family:monospace}
+.tick-up{color:var(--g);font-weight:700}
+.tick-dn{color:var(--r);font-weight:700}
+
+/* ── CONTENT GRID ───────────────────────────────────────── */
+.content-grid{display:grid;grid-template-columns:178px 1fr 296px;overflow:hidden;min-height:0}
+
+/* ── SIDEBAR ────────────────────────────────────────────── */
+.sidebar{background:var(--bg2);border-right:1px solid var(--bdr);overflow-y:auto;display:flex;flex-direction:column}
+.sec-lbl{font-size:8px;font-weight:700;color:var(--tx4);text-transform:uppercase;letter-spacing:.1em;padding:12px 14px 4px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:7px 14px;cursor:pointer;font-size:10.5px;color:var(--tx2);border-left:2.5px solid transparent;transition:all .15s}
+.nav-item:hover{color:var(--tx);background:rgba(255,255,255,.02)}
+.nav-item.active{color:var(--g);background:rgba(16,185,129,.07);border-left-color:var(--g)}
+.nav-item i{font-size:14px;width:16px;text-align:center;flex-shrink:0}
+.nav-badge{font-size:7px;background:var(--r);color:#fff;padding:1px 5px;border-radius:3px;margin-left:auto;font-weight:800}
+.sidebar-foot{margin:10px;padding:10px;background:var(--bg3);border-radius:6px;border:1px solid var(--bdr);margin-top:auto}
+
+/* ── MAIN ───────────────────────────────────────────────── */
+.main{overflow-y:auto;padding:10px;background:var(--bg);display:flex;flex-direction:column;gap:9px}
+.panel{background:var(--bg2);border:1px solid var(--bdr);border-radius:8px;padding:12px}
+.ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.pt{font-size:10.5px;font-weight:700;color:var(--tx);display:flex;align-items:center;gap:6px;text-transform:uppercase;letter-spacing:.3px}
+
+/* ── DROP ALERT ─────────────────────────────────────────── */
+.drop-alert{display:none;align-items:center;gap:10px;padding:9px 14px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);border-radius:7px;animation:slideIn .35s ease}
+.drop-alert.show{display:flex}
+
+/* ── TOP 10 ─────────────────────────────────────────────── */
+.top10-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.t10-card{background:var(--bg3);border:1px solid var(--bdr);border-radius:6px;padding:9px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden}
+.t10-card:hover{border-color:var(--bdr2);transform:translateY(-1px)}
+.t10-card.r1{border-color:rgba(245,158,11,.55);box-shadow:0 0 10px rgba(245,158,11,.1)}
+.t10-card.r2{border-color:rgba(148,163,184,.4)}
+.t10-card.r3{border-color:rgba(194,124,59,.4)}
+.t10-card.flash{animation:cardFlash .6s ease}
+.rank-badge{position:absolute;top:6px;right:6px;font-size:7px;font-weight:800;padding:1px 5px;border-radius:3px}
+.rb1{background:var(--gold);color:#000}
+.rb2{background:var(--silver);color:#000}
+.rb3{background:var(--bronze);color:#fff}
+.rbn{background:var(--bg4);color:var(--tx3)}
+
+/* ── MARKET TABLE ───────────────────────────────────────── */
+.tbl-box{overflow:hidden;border-radius:6px;border:1px solid var(--bdr)}
+.tbl{width:100%;border-collapse:collapse;font-size:10.5px}
+.tbl th{padding:7px 9px;background:var(--bg3);color:var(--tx3);font-size:8.5px;text-transform:uppercase;font-weight:700;text-align:left;white-space:nowrap}
+.tbl td{padding:8px 9px;border-top:1px solid rgba(36,50,66,.5);vertical-align:middle;white-space:nowrap}
+.tbl tr:hover td{background:rgba(255,255,255,.012)}
+.ob-btn{border:1px solid;padding:5px 9px;border-radius:3px;font-family:monospace;font-weight:700;cursor:pointer;font-size:11px;transition:all .15s;background:transparent}
+.ob-btn.ask{border-color:var(--g2);color:var(--g);background:rgba(16,185,129,.1)}
+.ob-btn.bid{border-color:var(--r);color:var(--r);background:rgba(239,68,68,.1)}
+.ob-btn:active{transform:scale(.95)}
+.ob-btn:hover{opacity:.8}
+
+/* ── AGENTS PANEL ───────────────────────────────────────── */
+.agent-row{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid rgba(36,50,66,.4)}
+.agent-row:last-child{border-bottom:none}
+.agent-icon{width:22px;height:22px;border-radius:4px;display:grid;place-items:center;flex-shrink:0}
+.agent-name{font-size:9px;font-weight:600;color:var(--tx2);width:82px;flex-shrink:0}
+.bar-wrap{flex:1;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden}
+.bar-fill{height:100%;border-radius:2px;transition:width .8s ease}
+.agent-pct{font-size:9px;font-weight:800;font-family:monospace;width:28px;text-align:right;flex-shrink:0}
+.sig{font-size:7px;font-weight:800;padding:1px 5px;border-radius:2px;flex-shrink:0}
+.sig-up{background:rgba(16,185,129,.15);color:var(--g)}
+.sig-ne{background:rgba(100,116,139,.15);color:var(--tx3)}
+.sig-dn{background:rgba(239,68,68,.15);color:var(--r)}
+.master-out{background:var(--bg3);border:1px solid var(--bdr);border-radius:6px;padding:10px;margin-top:8px}
+.m-bars{display:flex;gap:4px;height:45px;align-items:flex-end;margin:6px 0 4px}
+.m-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+.m-bar-fill{width:100%;border-radius:2px 2px 0 0;transition:height .8s ease}
+
+/* ── MONTE CARLO ────────────────────────────────────────── */
+.two-col{display:grid;grid-template-columns:1.15fr 0.85fr;gap:9px}
+.mc-chart{width:100%;height:80px}
+.mc-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-top:8px}
+.mc-stat{background:var(--bg3);border:1px solid var(--bdr);border-radius:4px;padding:6px;text-align:center}
+
+/* ── RIGHT PANEL ────────────────────────────────────────── */
+.right-panel{background:var(--bg2);border-left:1px solid var(--bdr);display:flex;flex-direction:column;overflow-y:auto}
+.rp-sec{padding:12px;border-bottom:1px solid var(--bdr)}
+.rp-title{font-size:10px;font-weight:700;color:var(--tx);margin-bottom:8px;display:flex;align-items:center;gap:5px;text-transform:uppercase}
+.inp-grp{background:var(--bg3);border:1px solid var(--bdr);border-radius:5px;padding:7px 10px;margin-bottom:6px}
+.inp-lbl{font-size:8px;color:var(--tx3);text-transform:uppercase;font-weight:700;margin-bottom:3px}
+.inp-val{font-size:13px;font-weight:700;background:transparent;border:none;width:100%;outline:none;font-family:monospace;color:var(--tx)}
+.kelly-box{background:rgba(16,185,129,.05);border:1px solid rgba(16,185,129,.25);border-radius:5px;padding:8px;margin-bottom:8px}
+.alert-item{display:flex;gap:8px;padding:7px;background:var(--bg3);border-left:3px solid;border-radius:0 4px 4px 0;margin-bottom:5px}
+
+/* ── BADGES ─────────────────────────────────────────────── */
+.badge{font-size:8px;font-weight:800;padding:1px 5px;border-radius:3px}
+.bg{background:rgba(16,185,129,.15);color:var(--g)}
+.ba{background:rgba(245,158,11,.15);color:var(--a)}
+.br{background:rgba(239,68,68,.15);color:var(--r)}
+.bp{background:rgba(139,92,246,.15);color:var(--p)}
+.bb{background:rgba(59,130,246,.15);color:var(--b)}
+.bn{background:var(--bg4);color:var(--tx3)}
+
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block;animation:blink 1s infinite}
+.dot-g{background:var(--g)}
+.dot-r{background:var(--r)}
+.mono{font-family:monospace}
+
+/* ── KEYFRAMES ──────────────────────────────────────────── */
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+@keyframes ticker{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+@keyframes slideIn{from{transform:translateY(-12px);opacity:0}to{transform:translateY(0);opacity:1}}
+@keyframes cardFlash{0%,100%{background:var(--bg3)}50%{background:rgba(16,185,129,.18)}}
+@keyframes pulse-bdr{0%,100%{opacity:1}50%{opacity:.4}}
+@keyframes dropAnim{0%{border-left-width:3px}50%{border-left-width:5px}100%{border-left-width:3px}}
+
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg2)}
+::-webkit-scrollbar-thumb{background:var(--bdr2);border-radius:2px}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ═══ TOPBAR ══════════════════════════════════════════════════ -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon"><i class="ti ti-chart-candle" style="color:#fff;font-size:14px"></i></div>
+    FXC_BBD <span style="font-size:8px;color:var(--b);font-weight:800;margin-left:4px">SPORTS EXCHANGE</span>
+  </div>
+  <div class="nav-pills">
+    <div class="nav-pill active" onclick="setTab(this)">Trading Desk</div>
+    <div class="nav-pill" onclick="setTab(this)">Mercado Live</div>
+    <div class="nav-pill" onclick="setTab(this)">IA Central</div>
+    <div class="nav-pill" onclick="setTab(this)">Monte Carlo</div>
+    <div class="nav-pill" onclick="setTab(this)">Historial</div>
+    <div class="nav-pill" onclick="setTab(this)">Config ERP</div>
+  </div>
+  <div class="ws-badge"><span class="dot dot-g"></span>9 AGENTES IA ACTIVOS</div>
+  <div class="audio-btn on" id="audioBtn" onclick="toggleAudio()">
+    <i class="ti ti-volume" id="audioIcon"></i><span id="audioLabel">AUDIO ON</span>
+  </div>
+  <div class="clock" id="clk">--:--:--</div>
+</div>
+
+<!-- ═══ ACTIONBAR ═══════════════════════════════════════════════ -->
+<div class="actionbar">
+  <button class="btn3" style="background:var(--g2)" onclick="execOrder()"><i class="ti ti-bolt"></i>Ejecutar Orden</button>
+  <button class="btn3" style="background:var(--p)" onclick="invokeAI()"><i class="ti ti-brain"></i>Master AI</button>
+  <button class="btn3" style="background:var(--b)" onclick="runMC()"><i class="ti ti-calculator"></i>Monte Carlo</button>
+  <button class="btn3" style="background:var(--a)"><i class="ti ti-bell-ringing"></i>Alertas Auto</button>
+  <div class="sep"></div>
+  <button class="btn3" style="background:var(--bg4);border:1px solid var(--bdr2);color:var(--tx2)"><i class="ti ti-arrows-exchange"></i>Trading-Out</button>
+  <div class="sep"></div>
+  <!-- Countdown badges -->
+  <span style="font-size:9px;color:var(--tx3)">TOP 10 EN:</span>
+  <span class="cd-badge cd-g" id="cd-top10">3:00</span>
+  <span style="font-size:9px;color:var(--tx3);margin-left:4px">ALERTA EV EN:</span>
+  <span class="cd-badge cd-a" id="cd-alert">2:00</span>
+  <div class="sep"></div>
+  <span style="font-size:9px;color:var(--tx3)">CB:</span>
+  <span class="badge bg" id="cb-status">OPERATIONAL</span>
+  <span style="font-size:9px;color:var(--tx3);margin-left:5px">LATENCIA:</span>
+  <span class="badge bb" id="lat-badge">38ms</span>
+</div>
+
+<!-- ═══ TICKER TAPE ══════════════════════════════════════════════ -->
+<div class="ticker">
+  <div class="ticker-track" id="ticker-track"></div>
+</div>
+
+<!-- ═══ CONTENT GRID ════════════════════════════════════════════ -->
+<div class="content-grid">
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div>
+    <div class="sec-lbl">Mercados Activos</div>
+    <div class="nav-item active"><i class="ti ti-layout-dashboard"></i>Dashboard General</div>
+    <div class="nav-item"><i class="ti ti-activity-heartbeat" style="color:var(--r)"></i>Eventos LIVE <span class="nav-badge" id="live-count">4</span></div>
+    <div class="nav-item"><i class="ti ti-clock"></i>Pre-partido Hoy</div>
+    <div class="nav-item"><i class="ti ti-trending-up"></i>Historial Cuotas</div>
+
+    <div class="sec-lbl">Motor Inteligencia</div>
+    <div class="nav-item"><i class="ti ti-brain" style="color:var(--p)"></i>Predicciones IA</div>
+    <div class="nav-item"><i class="ti ti-chart-dots" style="color:var(--b)"></i>Simulador Monte Carlo</div>
+    <div class="nav-item"><i class="ti ti-scale" style="color:var(--a)"></i>Arbitraje Detectado</div>
+    <div class="nav-item"><i class="ti ti-circuit-cell" style="color:var(--t)"></i>Calibración Brier</div>
+
+    <div class="sec-lbl">Finanzas ERP</div>
+    <div class="nav-item"><i class="ti ti-wallet"></i>Bankroll & Kelly</div>
+    <div class="nav-item"><i class="ti ti-receipt-2"></i>Posiciones Abiertas</div>
+    <div class="nav-item"><i class="ti ti-report-money"></i>P&amp;L Histórico</div>
+    <div class="nav-item"><i class="ti ti-users"></i>Afiliados</div>
+    <div class="nav-item"><i class="ti ti-shield-lock"></i>Auditoría &amp; AML</div>
+  </div>
+  <div class="sidebar-foot">
+    <div style="font-size:7px;color:var(--tx4);text-transform:uppercase;font-weight:700;margin-bottom:5px">Engine Status</div>
+    <div style="font-size:9px;color:var(--g);display:flex;align-items:center;gap:5px"><span class="dot dot-g"></span>FastAPI v1 Online</div>
+    <div style="font-size:8px;color:var(--tx3);margin-top:3px">Redis Order Book Activo</div>
+    <div style="font-size:8px;color:var(--tx3);margin-top:2px">Celery Beat: <span style="color:var(--g)">ONLINE</span></div>
+  </div>
+</div>
+
+<!-- MAIN AREA -->
+<div class="main">
+
+  <!-- DROP ALERT BANNER -->
+  <div class="drop-alert" id="drop-alert">
+    <i class="ti ti-alert-triangle" style="color:var(--r);font-size:20px;flex-shrink:0"></i>
+    <div style="flex:1">
+      <div style="font-size:11px;font-weight:800;color:var(--r)" id="alert-title">AVISO DE BAJA EV</div>
+      <div style="font-size:10px;color:var(--tx2);margin-top:2px" id="alert-body">—</div>
+    </div>
+    <button onclick="closeAlert()" style="background:none;border:none;color:var(--tx3);cursor:pointer;font-size:16px;padding:0 4px"><i class="ti ti-x"></i></button>
+  </div>
+
+  <!-- TOP 10 MEJORES INVERSIONES -->
+  <div class="panel">
+    <div class="ph">
+      <div class="pt"><i class="ti ti-trophy" style="color:var(--gold)"></i>Top 10 — Mejores Inversiones por Expected Value</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:9px;color:var(--tx3)">Ranking por EV IA</span>
+        <span class="badge bg" id="top10-status">LIVE</span>
+      </div>
+    </div>
+    <div class="top10-grid" id="top10-grid"></div>
+  </div>
+
+  <!-- MARKET TABLE -->
+  <div class="panel" style="padding:0;overflow:hidden">
+    <div class="ph" style="padding:11px 12px 0">
+      <div class="pt"><i class="ti ti-building-columns" style="color:var(--b)"></i>Mercado Abierto — Activos Líquidos</div>
+      <span style="font-size:9px;color:var(--tx3);display:flex;align-items:center;gap:5px"><span class="dot dot-g"></span>WebSocket en vivo</span>
+    </div>
+    <table class="tbl">
+      <thead><tr>
+        <th>Ticker</th><th>Liga</th><th>Estado</th>
+        <th>Prob. IA (L/E/V)</th><th>Cuotas Back</th>
+        <th>EV%</th><th>Confianza</th><th>Kelly</th>
+        <th style="text-align:center">Back Local</th>
+        <th style="text-align:center">Back Visita</th>
+      </tr></thead>
+      <tbody id="market-table"></tbody>
+    </table>
+  </div>
+
+  <!-- AGENTS + MC -->
+  <div class="two-col">
+
+    <!-- 9 AGENTS -->
+    <div class="panel">
+      <div class="ph">
+        <div class="pt"><i class="ti ti-cpu-charge" style="color:var(--p)"></i>Panel 9 Agentes IA — <span id="sel-ticker" style="color:var(--t)">RMA-BAR</span></div>
+        <span class="badge bp">MASTER AI v9</span>
+      </div>
+      <div id="agents-panel"></div>
+      <div class="master-out">
+        <div style="font-size:9px;color:var(--tx3);font-weight:700;text-transform:uppercase">Output Master AI — Matriz Ponderada</div>
+        <div class="m-bars" id="master-bars"></div>
+      </div>
+    </div>
+
+    <!-- MONTE CARLO -->
+    <div class="panel">
+      <div class="ph">
+        <div class="pt"><i class="ti ti-math-function" style="color:var(--a)"></i>Monte Carlo (100K Iter.)</div>
+        <span class="badge ba" id="mc-status">LISTO</span>
+      </div>
+      <svg class="mc-chart" id="mc-chart" viewBox="0 0 220 80" preserveAspectRatio="none"></svg>
+      <div class="mc-stats" id="mc-stats"></div>
+      <div style="margin-top:8px;padding:7px;background:var(--bg3);border:1px solid var(--bdr);border-radius:5px">
+        <div style="font-size:8px;color:var(--tx3);font-weight:700;text-transform:uppercase;margin-bottom:4px">Distribución de Goles — Poisson</div>
+        <svg width="100%" height="36" viewBox="0 0 220 36" id="goals-chart"></svg>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- RIGHT ORDER PANEL -->
+<div class="right-panel">
+
+  <!-- Balance -->
+  <div class="rp-sec" style="text-align:center">
+    <div style="font-size:9px;color:var(--tx3);text-transform:uppercase;font-weight:700">Cartera Líquida Inversora</div>
+    <div style="font-size:28px;font-weight:900;color:var(--g);margin-top:5px;letter-spacing:-1px;font-family:monospace" id="balance">$14,352.12</div>
+    <div style="font-size:9px;color:var(--b);margin-top:3px"><i class="ti ti-shield-lock"></i> Custodia ERP Segura</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px">
+      <div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:4px;padding:7px">
+        <div style="font-size:7px;color:var(--tx3);text-transform:uppercase;margin-bottom:3px">P&amp;L HOY</div>
+        <div style="font-size:13px;font-weight:800;color:var(--g);font-family:monospace" id="today-pnl">+$0.00</div>
+      </div>
+      <div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:4px;padding:7px">
+        <div style="font-size:7px;color:var(--tx3);text-transform:uppercase;margin-bottom:3px">EXPOSICIÓN</div>
+        <div style="font-size:13px;font-weight:800;color:var(--a);font-family:monospace" id="exposure">0.0%</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Terminal de Órdenes -->
+  <div class="rp-sec">
+    <div class="rp-title"><i class="ti ti-file-invoice" style="color:var(--g)"></i>Terminal de Órdenes Bursátil</div>
+    <div class="inp-grp">
+      <div class="inp-lbl">Ticker Activo</div>
+      <input class="inp-val" id="o-ticker" value="RMA-BAR" readonly style="color:var(--t)">
+    </div>
+    <div class="inp-grp">
+      <div class="inp-lbl">Mercado / Posición</div>
+      <input class="inp-val" id="o-market" value="Local [Ganador]" readonly>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <div class="inp-grp">
+        <div class="inp-lbl">Cuota</div>
+        <input class="inp-val" id="o-quota" value="1.45" readonly style="color:var(--a)">
+      </div>
+      <div class="inp-grp">
+        <div class="inp-lbl">EV%</div>
+        <input class="inp-val" id="o-ev" value="+14.2%" readonly style="color:var(--g)">
+      </div>
+    </div>
+    <div class="inp-grp">
+      <div class="inp-lbl">Monto Inversión (USD)</div>
+      <input class="inp-val" id="o-stake" type="number" value="100" style="color:var(--g)" oninput="updateKelly()">
+    </div>
+
+    <!-- Kelly Box -->
+    <div class="kelly-box">
+      <div style="font-size:8px;color:var(--tx3);text-transform:uppercase;font-weight:700;margin-bottom:6px">
+        <i class="ti ti-calculator"></i> Kelly Criterion — ½ Kelly Moderado
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:12px;font-weight:800;color:var(--g);font-family:monospace" id="kelly-pct">6.2% bankroll</div>
+          <div style="font-size:9px;color:var(--tx3);margin-top:2px" id="kelly-amt">≈ $890.00</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:8px;color:var(--tx3)">Conf. IA</div>
+          <div style="font-size:16px;font-weight:900;color:var(--p);font-family:monospace" id="kelly-conf">92%</div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px">
+      <button class="btn3" style="background:var(--g2);justify-content:center;font-weight:900;font-size:11px" onclick="execOrder()">
+        <i class="ti ti-check"></i>COMPRAR
+      </button>
+      <button class="btn3" style="background:var(--r);justify-content:center" onclick="cancelOrder()">
+        <i class="ti ti-x"></i>CANCELAR
+      </button>
+    </div>
+    <button class="btn3" style="background:var(--b);width:100%;justify-content:center" onclick="execTradingOut()">
+      <i class="ti ti-arrows-exchange"></i>TRADING-OUT — Cerrar Posición
+    </button>
+  </div>
+
+  <!-- Alerts Feed -->
+  <div class="rp-sec" style="flex:1">
+    <div class="rp-title"><i class="ti ti-alert-octagon" style="color:var(--a)"></i>Feed Ineficiencias &amp; Alertas</div>
+    <div id="alerts-feed"></div>
+  </div>
+
+</div>
+</div><!-- content-grid -->
+</div><!-- app -->
+
+<script>
+// ════════════════════════════════════════════════════════════════════
+// DATA
+// ════════════════════════════════════════════════════════════════════
+
+const RAW = [
+  {id:'RMA-BAR', liga:'LaLiga',     l:'Real Madrid',   v:'Barcelona',  sc:'1-0',min:65,live:true, bl:1.45,be:5.10,bv:8.20,pl:78.2,pe:11.4,pv:10.4,ev:14.2,conf:92,kelly:6.2,ag:[88,95,72,65,80,70,90,88],xgl:2.45,xgv:0.38},
+  {id:'INT-MIL', liga:'Serie A',    l:'Inter',         v:'AC Milan',   sc:'2-1',min:78,live:true, bl:1.38,be:5.60,bv:9.20,pl:82.1,pe:9.8, pv:8.1, ev:13.3,conf:94,kelly:7.1,ag:[92,96,85,78,88,82,94,91],xgl:2.85,xgv:0.65},
+  {id:'MCI-ARS', liga:'Premier',    l:'Man City',      v:'Arsenal',    sc:'',   min:0, live:false,bl:2.10,be:3.40,bv:3.60,pl:52.0,pe:24.0,pv:24.0,ev:9.2, conf:87,kelly:4.1,ag:[82,78,90,75,68,85,88,80],xgl:1.85,xgv:1.42},
+  {id:'BEN-POR', liga:'Liga PT',    l:'Benfica',       v:'FC Porto',   sc:'1-0',min:55,live:true, bl:1.88,be:3.60,bv:4.20,pl:57.8,pe:23.5,pv:18.7,ev:8.6, conf:82,kelly:4.3,ag:[82,80,76,72,78,75,84,83],xgl:1.92,xgv:1.05},
+  {id:'ATM-SEV', liga:'LaLiga',     l:'Atletico',      v:'Sevilla',    sc:'0-0',min:33,live:true, bl:1.95,be:3.50,bv:3.80,pl:55.2,pe:24.8,pv:20.0,ev:7.6, conf:80,kelly:3.8,ag:[82,85,75,70,78,74,83,81],xgl:1.68,xgv:1.10},
+  {id:'BAY-DOR', liga:'Bundesliga', l:'Bayern',        v:'Dortmund',   sc:'',   min:0, live:false,bl:1.72,be:3.80,bv:4.60,pl:61.5,pe:20.8,pv:17.7,ev:5.8, conf:83,kelly:3.2,ag:[85,82,78,80,75,72,86,84],xgl:2.10,xgv:1.20},
+  {id:'JUV-NAP', liga:'Serie A',    l:'Juventus',      v:'Napoli',     sc:'',   min:0, live:false,bl:2.40,be:3.10,bv:3.00,pl:44.2,pe:26.5,pv:29.3,ev:6.1, conf:78,kelly:3.0,ag:[78,72,80,75,70,68,76,79],xgl:1.35,xgv:1.55},
+  {id:'CHE-TOT', liga:'Premier',    l:'Chelsea',       v:'Tottenham',  sc:'',   min:0, live:false,bl:2.00,be:3.60,bv:3.70,pl:51.0,pe:25.0,pv:24.0,ev:2.0, conf:65,kelly:1.5,ag:[65,68,72,60,62,66,70,67],xgl:1.62,xgv:1.45},
+  {id:'PSG-MAR', liga:'Ligue 1',    l:'PSG',           v:'Marseille',  sc:'0-0',min:22,live:true, bl:1.57,be:4.20,bv:5.80,pl:65.1,pe:20.3,pv:14.6,ev:2.1, conf:74,kelly:1.8,ag:[75,68,80,72,65,60,70,76],xgl:2.20,xgv:0.85},
+  {id:'LIV-CHE', liga:'Premier',    l:'Liverpool',     v:'Chelsea',    sc:'1-1',min:45,live:true, bl:2.25,be:3.20,bv:3.30,pl:48.5,pe:28.2,pv:23.3,ev:-3.4,conf:62,kelly:0,  ag:[60,65,70,58,55,62,68,63],xgl:1.45,xgv:1.38},
+];
+
+const AM = [
+  {n:'Statistical AI',  i:'ti-chart-histogram', c:'#06b6d4'},
+  {n:'Form & Racha AI', i:'ti-trending-up',      c:'#10b981'},
+  {n:'Injury AI',       i:'ti-first-aid-kit',    c:'#ef4444'},
+  {n:'News Sentiment',  i:'ti-news',              c:'#f59e0b'},
+  {n:'Referee AI',      i:'ti-whistle',           c:'#8b5cf6'},
+  {n:'Weather AI',      i:'ti-cloud-rain',        c:'#3b82f6'},
+  {n:'Market Odds AI',  i:'ti-currency-dollar',  c:'#f59e0b'},
+  {n:'Monte Carlo AI',  i:'ti-math-function',    c:'#ec4899'},
+];
+
+let A = RAW.map(a => ({...a})); // mutable copy
+let sel = A[0];
+let bal = 14352.12;
+let pnl = 0;
+let exp = 0;
+let audioOn = true;
+let _ctx = null;
+
+// ════════════════════════════════════════════════════════════════════
+// AUDIO
+// ════════════════════════════════════════════════════════════════════
+
+function initAudio() {
+  if (!_ctx) _ctx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function beep(freq=880, dur=0.12, type='sine', vol=0.22) {
+  if (!audioOn) return;
+  try {
+    initAudio();
+    const o = _ctx.createOscillator(), g = _ctx.createGain();
+    o.connect(g); g.connect(_ctx.destination);
+    o.type = type; o.frequency.value = freq;
+    g.gain.setValueAtTime(vol, _ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001, _ctx.currentTime + dur);
+    o.start(); o.stop(_ctx.currentTime + dur);
+  } catch(e){}
+}
+
+const SFX = {
+  opportunity: () => [880,1100,1320].forEach((f,i) => setTimeout(()=>beep(f,.1),i*110)),
+  drop:        () => beep(380,.35,'sawtooth',.2),
+  top10:       () => [660,880,1100,880].forEach((f,i) => setTimeout(()=>beep(f,.08),i*80)),
+  order:       () => { beep(1200,.12); setTimeout(()=>beep(1600,.1),170); },
+  click:       () => beep(660,.06,.05),
+};
+
+function toggleAudio() {
+  initAudio();
+  audioOn = !audioOn;
+  const btn=document.getElementById('audioBtn');
+  const icon=document.getElementById('audioIcon');
+  const lbl=document.getElementById('audioLabel');
+  if (audioOn) {
+    btn.classList.add('on'); icon.className='ti ti-volume'; lbl.textContent='AUDIO ON';
+    beep(880,.1);
+  } else {
+    btn.classList.remove('on'); icon.className='ti ti-volume-off'; lbl.textContent='AUDIO OFF';
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// TIMERS
+// ════════════════════════════════════════════════════════════════════
+
+let t1 = 180, t2 = 120;
+
+function tickCountdowns() {
+  t1--; t2--;
+  const e1=document.getElementById('cd-top10'), e2=document.getElementById('cd-alert');
+  const fmt = s => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+  e1.textContent = fmt(t1);
+  e2.textContent = fmt(t2);
+
+  // Top 10 color
+  if (t1 <= 0) {
+    t1 = 180;
+    e1.className='cd-badge cd-g';
+    refreshTop10();
+    SFX.top10();
+  } else {
+    e1.className = `cd-badge ${t1<=15?'cd-r':t1<=60?'cd-a':'cd-g'}`;
+  }
+
+  // Alert color
+  if (t2 <= 0) {
+    t2 = 120;
+    e2.className='cd-badge cd-a';
+    triggerDropAlert();
+    SFX.drop();
+  } else {
+    e2.className = `cd-badge ${t2<=10?'cd-r':'cd-a'}`;
+  }
+}
+
+function refreshTop10() {
+  A.forEach(a => {
+    a.ev   = parseFloat((a.ev + (Math.random()-.48)*2.2).toFixed(1));
+    a.conf = Math.max(45, Math.min(99, Math.round(a.conf + (Math.random()-.5)*4)));
+  });
+  renderTop10();
+  const st = document.getElementById('top10-status');
+  st.textContent = 'ACTUALIZADO ✓';
+  st.className = 'badge ba';
+  setTimeout(() => { st.textContent='LIVE'; st.className='badge bg'; }, 2500);
+  // Flash all cards
+  document.querySelectorAll('.t10-card').forEach(c => {
+    c.classList.add('flash');
+    setTimeout(() => c.classList.remove('flash'), 700);
+  });
+}
+
+function triggerDropAlert() {
+  const cands = [...A].filter(a => a.ev > 0 && a.ev < 10);
+  if (!cands.length) return;
+  const asset = cands[Math.floor(Math.random()*cands.length)];
+  const drop = (Math.random()*2+.5).toFixed(1);
+  asset.ev = parseFloat((asset.ev - parseFloat(drop)).toFixed(1));
+
+  document.getElementById('alert-title').textContent = `⚠ AVISO DE BAJA — ${asset.id}`;
+  document.getElementById('alert-body').textContent =
+    `EV cayó -${drop}% | ${asset.liga} | ${asset.l} vs ${asset.v} | EV actual: ${asset.ev>=0?'+':''}${asset.ev}%`;
+  document.getElementById('drop-alert').classList.add('show');
+  addFeed(asset.id, `EV -${drop}% en 2 min | Liga: ${asset.liga}`, 'r');
+  setTimeout(() => document.getElementById('drop-alert').classList.remove('show'), 12000);
+  renderTop10();
+  renderMarketTable();
+}
+
+function closeAlert() {
+  document.getElementById('drop-alert').classList.remove('show');
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MARKET SIMULATION
+// ════════════════════════════════════════════════════════════════════
+
+function simTick() {
+  A.forEach(a => {
+    const d = (Math.random()-.5)*.04;
+    a.bl = Math.max(1.01, +(a.bl+d).toFixed(2));
+    a.be = Math.max(1.01, +(a.be+d*2.1).toFixed(2));
+    a.bv = Math.max(1.01, +(a.bv+d*1.5).toFixed(2));
+    a.ev = +((a.pl/100 * a.bl - 1)*100).toFixed(1);
+    if (a.live && Math.random()<.03) a.min = Math.min(90, a.min+1);
+    a.ag = a.ag.map(s => Math.max(30, Math.min(99, s+Math.round((Math.random()-.5)*3))));
+  });
+
+  // Latency simulation
+  const ms = Math.floor(Math.random()*80+15);
+  const lb = document.getElementById('lat-badge');
+  lb.textContent = `${ms}ms`;
+  lb.className = `badge ${ms<100?'bb':ms<300?'ba':'br'}`;
+
+  renderMarketTable();
+  renderTicker();
+  if (sel) { renderAgents(); renderMasterBars(); }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// RENDER
+// ════════════════════════════════════════════════════════════════════
+
+function evColor(ev) { return ev>0?'var(--g)':'var(--r)'; }
+function evStr(ev) { return (ev>0?'+':'') + ev + '%'; }
+function confColor(c) { return c>=80?'var(--g)':c>=60?'var(--a)':'var(--r)'; }
+
+function valorBadge(ev) {
+  if(ev>10) return '<span class="badge bg">ALTO</span>';
+  if(ev>4)  return '<span class="badge ba">MEDIO</span>';
+  if(ev>0)  return '<span class="badge bn">BAJO</span>';
+  return '<span class="badge br">SIN VALOR</span>';
+}
+
+function renderTicker() {
+  const sorted = [...A].sort((a,b)=>b.ev-a.ev);
+  const html = sorted.map(a =>
+    `<span class="tick-item">
+       <span class="tick-id">${a.id}</span>
+       <span style="color:var(--tx2)">${a.bl}</span>
+       <span class="${a.ev>=0?'tick-up':'tick-dn'}">${a.ev>=0?'▲':'▼'} ${evStr(a.ev)}</span>
+       ${a.live?'<span class="dot dot-r" style="width:5px;height:5px"></span>':''}
+     </span>`
+  ).join('');
+  document.getElementById('ticker-track').innerHTML = html + html; // double for loop
+}
+
+function renderTop10() {
+  const sorted = [...A].sort((a,b)=>b.ev-a.ev).slice(0,10);
+  const rankCls = i => i===0?'r1':i===1?'r2':i===2?'r3':'';
+  const rankBdg = i => i===0?'<span class="rank-badge rb1">🥇 #1</span>':
+                       i===1?'<span class="rank-badge rb2">🥈 #2</span>':
+                       i===2?'<span class="rank-badge rb3">🥉 #3</span>':
+                       `<span class="rank-badge rbn">#${i+1}</span>`;
+
+  document.getElementById('top10-grid').innerHTML = sorted.map((a,i) => `
+    <div class="t10-card ${rankCls(i)}" onclick="selectAsset('${a.id}')">
+      ${rankBdg(i)}
+      <div style="font-size:13px;font-weight:900;color:var(--t);margin-bottom:2px;font-family:monospace">${a.id}</div>
+      <div style="font-size:8px;color:var(--tx3);margin-bottom:5px">${a.liga}</div>
+      <div style="font-size:16px;font-weight:900;color:${evColor(a.ev)};font-family:monospace">${evStr(a.ev)}</div>
+      <div style="font-size:8px;color:var(--tx3);margin-bottom:6px">Expected Value</div>
+      <div style="height:3px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:5px">
+        <div style="height:100%;width:${a.conf}%;background:${confColor(a.conf)};border-radius:2px;transition:width .6s"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:8px;color:var(--tx3)">Conf <b style="color:var(--tx)">${a.conf}%</b></span>
+        ${valorBadge(a.ev)}
+      </div>
+      ${a.live
+        ? `<div style="font-size:8px;color:var(--r);font-weight:700;display:flex;align-items:center;gap:4px"><span class="dot dot-r" style="width:5px;height:5px"></span>LIVE Min ${a.min}'</div>`
+        : `<div style="font-size:8px;color:var(--tx3)">Pre-partido</div>`}
+      <div style="font-size:9px;color:var(--g);font-weight:800;margin-top:3px">Kelly ${a.kelly}%</div>
+    </div>
+  `).join('');
+}
+
+function renderMarketTable() {
+  document.getElementById('market-table').innerHTML = A.map(a => `
+    <tr>
+      <td style="font-weight:800;color:var(--t);font-family:monospace">${a.id}</td>
+      <td style="color:var(--tx2)">${a.liga}</td>
+      <td>${a.live
+        ? `<span style="color:var(--r);font-weight:700;display:flex;align-items:center;gap:4px"><span class="dot dot-r" style="width:5px;height:5px"></span>${a.min}' [${a.sc}]</span>`
+        : `<span style="color:var(--g)">Pre-partido</span>`}</td>
+      <td style="font-family:monospace;font-size:10px">
+        <span style="color:var(--g)">${a.pl}%</span>
+        <span style="color:var(--tx3)"> / </span>
+        <span style="color:var(--tx2)">${a.pe}%</span>
+        <span style="color:var(--tx3)"> / </span>
+        <span style="color:var(--r)">${a.pv}%</span>
+      </td>
+      <td style="font-family:monospace;color:var(--tx2)">${a.bl} — ${a.be} — ${a.bv}</td>
+      <td style="font-family:monospace;font-weight:900;color:${evColor(a.ev)}">${evStr(a.ev)}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:5px">
+          <div style="height:3px;width:${Math.max(4,a.conf*.55)}px;background:${confColor(a.conf)};border-radius:2px"></div>
+          <span style="font-weight:700;color:${confColor(a.conf)}">${a.conf}%</span>
+        </div>
+      </td>
+      <td style="font-family:monospace;color:var(--g);font-weight:700">${a.kelly}%</td>
+      <td><button class="ob-btn ask" onclick="selectAsset('${a.id}','local',${a.bl})">${a.bl}</button></td>
+      <td><button class="ob-btn bid" onclick="selectAsset('${a.id}','visitante',${a.bv})">${a.bv}</button></td>
+    </tr>
+  `).join('');
+}
+
+function renderAgents() {
+  const a = sel;
+  document.getElementById('sel-ticker').textContent = a.id;
+  document.getElementById('agents-panel').innerHTML = a.ag.map((s,i) => {
+    const m = AM[i];
+    const sigCls = s>=75?'sig-up':s>=50?'sig-ne':'sig-dn';
+    const sigTxt = s>=75?'ALCISTA':s>=50?'NEUTRO':'BAJISTA';
+    return `
+      <div class="agent-row">
+        <div class="agent-icon" style="background:${m.c}18;border:1px solid ${m.c}44">
+          <i class="ti ${m.i}" style="color:${m.c};font-size:11px"></i>
+        </div>
+        <div class="agent-name">${m.n}</div>
+        <div class="bar-wrap"><div class="bar-fill" style="width:${s}%;background:${s>=75?'var(--g)':s>=50?'var(--a)':'var(--r)'}"></div></div>
+        <div class="agent-pct" style="color:${s>=75?'var(--g)':s>=50?'var(--a)':'var(--r)'}">${s}%</div>
+        <span class="sig ${sigCls}">${sigTxt}</span>
+      </div>
+    `;
+  }).join('') + `
+    <div class="agent-row" style="margin-top:3px;background:rgba(139,92,246,.06);border-radius:4px;padding:6px 0">
+      <div class="agent-icon" style="background:#8b5cf622;border:1px solid #8b5cf644">
+        <i class="ti ti-brain" style="color:var(--p);font-size:12px"></i>
+      </div>
+      <div class="agent-name" style="color:var(--p);font-weight:800">MASTER AI v9</div>
+      <div class="bar-wrap"><div class="bar-fill" style="width:${a.conf}%;background:var(--p)"></div></div>
+      <div class="agent-pct" style="color:var(--p)">${a.conf}%</div>
+      <span class="sig" style="background:rgba(139,92,246,.15);color:var(--p)">SUPERVISOR</span>
+    </div>
+  `;
+}
+
+function renderMasterBars() {
+  const a = sel;
+  const bars = [{l:'LOCAL',v:a.pl,c:'var(--g)'},{l:'EMPATE',v:a.pe,c:'var(--a)'},{l:'VISITA',v:a.pv,c:'var(--r)'}];
+  const mx = Math.max(a.pl, a.pe, a.pv);
+  document.getElementById('master-bars').innerHTML = bars.map(b => `
+    <div class="m-bar-col">
+      <div style="font-size:8px;color:var(--tx3);margin-bottom:2px">${b.v}%</div>
+      <div class="m-bar-fill" style="height:${Math.max(3, b.v/mx*38)}px;background:${b.c};width:100%"></div>
+      <div style="font-size:7px;color:var(--tx3);margin-top:3px">${b.l}</div>
+    </div>
+  `).join('');
+}
+
+function renderMonteCarlo() {
+  const a = sel;
+  const W=220, H=80, bins=22;
+  const center = a.pl/100;
+  const sigma = 0.14;
+  const hs = Array.from({length:bins},(_,i) => {
+    const x = i/bins;
+    const h = Math.exp(-.5*((x-center)/sigma)**2)*H*.82;
+    return Math.max(2, h + (Math.random()-.5)*5);
+  });
+  const bw = W/bins;
+  const rects = hs.map((h,i) => {
+    const fill = i/bins > center-.08 && i/bins < center+.12 ? '#10b981' : '#3b82f6';
+    return `<rect x="${i*bw+.5}" y="${H-h}" width="${bw-1.5}" height="${h}" fill="${fill}" fill-opacity=".72" rx="1"/>`;
+  }).join('');
+  document.getElementById('mc-chart').innerHTML = `
+    <rect width="${W}" height="${H}" fill="#16202c" rx="2"/>
+    <line x1="0" y1="${H}" x2="${W}" y2="${H}" stroke="#243242"/>
+    ${rects}
+    <text x="4" y="9" fill="#64748b" font-size="7">Poisson MC — ${a.id} — Local ${a.pl}%</text>
+  `;
+
+  // Goles chart
+  const gb = [3,8,18,28,38,30,20,10,4,2];
+  const gM = Math.max(...gb);
+  const gW = 220/gb.length;
+  document.getElementById('goals-chart').innerHTML = gb.map((v,i) => {
+    const h = (v/gM)*30;
+    return `<rect x="${i*gW+1}" y="${36-h}" width="${gW-2}" height="${h}" fill="#8b5cf6" fill-opacity=".65" rx="1"/>
+    <text x="${i*gW+gW/2}" y="36" fill="#475569" font-size="6.5" text-anchor="middle">${i}g</text>`;
+  }).join('');
+
+  // Stats
+  document.getElementById('mc-stats').innerHTML = `
+    <div class="mc-stat">
+      <div style="font-size:7px;color:var(--tx3);text-transform:uppercase;margin-bottom:3px">Local</div>
+      <div style="font-size:15px;font-weight:900;color:var(--g);font-family:monospace">${a.pl}%</div>
+    </div>
+    <div class="mc-stat">
+      <div style="font-size:7px;color:var(--tx3);text-transform:uppercase;margin-bottom:3px">Empate</div>
+      <div style="font-size:15px;font-weight:900;color:var(--a);font-family:monospace">${a.pe}%</div>
+    </div>
+    <div class="mc-stat">
+      <div style="font-size:7px;color:var(--tx3);text-transform:uppercase;margin-bottom:3px">Visita</div>
+      <div style="font-size:15px;font-weight:900;color:var(--r);font-family:monospace">${a.pv}%</div>
+    </div>
+  `;
+}
+
+function renderOrderPanel() {
+  const a = sel;
+  document.getElementById('o-ticker').value = a.id;
+  document.getElementById('o-ev').value = evStr(a.ev);
+  document.getElementById('o-ev').style.color = evColor(a.ev);
+  document.getElementById('kelly-pct').textContent = `${a.kelly}% bankroll`;
+  document.getElementById('kelly-amt').textContent = `≈ $${(a.kelly/100*bal).toFixed(2)}`;
+  document.getElementById('kelly-conf').textContent = `${a.conf}%`;
+}
+
+function renderFeedInitial() {
+  const top5 = [...A].sort((a,b)=>b.ev-a.ev).slice(0,5);
+  top5.filter(a=>a.ev>0).forEach(a =>
+    addFeed(a.id, `+${a.ev}% EV — Conf ${a.conf}% — ${a.liga}`, a.ev>10?'g':a.ev>4?'a':'n')
+  );
+}
+
+function addFeed(ticker, msg, cls) {
+  const colors = {g:'var(--g)',a:'var(--a)',r:'var(--r)',n:'var(--tx3)',p:'var(--p)',b:'var(--b)'};
+  const icons  = {g:'⬆ EV',a:'⚠ EV',r:'⬇ BAJA',n:'— INFO',p:'🧠 IA',b:'⚡ ORD'};
+  const el = document.createElement('div');
+  el.className = 'alert-item';
+  el.style.borderLeftColor = colors[cls]||'var(--g)';
+  el.innerHTML = `
+    <div style="flex:1">
+      <div style="font-size:10px;font-weight:800;color:var(--tx)">${ticker}</div>
+      <div style="font-size:9px;color:var(--tx2);margin-top:2px">${msg}</div>
+      <div style="font-size:8px;color:var(--tx4);margin-top:1px">${new Date().toTimeString().slice(0,8)}</div>
+    </div>
+    <div style="font-size:8px;font-weight:800;color:${colors[cls]}">${icons[cls]}</div>
+  `;
+  const feed = document.getElementById('alerts-feed');
+  feed.insertBefore(el, feed.firstChild);
+  while (feed.children.length > 9) feed.removeChild(feed.lastChild);
+}
+
+// ════════════════════════════════════════════════════════════════════
+// INTERACTIONS
+// ════════════════════════════════════════════════════════════════════
+
+function selectAsset(id, market, quota) {
+  sel = A.find(a=>a.id===id) || sel;
+  document.getElementById('o-ticker').value = sel.id;
+  if (market) {
+    document.getElementById('o-market').value = `${market==='local'?'Local':'Visita'} [Ganador]`;
+    document.getElementById('o-quota').value  = quota;
+  }
+  document.getElementById('o-ev').value = evStr(sel.ev);
+  document.getElementById('o-ev').style.color = evColor(sel.ev);
+  document.getElementById('kelly-pct').textContent = `${sel.kelly}% bankroll`;
+  document.getElementById('kelly-amt').textContent = `≈ $${(sel.kelly/100*bal).toFixed(2)}`;
+  document.getElementById('kelly-conf').textContent = `${sel.conf}%`;
+  renderAgents();
+  renderMasterBars();
+  renderMonteCarlo();
+  SFX.click();
+}
+
+function updateKelly() {
+  const stake = parseFloat(document.getElementById('o-stake').value)||0;
+  document.getElementById('kelly-amt').textContent = `≈ $${stake.toFixed(2)} invertido`;
+}
+
+function execOrder() {
+  initAudio();
+  const stake = parseFloat(document.getElementById('o-stake').value);
+  if (!stake||stake<=0||stake>bal) { beep(300,.2,'sawtooth'); alert('Fondos insuficientes o monto inválido'); return; }
+  bal -= stake; exp += stake; pnl += stake*(sel.ev/100);
+  document.getElementById('balance').textContent = '$'+bal.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  document.getElementById('exposure').textContent = (exp/bal*100).toFixed(1)+'%';
+  const pnlEl = document.getElementById('today-pnl');
+  pnlEl.textContent = (pnl>=0?'+':'')+'$'+pnl.toFixed(2);
+  pnlEl.style.color = pnl>=0?'var(--g)':'var(--r)';
+  SFX.order();
+  addFeed(sel.id, `Orden $${stake} | Cuota ${document.getElementById('o-quota').value}`, 'b');
+}
+
+function cancelOrder() {
+  document.getElementById('o-ticker').value='---';
+  document.getElementById('o-market').value='---';
+  document.getElementById('o-quota').value='---';
+  document.getElementById('o-ev').value='---';
+  document.getElementById('o-stake').value='0';
+  beep(440,.1,'square',.12);
+}
+
+function execTradingOut() {
+  SFX.opportunity();
+  addFeed(sel.id, 'Trading-Out: posición cerrada — ganancia asegurada', 'p');
+}
+
+function invokeAI() {
+  SFX.opportunity();
+  addFeed(sel.id, `Master AI v9 — Conf ${sel.conf}% | EV ${evStr(sel.ev)}`, 'p');
+}
+
+function runMC() {
+  const st = document.getElementById('mc-status');
+  st.textContent='SIMULANDO…'; st.className='badge ba';
+  beep(660,.05);
+  setTimeout(()=>{
+    renderMonteCarlo();
+    st.textContent='LISTO ✓'; st.className='badge bg';
+    beep(1100,.1);
+  }, 700);
+}
+
+function setTab(el) {
+  document.querySelectorAll('.nav-pill').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  SFX.click();
+}
+
+function updateClock() {
+  const n = new Date();
+  document.getElementById('clk').textContent = n.toTimeString().slice(0,8);
+  if (n.getSeconds()===0) A.forEach(a=>{ if(a.live&&a.min<90) a.min++; });
+}
+
+// ════════════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════════════
+
+function init() {
+  renderTicker();
+  renderTop10();
+  renderMarketTable();
+  renderAgents();
+  renderMasterBars();
+  renderMonteCarlo();
+  renderFeedInitial();
+  document.getElementById('live-count').textContent = A.filter(a=>a.live).length;
+
+  setInterval(updateClock,   1000);
+  setInterval(tickCountdowns,1000);
+  setInterval(simTick,       3200); // fake WebSocket tick
+  updateClock();
+}
+
+document.addEventListener('DOMContentLoaded', init);
+document.body.addEventListener('click', ()=>{ if(!_ctx) initAudio(); }, {once:true});
+</script>
+</body>
+</html>
