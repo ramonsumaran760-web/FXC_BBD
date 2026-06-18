@@ -101,6 +101,60 @@ async def seed_inicial():
         logger.info("✓ Seed limpio completado — sin datos de prueba")
 
 
+async def ensure_usuario_personal():
+    """
+    Garantiza que el usuario personal del propietario exista siempre.
+    Se ejecuta en cada arranque — idempotente.
+    """
+    from sqlalchemy import select
+    from models.models import Usuario, AuditLog
+
+    PERSONAL_EMAIL    = "edwinsumaran3@gmail.com"
+    PERSONAL_PASSWORD = "Fxcbbd2026*"
+    PERSONAL_NOMBRE   = "Edwin Sumaran"
+
+    async with AsyncSessionLocal() as db:
+        res = await db.execute(
+            select(Usuario).where(Usuario.email == PERSONAL_EMAIL)
+        )
+        user = res.scalar_one_or_none()
+
+        if not user:
+            user = Usuario(
+                nombre           = PERSONAL_NOMBRE,
+                email            = PERSONAL_EMAIL,
+                password_hash    = hash_password(PERSONAL_PASSWORD),
+                rol              = "admin",
+                kyc_nivel        = "biometric",
+                kyc_verificado   = True,
+                aml_status       = "clear",
+                mfa_activo       = False,
+                edad             = 30,
+                ingresos_anuales_usd = 50000,
+                tolerancia_riesgo    = "moderada",
+                saldo_usd        = 0,
+                activo           = True,
+            )
+            db.add(user)
+            await db.flush()
+            db.add(AuditLog(
+                usuario_id = user.id,
+                accion     = "USUARIO_CREADO",
+                modulo     = "sistema",
+                detalle    = f"Usuario personal {PERSONAL_EMAIL} creado automáticamente",
+                ip         = "127.0.0.1",
+            ))
+            await db.commit()
+            logger.info("✓ Usuario personal %s creado", PERSONAL_EMAIL)
+        else:
+            # Siempre garantizar rol admin y contraseña actualizada
+            user.rol           = "admin"
+            user.password_hash = hash_password(PERSONAL_PASSWORD)
+            user.activo        = True
+            await db.commit()
+            logger.info("✓ Usuario personal %s verificado", PERSONAL_EMAIL)
+
+
 async def limpiar_datos_demo():
     """
     Elimina datos de prueba generados por seed antiguo en deployments existentes.
@@ -190,6 +244,7 @@ async def lifespan(app: FastAPI):
     # seed e yfinance corren en background para no bloquear el port binding
     asyncio.create_task(seed_inicial())
     asyncio.create_task(limpiar_datos_demo())
+    asyncio.create_task(ensure_usuario_personal())
     asyncio.create_task(price_broadcaster())
     logger.info("InvestIQ v2.0 listo — seed y broadcaster arrancando en background")
     yield
