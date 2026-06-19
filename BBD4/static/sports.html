@@ -884,17 +884,15 @@ function tickCountdowns() {
   }
 }
 
-function refreshTop10() {
-  A.forEach(a => {
-    a.ev   = parseFloat((a.ev + (Math.random()-.48)*2.2).toFixed(1));
-    a.conf = Math.max(45, Math.min(99, Math.round(a.conf + (Math.random()-.5)*4)));
-  });
-  renderTop10();
+async function refreshTop10() {
   const st = document.getElementById('top10-status');
+  st.textContent = 'ACTUALIZANDO...';
+  st.className = 'badge ba';
+  // Re-fetch datos reales del servidor
+  await fetchLiveMatches();
   st.textContent = 'ACTUALIZADO ✓';
   st.className = 'badge ba';
   setTimeout(() => { st.textContent='LIVE'; st.className='badge bg'; }, 2500);
-  // Flash all cards
   document.querySelectorAll('.t10-card').forEach(c => {
     c.classList.add('flash');
     setTimeout(() => c.classList.remove('flash'), 700);
@@ -902,17 +900,16 @@ function refreshTop10() {
 }
 
 function triggerDropAlert() {
-  const cands = [...A].filter(a => a.ev > 0 && a.ev < 10);
+  // Solo alerta si hay partido con EV real bajando (comparado con última lectura)
+  const cands = [...A].filter(a => a.ev !== undefined && a._prev_ev !== undefined && a.ev < a._prev_ev - 1);
   if (!cands.length) return;
-  const asset = cands[Math.floor(Math.random()*cands.length)];
-  const drop = (Math.random()*2+.5).toFixed(1);
-  asset.ev = parseFloat((asset.ev - parseFloat(drop)).toFixed(1));
-
-  document.getElementById('alert-title').textContent = `⚠ AVISO DE BAJA — ${asset.id}`;
+  const asset = cands[0];
+  const drop = (asset._prev_ev - asset.ev).toFixed(1);
+  document.getElementById('alert-title').textContent = `⚠ MOVIMIENTO DE MERCADO — ${asset.id}`;
   document.getElementById('alert-body').textContent =
-    `EV cayó -${drop}% | ${asset.liga} | ${asset.l} vs ${asset.v} | EV actual: ${asset.ev>=0?'+':''}${asset.ev}%`;
+    `EV ajustado -${drop}% | ${asset.liga} | ${asset.l} vs ${asset.v} | EV actual: ${asset.ev>=0?'+':''}${asset.ev}%`;
   document.getElementById('drop-alert').classList.add('show');
-  addFeed(asset.id, `EV -${drop}% en 2 min | Liga: ${asset.liga}`, 'r');
+  addFeed(asset.id, `Movimiento de mercado detectado — EV ${asset.ev>=0?'+':''}${asset.ev}%`, 'r');
   setTimeout(() => document.getElementById('drop-alert').classList.remove('show'), 12000);
   renderTop10();
   renderMarketTable();
@@ -927,21 +924,21 @@ function closeAlert() {
 // ════════════════════════════════════════════════════════════════════
 
 function simTick() {
+  // Sin Math.random() — los datos son los del servidor
+  // Solo recalcula EV si las cuotas cambiaron via Odds API
   A.forEach(a => {
-    const d = (Math.random()-.5)*.04;
-    a.bl = Math.max(1.01, +(a.bl+d).toFixed(2));
-    a.be = Math.max(1.01, +(a.be+d*2.1).toFixed(2));
-    a.bv = Math.max(1.01, +(a.bv+d*1.5).toFixed(2));
-    a.ev = +((a.pl/100 * a.bl - 1)*100).toFixed(1);
-    if (a.live && Math.random()<.03) a.min = Math.min(90, a.min+1);
-    a.ag = a.ag.map(s => Math.max(30, Math.min(99, s+Math.round((Math.random()-.5)*3))));
+    if (a.bl > 1 && a.pl > 0) {
+      a._prev_ev = a.ev;
+      // Recalcula EV real con cuotas actuales del servidor
+      const ev_l = (a.pl/100) * a.bl - 1;
+      const ev_e = (a.pe/100) * a.be - 1;
+      const ev_v = (a.pv/100) * a.bv - 1;
+      a.ev = +( Math.max(ev_l, ev_e, ev_v) * 100 ).toFixed(1);
+    }
   });
 
-  // Latency simulation
-  const ms = Math.floor(Math.random()*80+15);
   const lb = document.getElementById('lat-badge');
-  lb.textContent = `${ms}ms`;
-  lb.className = `badge ${ms<100?'bb':ms<300?'ba':'br'}`;
+  if (lb) { lb.textContent = 'REAL'; lb.className = 'badge bb'; }
 
   renderMarketTable();
   renderTicker();
@@ -1003,33 +1000,63 @@ function matchTimeDisplay(a) {
   } catch(e) { return `<div style="font-size:8px;color:var(--tx3);margin-top:4px">📅 Próximo</div>`; }
 }
 
+// Calcula score MASTER AI v9 sintetizando los 8 agentes + EV + confianza
+function masterAiScore(a) {
+  if (!a.ag || !a.ag.length) return a.conf || 50;
+  const ag = a.ag;
+  // Ponderación: Statistical(20%) + Forma(12%) + Impact(10%) + Noticias(8%)
+  //              + Árbitro(8%) + Clima(10%) + Mercado(22%) + MonteCarlo(10%)
+  const w = [0.20, 0.12, 0.10, 0.08, 0.08, 0.10, 0.22, 0.10];
+  const base = ag.reduce((s, v, i) => s + (v || 50) * (w[i] || 0.12), 0);
+  // EV positivo boost: si EV>0 sube score, si EV<0 baja
+  const evBoost = Math.max(-15, Math.min(15, (a.ev || 0) * 0.8));
+  return Math.round(Math.min(99, Math.max(30, base + evBoost)));
+}
+
+function masterSignal(score) {
+  if (score >= 80) return '<span style="color:#10b981;font-weight:900;font-size:8px">▲ ALCISTA</span>';
+  if (score >= 65) return '<span style="color:#f59e0b;font-weight:900;font-size:8px">◆ MODERADO</span>';
+  return '<span style="color:#ef4444;font-weight:900;font-size:8px">▼ SIN SEÑAL</span>';
+}
+
 function renderTop10() {
-  const sorted = [...A].sort((a,b)=>b.ev-a.ev).slice(0,10);
+  // MASTER AI v9 es quien rankea — no el EV matemático solo
+  const sorted = [...A].sort((a,b) => masterAiScore(b) - masterAiScore(a)).slice(0,10);
   const rankCls = i => i===0?'r1':i===1?'r2':i===2?'r3':'';
   const rankBdg = i => i===0?'<span class="rank-badge rb1">🥇 #1</span>':
                        i===1?'<span class="rank-badge rb2">🥈 #2</span>':
                        i===2?'<span class="rank-badge rb3">🥉 #3</span>':
                        `<span class="rank-badge rbn">#${i+1}</span>`;
 
-  document.getElementById('top10-grid').innerHTML = sorted.map((a,i) => `
+  document.getElementById('top10-grid').innerHTML = sorted.map((a,i) => {
+    const mas = masterAiScore(a);
+    return `
     <div class="t10-card ${rankCls(i)}" onclick="selectAsset('${a.id}')">
       ${rankBdg(i)}
       <div style="font-size:12px;font-weight:900;color:var(--t);margin-bottom:1px;font-family:monospace">${a.id}</div>
       <div style="font-size:8px;color:var(--b);margin-bottom:1px;font-weight:600">${a.l} vs ${a.v}</div>
-      <div style="font-size:7px;color:var(--tx3);margin-bottom:5px">${a.liga}</div>
-      <div style="font-size:16px;font-weight:900;color:${evColor(a.ev)};font-family:monospace">${evStr(a.ev)}</div>
-      <div style="font-size:8px;color:var(--tx3);margin-bottom:6px">Expected Value</div>
-      <div style="height:3px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:5px">
-        <div style="height:100%;width:${a.conf}%;background:${confColor(a.conf)};border-radius:2px;transition:width .6s"></div>
+      <div style="font-size:7px;color:var(--tx3);margin-bottom:4px">${a.liga}</div>
+      <div style="display:flex;align-items:baseline;gap:6px;margin-bottom:1px">
+        <div style="font-size:16px;font-weight:900;color:${evColor(a.ev)};font-family:monospace">${evStr(a.ev)}</div>
+        <div style="font-size:8px;color:var(--tx3)">EV</div>
+        <div style="font-size:13px;font-weight:900;color:#06b6d4;font-family:monospace;margin-left:4px">${mas}%</div>
+        <div style="font-size:7px;color:var(--tx3)">IA</div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        ${masterSignal(mas)}
+        ${valorBadge(a.ev)}
+      </div>
+      <div style="height:3px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:4px">
+        <div style="height:100%;width:${mas}%;background:#06b6d4;border-radius:2px;transition:width .6s"></div>
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
         <span style="font-size:8px;color:var(--tx3)">Conf <b style="color:var(--tx)">${a.conf}%</b></span>
-        ${valorBadge(a.ev)}
+        <span style="font-size:8px;color:var(--tx3)">MASTER AI v9</span>
       </div>
       ${matchTimeDisplay(a)}
       <div style="font-size:9px;color:var(--g);font-weight:800;margin-top:3px">Kelly ${a.kelly}%</div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 // ── Reloj en vivo + cuenta regresiva — tick cada minuto ──────────────────────
