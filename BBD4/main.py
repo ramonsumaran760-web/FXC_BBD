@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 
 from core.config import settings
 from core.database import init_db, AsyncSessionLocal
@@ -405,6 +405,11 @@ async def health():
             "opensanctions": cb_opensanctions.get_state(),
         }
     }
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return Response(status_code=204)
 
 
 @app.get("/", tags=["root"])

@@ -1353,14 +1353,49 @@ function showPlatformChooser(usuario) {
 function closePlatformChooser(plat) {
   const el = document.getElementById('platform-chooser');
   if (el) el.remove();
+
   if (plat === 'investiq') {
+    // Entrar a InvestIQ con todo su audio y funcionalidad
     startApp();
   } else {
-    // Abrir FXC_BBD en nueva pestaña y quedarse aquí
-    window.open('https://sporttrade-fxcbbd.onrender.com', '_blank');
-    // Mientras tanto, entrar a InvestIQ igual
-    startApp();
+    // FXC_BBD: abrir sports desk en esta misma pestaña
+    // NO llamar startApp() → NO arranca audio de InvestIQ
+    showFXCDesk();
   }
+}
+
+function showFXCDesk() {
+  // Mostrar pantalla intermedia de FXC_BBD mientras carga
+  const div = document.createElement('div');
+  div.id = 'fxc-loading';
+  div.style.cssText = 'position:fixed;inset:0;z-index:9998;background:#070a0e;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;font-family:Segoe UI,system-ui,sans-serif';
+  div.innerHTML = `
+    <div style="width:60px;height:60px;border-radius:16px;background:linear-gradient(135deg,#059669,#10b981);display:grid;place-items:center;font-size:28px;box-shadow:0 0 30px rgba(16,185,129,.4)">⚽</div>
+    <div style="font-size:22px;font-weight:900;color:#f1f5f9">FXC_BBD Sports Exchange</div>
+    <div style="font-size:13px;color:#64748b">Abriendo Sports Trading Desk…</div>
+    <div style="width:200px;height:3px;background:#1e2938;border-radius:2px;overflow:hidden;margin-top:8px">
+      <div id="fxc-bar" style="height:100%;width:0%;background:linear-gradient(90deg,#059669,#10b981);border-radius:2px;transition:width .1s"></div>
+    </div>
+    <button onclick="document.getElementById('fxc-loading').remove();showPlatformChooser(null)"
+      style="margin-top:12px;background:none;border:1px solid #243242;color:#64748b;padding:7px 18px;border-radius:6px;cursor:pointer;font-size:12px">
+      ← Volver al selector
+    </button>
+  `;
+  document.body.appendChild(div);
+
+  // Animar barra y redirigir
+  let pct = 0;
+  const bar = document.getElementById('fxc-bar');
+  const iv = setInterval(() => {
+    pct += 4;
+    if (bar) bar.style.width = pct + '%';
+    if (pct >= 100) {
+      clearInterval(iv);
+      // Redirigir al frontend de FXC_BBD
+      // Primero intentar la URL de Render; si no, el archivo local
+      window.location.href = 'https://sporttrade-fxcbbd.onrender.com';
+    }
+  }, 50);
 }
 
 // ── Start app ─────────────────────────────────────────────
