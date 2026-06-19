@@ -472,7 +472,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,sans-
   <!-- Balance -->
   <div class="rp-sec" style="text-align:center">
     <div style="font-size:9px;color:var(--tx3);text-transform:uppercase;font-weight:700">Cartera Líquida Inversora</div>
-    <div style="font-size:28px;font-weight:900;color:var(--g);margin-top:5px;letter-spacing:-1px;font-family:monospace" id="balance">$14,352.12</div>
+    <div style="font-size:28px;font-weight:900;color:var(--g);margin-top:5px;letter-spacing:-1px;font-family:monospace" id="balance">$0.00</div>
     <div style="font-size:9px;color:var(--b);margin-top:3px"><i class="ti ti-shield-lock"></i> Custodia ERP Segura</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:9px">
       <div style="background:var(--bg3);border:1px solid var(--bdr);border-radius:4px;padding:7px">
@@ -577,7 +577,8 @@ function espnBasicInfo(ev) {
       id, espnId: ev.id,
       liga: 'FIFA Mundial 2026',
       l: home.team.displayName, v: away.team.displayName,
-      sc, min, live: live && !done,
+      sc, min, live: live && !done, done,
+      date: ev.date || null,   // ISO 8601 desde ESPN
       // placeholders hasta que el backend responda
       bl:2.0,be:3.4,bv:4.0, pl:40,pe:28,pv:32,
       ev:0, conf:0, kelly:0,
@@ -736,18 +737,25 @@ async function fetchLiveMatches() {
 
 
 function setFallbackData() {
-  // Partidos reales del Mundial 2026 — Fase de Grupos
+  // Genera fechas de hoy para los horarios típicos del Mundial 2026 (ET)
+  function wc(h, m) {
+    const d = new Date();
+    d.setHours(h, m, 0, 0);
+    // Si ya pasó la hora, ponerlo para mañana
+    if (d < new Date()) d.setDate(d.getDate() + 1);
+    return d.toISOString();
+  }
   RAW = [
-    {id:'USA-MEX', liga:'FIFA Mundial 2026',l:'Estados Unidos',v:'México',       sc:'',min:0, live:false,bl:2.10,be:3.20,bv:3.80,pl:52,pe:26,pv:22,ev:9.2, conf:85,kelly:4.1,ag:[85,82,78,80,75,72,86,84],xgl:1.85,xgv:1.42},
-    {id:'BRA-ARG', liga:'FIFA Mundial 2026',l:'Brasil',        v:'Argentina',    sc:'',min:0, live:false,bl:2.20,be:3.30,bv:3.20,pl:48,pe:27,pv:25,ev:5.6, conf:82,kelly:3.2,ag:[80,78,72,75,68,70,80,79],xgl:1.95,xgv:1.60},
-    {id:'FRA-ESP', liga:'FIFA Mundial 2026',l:'Francia',       v:'España',       sc:'',min:0, live:false,bl:2.40,be:3.10,bv:2.90,pl:45,pe:28,pv:27,ev:8.0, conf:80,kelly:3.8,ag:[82,80,76,72,78,75,84,83],xgl:1.80,xgv:1.75},
-    {id:'ENG-GER', liga:'FIFA Mundial 2026',l:'Inglaterra',    v:'Alemania',     sc:'',min:0, live:false,bl:2.50,be:3.20,bv:2.80,pl:42,pe:27,pv:31,ev:5.0, conf:76,kelly:2.8,ag:[76,72,80,75,70,68,76,79],xgl:1.70,xgv:1.65},
-    {id:'POR-URU', liga:'FIFA Mundial 2026',l:'Portugal',      v:'Uruguay',      sc:'',min:0, live:false,bl:1.85,be:3.50,bv:4.60,pl:58,pe:24,pv:18,ev:7.3, conf:78,kelly:3.5,ag:[78,82,70,72,75,68,80,77],xgl:2.10,xgv:1.05},
-    {id:'NED-COL', liga:'FIFA Mundial 2026',l:'Países Bajos',  v:'Colombia',     sc:'',min:0, live:false,bl:1.95,be:3.40,bv:4.20,pl:55,pe:25,pv:20,ev:7.2, conf:75,kelly:3.2,ag:[75,72,68,70,65,72,78,74],xgl:1.90,xgv:1.20},
-    {id:'ITA-BEL', liga:'FIFA Mundial 2026',l:'Italia',        v:'Bélgica',      sc:'',min:0, live:false,bl:2.05,be:3.30,bv:3.70,pl:50,pe:27,pv:23,ev:2.5, conf:72,kelly:1.8,ag:[72,70,65,68,62,66,70,71],xgl:1.65,xgv:1.45},
-    {id:'MAR-SEN', liga:'FIFA Mundial 2026',l:'Marruecos',     v:'Senegal',      sc:'',min:0, live:false,bl:2.30,be:3.10,bv:3.20,pl:46,pe:29,pv:25,ev:5.8, conf:70,kelly:2.5,ag:[70,68,72,65,62,66,72,69],xgl:1.55,xgv:1.40},
-    {id:'JPN-KOR', liga:'FIFA Mundial 2026',l:'Japón',         v:'Corea del Sur',sc:'',min:0, live:false,bl:2.60,be:3.00,bv:2.70,pl:40,pe:31,pv:29,ev:4.0, conf:68,kelly:2.0,ag:[68,65,70,62,58,64,70,67],xgl:1.45,xgv:1.38},
-    {id:'AUS-CAN', liga:'FIFA Mundial 2026',l:'Australia',     v:'Canadá',       sc:'',min:0, live:false,bl:2.80,be:3.10,bv:2.50,pl:38,pe:30,pv:32,ev:6.4, conf:65,kelly:2.2,ag:[65,62,68,60,55,62,68,64],xgl:1.35,xgv:1.50},
+    {id:'USA-MEX', liga:'FIFA Mundial 2026',l:'Estados Unidos',v:'México',       sc:'',min:0, live:false,done:false,date:wc(12,0),bl:2.10,be:3.20,bv:3.80,pl:52,pe:26,pv:22,ev:9.2, conf:85,kelly:4.1,ag:[85,82,78,80,75,72,86,84],xgl:1.85,xgv:1.42},
+    {id:'BRA-ARG', liga:'FIFA Mundial 2026',l:'Brasil',        v:'Argentina',    sc:'',min:0, live:false,done:false,date:wc(15,0),bl:2.20,be:3.30,bv:3.20,pl:48,pe:27,pv:25,ev:5.6, conf:82,kelly:3.2,ag:[80,78,72,75,68,70,80,79],xgl:1.95,xgv:1.60},
+    {id:'FRA-ESP', liga:'FIFA Mundial 2026',l:'Francia',       v:'España',       sc:'',min:0, live:false,done:false,date:wc(18,0),bl:2.40,be:3.10,bv:2.90,pl:45,pe:28,pv:27,ev:8.0, conf:80,kelly:3.8,ag:[82,80,76,72,78,75,84,83],xgl:1.80,xgv:1.75},
+    {id:'ENG-GER', liga:'FIFA Mundial 2026',l:'Inglaterra',    v:'Alemania',     sc:'',min:0, live:false,done:false,date:wc(21,0),bl:2.50,be:3.20,bv:2.80,pl:42,pe:27,pv:31,ev:5.0, conf:76,kelly:2.8,ag:[76,72,80,75,70,68,76,79],xgl:1.70,xgv:1.65},
+    {id:'POR-URU', liga:'FIFA Mundial 2026',l:'Portugal',      v:'Uruguay',      sc:'',min:0, live:false,done:false,date:wc(21,0),bl:1.85,be:3.50,bv:4.60,pl:58,pe:24,pv:18,ev:7.3, conf:78,kelly:3.5,ag:[78,82,70,72,75,68,80,77],xgl:2.10,xgv:1.05},
+    {id:'NED-COL', liga:'FIFA Mundial 2026',l:'Países Bajos',  v:'Colombia',     sc:'',min:0, live:false,done:false,date:wc(12,0),bl:1.95,be:3.40,bv:4.20,pl:55,pe:25,pv:20,ev:7.2, conf:75,kelly:3.2,ag:[75,72,68,70,65,72,78,74],xgl:1.90,xgv:1.20},
+    {id:'ITA-BEL', liga:'FIFA Mundial 2026',l:'Italia',        v:'Bélgica',      sc:'',min:0, live:false,done:false,date:wc(15,0),bl:2.05,be:3.30,bv:3.70,pl:50,pe:27,pv:23,ev:2.5, conf:72,kelly:1.8,ag:[72,70,65,68,62,66,70,71],xgl:1.65,xgv:1.45},
+    {id:'MAR-SEN', liga:'FIFA Mundial 2026',l:'Marruecos',     v:'Senegal',      sc:'',min:0, live:false,done:false,date:wc(18,0),bl:2.30,be:3.10,bv:3.20,pl:46,pe:29,pv:25,ev:5.8, conf:70,kelly:2.5,ag:[70,68,72,65,62,66,72,69],xgl:1.55,xgv:1.40},
+    {id:'JPN-KOR', liga:'FIFA Mundial 2026',l:'Japón',         v:'Corea del Sur',sc:'',min:0, live:false,done:false,date:wc(21,0),bl:2.60,be:3.00,bv:2.70,pl:40,pe:31,pv:29,ev:4.0, conf:68,kelly:2.0,ag:[68,65,70,62,58,64,70,67],xgl:1.45,xgv:1.38},
+    {id:'AUS-CAN', liga:'FIFA Mundial 2026',l:'Australia',     v:'Canadá',       sc:'',min:0, live:false,done:false,date:wc(21,0),bl:2.80,be:3.10,bv:2.50,pl:38,pe:30,pv:32,ev:6.4, conf:65,kelly:2.2,ag:[65,62,68,60,55,62,68,64],xgl:1.35,xgv:1.50},
   ];
 }
 
@@ -765,7 +773,7 @@ const AM = [
 setFallbackData();              // Mundial 2026 — datos inmediatos mientras ESPN carga
 let A = RAW.map(a => ({...a})); // mutable copy
 let sel = A[0];
-let bal = 14352.12;
+let bal = 0;
 let pnl = 0;
 let exp = 0;
 let audioOn = true;
@@ -940,6 +948,33 @@ function renderTicker() {
   document.getElementById('ticker-track').innerHTML = html + html; // double for loop
 }
 
+// ── Fecha/hora/reloj de cada partido ─────────────────────────────────────────
+function matchTimeDisplay(a) {
+  if (a.live) {
+    return `<div style="font-size:8px;color:var(--r);font-weight:800;display:flex;align-items:center;gap:4px;margin-top:4px">
+      <span class="dot dot-r" style="width:5px;height:5px;flex-shrink:0"></span>
+      EN VIVO — <span id="mclock-${a.id}">${a.min}'</span>
+    </div>`;
+  }
+  if (a.done) {
+    return `<div style="font-size:8px;color:var(--tx3);margin-top:4px">⏹ FIN · ${a.sc||''}</div>`;
+  }
+  if (!a.date) return `<div style="font-size:8px;color:var(--tx3);margin-top:4px">📅 Próximo</div>`;
+  try {
+    const md  = new Date(a.date);
+    const now = new Date();
+    const df  = md - now;
+    const timeStr = md.toLocaleTimeString('es-US', {hour:'2-digit', minute:'2-digit'});
+    const dateStr = md.toLocaleDateString('es-US', {day:'numeric', month:'short'});
+    if (df <= 0) return `<div style="font-size:8px;color:var(--a);font-weight:700;margin-top:4px">⏰ Iniciando...</div>`;
+    const hh = Math.floor(df / 3600000);
+    const mm = Math.floor((df % 3600000) / 60000);
+    if (hh === 0)  return `<div style="font-size:8px;color:var(--a);font-weight:800;margin-top:4px" id="cd-${a.id}">⏳ ${mm}min · ${timeStr}</div>`;
+    if (hh < 24)   return `<div style="font-size:8px;color:var(--tx2);margin-top:4px" id="cd-${a.id}">⏳ ${hh}h ${mm}m · ${timeStr}</div>`;
+    return `<div style="font-size:8px;color:var(--tx3);margin-top:4px">📅 ${dateStr} · ${timeStr}</div>`;
+  } catch(e) { return `<div style="font-size:8px;color:var(--tx3);margin-top:4px">📅 Próximo</div>`; }
+}
+
 function renderTop10() {
   const sorted = [...A].sort((a,b)=>b.ev-a.ev).slice(0,10);
   const rankCls = i => i===0?'r1':i===1?'r2':i===2?'r3':'';
@@ -951,24 +986,45 @@ function renderTop10() {
   document.getElementById('top10-grid').innerHTML = sorted.map((a,i) => `
     <div class="t10-card ${rankCls(i)}" onclick="selectAsset('${a.id}')">
       ${rankBdg(i)}
-      <div style="font-size:13px;font-weight:900;color:var(--t);margin-bottom:2px;font-family:monospace">${a.id}</div>
-      <div style="font-size:8px;color:var(--tx3);margin-bottom:5px">${a.liga}</div>
+      <div style="font-size:12px;font-weight:900;color:var(--t);margin-bottom:1px;font-family:monospace">${a.id}</div>
+      <div style="font-size:8px;color:var(--b);margin-bottom:1px;font-weight:600">${a.l} vs ${a.v}</div>
+      <div style="font-size:7px;color:var(--tx3);margin-bottom:5px">${a.liga}</div>
       <div style="font-size:16px;font-weight:900;color:${evColor(a.ev)};font-family:monospace">${evStr(a.ev)}</div>
       <div style="font-size:8px;color:var(--tx3);margin-bottom:6px">Expected Value</div>
       <div style="height:3px;background:var(--bg4);border-radius:2px;overflow:hidden;margin-bottom:5px">
         <div style="height:100%;width:${a.conf}%;background:${confColor(a.conf)};border-radius:2px;transition:width .6s"></div>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px">
         <span style="font-size:8px;color:var(--tx3)">Conf <b style="color:var(--tx)">${a.conf}%</b></span>
         ${valorBadge(a.ev)}
       </div>
-      ${a.live
-        ? `<div style="font-size:8px;color:var(--r);font-weight:700;display:flex;align-items:center;gap:4px"><span class="dot dot-r" style="width:5px;height:5px"></span>LIVE Min ${a.min}'</div>`
-        : `<div style="font-size:8px;color:var(--tx3)">Pre-partido</div>`}
+      ${matchTimeDisplay(a)}
       <div style="font-size:9px;color:var(--g);font-weight:800;margin-top:3px">Kelly ${a.kelly}%</div>
     </div>
   `).join('');
 }
+
+// ── Reloj en vivo + cuenta regresiva — tick cada minuto ──────────────────────
+setInterval(() => {
+  const now = new Date();
+  A.forEach(a => {
+    if (a.live) {
+      a.min++;
+      const el = document.getElementById(`mclock-${a.id}`);
+      if (el) el.textContent = a.min + "'";
+    } else if (!a.done && a.date) {
+      try {
+        const df = new Date(a.date) - now;
+        if (df > 0 && df < 7200000) {
+          const hh = Math.floor(df / 3600000);
+          const mm = Math.floor((df % 3600000) / 60000);
+          const el = document.getElementById(`cd-${a.id}`);
+          if (el) el.textContent = hh === 0 ? `⏳ ${mm}min` : `⏳ ${hh}h ${mm}m`;
+        }
+      } catch(e) {}
+    }
+  });
+}, 60000);
 
 function renderMarketTable() {
   document.getElementById('market-table').innerHTML = A.map(a => `
@@ -1290,6 +1346,7 @@ async function doLogin() {
     setTimeout(() => {
       loginScreen.style.display = 'none';
       showPlatformSelector(user);
+      syncWallet(); // saldo real inmediatamente al entrar
     }, 500);
 
   } catch(e) {
@@ -1309,12 +1366,13 @@ async function syncWallet() {
     const r = await fetch(`${INVESTIQ_API}/api/v1/auth/me`, { headers: authHeaders() });
     if (!r.ok) return;
     const u = await r.json();
-    const saldo = u.saldo_usd || 0;
-    const el = document.querySelector('.kelly-box');
-    if (el) {
-      const walletEl = document.getElementById('wallet-balance');
-      if (walletEl) walletEl.textContent = '$' + saldo.toLocaleString('en-US', {minimumFractionDigits:2});
-    }
+    // Actualizar la variable global bal (usada en Kelly)
+    bal = parseFloat(u.saldo_usd || u.saldo || u.balance || 0);
+    // Actualizar el elemento de balance en pantalla
+    const balEl = document.getElementById('balance');
+    if (balEl) balEl.textContent = '$' + bal.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+    // Re-renderizar panel de órdenes para que Kelly use el saldo real
+    if (sel) renderOrderPanel();
   } catch(e) {}
 }
 
