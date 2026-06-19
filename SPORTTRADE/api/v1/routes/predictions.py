@@ -603,20 +603,26 @@ async def analizar_deep(
 
 @router.get("/debug-odds")
 async def debug_odds():
-    """Verifica que ODDS_API_KEY funcione y qué deportes están disponibles."""
-    import os
-    from services.odds_api import fetch_active_sports, _get_key as _odds_key
+    """Verifica clave + deportes disponibles + partidos con cuotas ahora mismo."""
+    from services.odds_api import fetch_active_sports, fetch_world_cup_odds, fetch_world_cup_scores, _get_key as _odds_key
     key = _odds_key()
     if not key:
         return {"status": "ERROR", "msg": "ODDS_API_KEY no está configurada en Render"}
-    sports = await fetch_active_sports()
-    wc = [s for s in sports if "world" in s.get("key","").lower() or "world" in s.get("title","").lower()]
+    import asyncio
+    sports, odds_raw, scores_raw = await asyncio.gather(
+        fetch_active_sports(),
+        fetch_world_cup_odds(regions="us,uk,eu", markets="h2h"),
+        fetch_world_cup_scores(days_from=3),
+    )
+    wc_sports = [s for s in (sports or []) if "world" in s.get("key","").lower()]
     return {
         "status": "OK",
-        "key_configurada": True,
         "key_preview": f"{key[:4]}...{key[-4:]}",
-        "total_sports": len(sports),
-        "world_cup_sports": wc,
+        "total_sports": len(sports or []),
+        "world_cup_sports": wc_sports,
+        "partidos_con_cuotas": len(odds_raw or []),
+        "partidos_raw": (odds_raw or [])[:3],   # primeros 3 para ver estructura
+        "scores_count": len(scores_raw or []),
     }
 
 

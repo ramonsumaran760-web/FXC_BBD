@@ -68,7 +68,7 @@ async def fetch_active_sports() -> list[dict]:
 # ─── ODDS + PARTIDOS DEL MUNDIAL ─────────────────────────────────────────────
 
 async def fetch_world_cup_odds(
-    regions: str = "eu",
+    regions: str = "us,uk,eu",
     markets: str = "h2h",
 ) -> list[dict]:
     """
