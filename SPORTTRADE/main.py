@@ -14,7 +14,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from core.config import settings
@@ -117,8 +117,10 @@ async def favicon():
     from fastapi.responses import Response
     return Response(status_code=204)
 
-# Frontend SPA — debe ir al final para no interceptar rutas API
-app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    with open("frontend/index.html", "r", encoding="utf-8") as f:
+        return HTMLResponse(content=f.read(), status_code=200)
 
 
 @app.get("/health", tags=["status"])
