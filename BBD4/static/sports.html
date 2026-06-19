@@ -1452,15 +1452,22 @@ function updateClock() {
 // INIT
 // ════════════════════════════════════════════════════════════════════
 
-function init() {
+function renderAll() {
+  if (!A.length) return;
+  if (!sel || !A.some(a => a.id === sel.id)) sel = A[0];
   renderTicker();
   renderTop10();
   renderMarketTable();
   renderAgents();
   renderMasterBars();
   renderMonteCarlo();
-  renderFeedInitial();
+  renderOrderPanel();
   document.getElementById('live-count').textContent = A.filter(a=>a.live).length;
+}
+
+function init() {
+  renderAll();
+  renderFeedInitial();
 
   setInterval(updateClock,   1000);
   setInterval(tickCountdowns,1000);
@@ -1476,7 +1483,9 @@ const SPORTS_API    = 'https://sporttrade-one.onrender.com';
 let   fxcToken      = localStorage.getItem('fxc_token') || null;
 
 function authHeaders() {
-  return { 'Content-Type':'application/json', 'Authorization': `Bearer ${fxcToken}` };
+  const headers = { 'Content-Type':'application/json' };
+  if (fxcToken) headers.Authorization = `Bearer ${fxcToken}`;
+  return headers;
 }
 
 // ════════════════════════════════════════════════════════════════════
