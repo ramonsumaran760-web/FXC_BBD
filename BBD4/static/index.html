@@ -1252,7 +1252,7 @@ setTimeout(() => {
   const splash = document.getElementById('splash');
   if (token) {
     splash.style.transition='opacity .4s'; splash.style.opacity='0';
-    setTimeout(()=>{ splash.style.display='none'; startApp(); }, 400);
+    setTimeout(()=>{ splash.style.display='none'; showPlatformChooser(null); }, 400);
   } else {
     splash.style.transition='opacity .4s'; splash.style.opacity='0';
     setTimeout(()=>{ splash.style.display='none'; document.getElementById('login').style.display='flex'; }, 400);
@@ -1269,7 +1269,7 @@ async function login() {
     if(!r.ok){errEl.textContent=d.detail||'Credenciales incorrectas';return;}
     token=d.access_token; localStorage.setItem('iq_token',token);
     document.getElementById('login').style.display='none';
-    startApp();
+    showPlatformChooser(d.usuario);
   } catch(e){errEl.textContent='Error de red: '+e.message;}
 }
 document.addEventListener('keydown',e=>{if(e.key==='Enter'&&!appReady)login();});
@@ -1282,6 +1282,85 @@ function logout(){
   document.getElementById('login').style.display='flex';
   document.getElementById('chat-btn').style.display='none';
   document.getElementById('chat-panel').classList.remove('open');
+}
+
+// ── Platform Chooser ──────────────────────────────────────
+function showPlatformChooser(usuario) {
+  const nombre = (usuario && usuario.nombre) ? usuario.nombre : 'Usuario';
+  const inicial = nombre.charAt(0).toUpperCase();
+
+  // Inyectar overlay si no existe
+  if (!document.getElementById('platform-chooser')) {
+    const style = document.createElement('style');
+    style.textContent = `
+      #platform-chooser{position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 35%,#0d1829 0%,#070a0e 70%);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;animation:pcFadeIn .4s ease}
+      @keyframes pcFadeIn{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+      .pc-card{width:340px;background:linear-gradient(145deg,#0f151d,#16202c);border:1px solid #243242;border-radius:14px;padding:26px 24px;cursor:pointer;transition:all .22s;display:flex;align-items:center;gap:18px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+      .pc-card:hover{transform:translateY(-3px);box-shadow:0 20px 60px rgba(0,0,0,.6)}
+      .pc-card.inv:hover{border-color:rgba(59,130,246,.55)}
+      .pc-card.fxc:hover{border-color:rgba(16,185,129,.55)}
+      .pc-icon{width:54px;height:54px;border-radius:13px;display:grid;place-items:center;font-size:22px;flex-shrink:0}
+      .pc-arrow{margin-left:auto;color:#475569;font-size:17px;transition:transform .2s}
+      .pc-card:hover .pc-arrow{transform:translateX(5px);color:#94a3b8}
+    `;
+    document.head.appendChild(style);
+  }
+
+  const el = document.createElement('div');
+  el.id = 'platform-chooser';
+  el.innerHTML = `
+    <div style="text-align:center">
+      <div style="width:50px;height:50px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:grid;place-items:center;font-size:20px;font-weight:900;color:#fff;margin:0 auto 12px">${inicial}</div>
+      <div style="font-size:22px;font-weight:900;color:#f1f5f9">Bienvenido, ${nombre}</div>
+      <div style="font-size:12px;color:#64748b;margin-top:5px">¿A cuál plataforma deseas ingresar?</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+
+      <div class="pc-card inv" onclick="closePlatformChooser('investiq')">
+        <div class="pc-icon" style="background:linear-gradient(135deg,#1d4ed8,#3b82f6);box-shadow:0 6px 20px rgba(59,130,246,.3)">
+          <span style="font-size:24px">📈</span>
+        </div>
+        <div>
+          <div style="font-size:16px;font-weight:800;color:#f1f5f9">InvestIQ</div>
+          <div style="font-size:10px;color:#3b82f6;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">Bolsa de Valores · Stock Exchange</div>
+          <div style="font-size:10px;color:#64748b;margin-top:4px">Robo-Advisor IA · IBKR · KYC/AML</div>
+        </div>
+        <span class="pc-arrow">›</span>
+      </div>
+
+      <div class="pc-card fxc" onclick="closePlatformChooser('fxcbbd')">
+        <div class="pc-icon" style="background:linear-gradient(135deg,#059669,#10b981);box-shadow:0 6px 20px rgba(16,185,129,.3)">
+          <span style="font-size:24px">⚽</span>
+        </div>
+        <div>
+          <div style="font-size:16px;font-weight:800;color:#f1f5f9">FXC_BBD</div>
+          <div style="font-size:10px;color:#10b981;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">Sports Exchange · Trading Desk</div>
+          <div style="font-size:10px;color:#64748b;margin-top:4px">9 Agentes IA · Monte Carlo · Kelly</div>
+        </div>
+        <span class="pc-arrow">›</span>
+      </div>
+
+    </div>
+
+    <div style="font-size:10px;color:#334155">
+      <span style="cursor:pointer;color:#475569;text-decoration:underline" onclick="logout()">Cerrar sesión</span>
+    </div>
+  `;
+  document.body.appendChild(el);
+}
+
+function closePlatformChooser(plat) {
+  const el = document.getElementById('platform-chooser');
+  if (el) el.remove();
+  if (plat === 'investiq') {
+    startApp();
+  } else {
+    // Abrir FXC_BBD en nueva pestaña y quedarse aquí
+    window.open('https://sporttrade-fxcbbd.onrender.com', '_blank');
+    // Mientras tanto, entrar a InvestIQ igual
+    startApp();
+  }
 }
 
 // ── Start app ─────────────────────────────────────────────
