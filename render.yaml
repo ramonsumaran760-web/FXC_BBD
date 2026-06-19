@@ -1,4 +1,5 @@
 services:
+  # ── InvestIQ Stock Exchange (Python/FastAPI) ──────────────────────────────
   - type: web
     name: investiq-api
     env: python
@@ -24,3 +25,15 @@ services:
         sync: false
       - key: SENTRY_DSN
         sync: false
+
+  # ── FXC_BBD Sports Trading Desk (Static Site — standalone HTML) ───────────
+  - type: web
+    name: sporttrade-fxcbbd
+    env: static
+    staticPublishPath: SPORTTRADE/frontend
+    buildCommand: ""
+    pullRequestPreviewsEnabled: false
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
