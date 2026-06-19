@@ -110,21 +110,15 @@ app.include_router(exchange_router)
 app.include_router(backtesting_router)
 app.include_router(live_router)
 
-# Servir frontend estático
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
-
-
 # ─── ROOT ────────────────────────────────────────────────────────────────────
-
-@app.get("/", tags=["status"])
-async def root():
-    return FileResponse("frontend/index.html", media_type="text/html")
-
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     from fastapi.responses import Response
     return Response(status_code=204)
+
+# Frontend SPA — debe ir al final para no interceptar rutas API
+app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
 
 
 @app.get("/health", tags=["status"])
