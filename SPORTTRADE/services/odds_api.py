@@ -17,10 +17,12 @@ import httpx
 logger = logging.getLogger("fxcbbd.odds_api")
 
 ODDS_BASE = "https://api.the-odds-api.com/v4"
-ODDS_API_KEY = os.getenv("ODDS_API_KEY", "")
-
-# IDs de deportes en The Odds API para fútbol internacional
 WC_SPORT_KEY = "soccer_fifa_world_cup"
+
+
+def _get_key() -> str:
+    """Lee la clave de env en cada llamada — nunca cachea el valor vacío."""
+    return os.getenv("ODDS_API_KEY", "")
 INTL_SPORTS   = [
     "soccer_fifa_world_cup",
     "soccer_conmebol_copa_america",
@@ -32,10 +34,11 @@ INTL_SPORTS   = [
 # ─── HELPER ───────────────────────────────────────────────────────────────────
 
 async def _get(path: str, params: dict) -> dict | list | None:
-    if not ODDS_API_KEY:
+    key = _get_key()
+    if not key:
         logger.warning("ODDS_API_KEY no configurada — sin acceso a The Odds API")
         return None
-    params["apiKey"] = ODDS_API_KEY
+    params["apiKey"] = key
     try:
         async with httpx.AsyncClient(timeout=10) as c:
             r = await c.get(f"{ODDS_BASE}{path}", params=params)

@@ -601,6 +601,25 @@ async def analizar_deep(
     }
 
 
+@router.get("/debug-odds")
+async def debug_odds():
+    """Verifica que ODDS_API_KEY funcione y qué deportes están disponibles."""
+    import os
+    from services.odds_api import fetch_active_sports, _get_key as _odds_key
+    key = _odds_key()
+    if not key:
+        return {"status": "ERROR", "msg": "ODDS_API_KEY no está configurada en Render"}
+    sports = await fetch_active_sports()
+    wc = [s for s in sports if "world" in s.get("key","").lower() or "world" in s.get("title","").lower()]
+    return {
+        "status": "OK",
+        "key_configurada": True,
+        "key_preview": f"{key[:4]}...{key[-4:]}",
+        "total_sports": len(sports),
+        "world_cup_sports": wc,
+    }
+
+
 @router.get("/mundial")
 async def mundial_en_vivo(
     saldo: Optional[float] = None,
@@ -614,12 +633,13 @@ async def mundial_en_vivo(
     - Marcadores en vivo
     - Fallback a ESPN si no hay ODDS_API_KEY configurada
     """
-    from services.odds_api import fetch_full_world_cup_data, ODDS_API_KEY
+    import os
+    from services.odds_api import fetch_full_world_cup_data, _get_key as _odds_key
     from services.espn_fetcher import fetch_scoreboard, fetch_standings
     from prompts.match_analysis import analyze_match_full
     from finanzas import calcular_fraccion_kelly
 
-    has_odds_api = bool(ODDS_API_KEY)
+    has_odds_api = bool(_odds_key())
 
     if has_odds_api:
         # ── Fuente principal: The Odds API (bookmakers reales) ────────────────
