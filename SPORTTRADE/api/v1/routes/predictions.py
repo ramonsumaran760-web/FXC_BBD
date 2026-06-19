@@ -646,6 +646,7 @@ async def mundial_en_vivo(
     from finanzas import calcular_fraccion_kelly
 
     has_odds_api = bool(_odds_key())
+    logger.info("/mundial: has_odds_api=%s", has_odds_api)
 
     if has_odds_api:
         # ── Fuente principal: The Odds API (bookmakers reales) ────────────────

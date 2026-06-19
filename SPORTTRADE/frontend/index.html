@@ -690,10 +690,13 @@ async function fetchLiveMatches() {
 
   try {
     // ── Fuente: /mundial — The Odds API (40+ bookmakers) + análisis IA ──────
+    const ctrl  = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 28000); // 28s timeout
     const r = await fetch(
       `${SPORTS_API}/api/v1/predictions/mundial?saldo=${bal}&perfil_riesgo=moderado`,
-      { headers: authHeaders() }
+      { headers: authHeaders(), signal: ctrl.signal }
     );
+    clearTimeout(timer);
 
     if (r.ok) {
       const data = await r.json();
@@ -705,13 +708,22 @@ async function fetchLiveMatches() {
         sel = A[0];
         const lv  = RAW.filter(x=>x.live).length;
         const src = data.source === 'the_odds_api' ? 'Bet365·Pinnacle·Betfair' : 'ESPN';
-        if (notice) notice.textContent =
-          `⚽ ${lv} EN VIVO · ${RAW.length} partidos · 9 AGENTES IA · ${src}`;
+        if (notice) {
+          notice.textContent = `⚽ ${lv} EN VIVO · ${RAW.length} partidos · 9 AGENTES IA · ${src}`;
+          notice.style.color = '';
+          notice.style.fontWeight = '';
+        }
         renderAll();
         return;
       }
+      // /mundial respondió pero sin partidos — mostrar por qué
+      if (notice) notice.textContent = `⚽ API OK · HTTP ${r.status} · 0 partidos (hoy sin fixtures): ${data.message || data.source || ''}`;
+    } else {
+      if (notice) notice.textContent = `⚽ /mundial error HTTP ${r.status} — intentando ESPN...`;
     }
-  } catch(e) {}
+  } catch(e) {
+    if (notice) notice.textContent = `⚽ /mundial error: ${e.message} — intentando ESPN...`;
+  }
 
   // ── Fallback: cargar datos del Mundial directamente desde ESPN ────────────
   if (notice) notice.textContent = '⚽ Conectando fuente alternativa...';
