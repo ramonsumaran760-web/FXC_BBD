@@ -26,14 +26,21 @@ services:
       - key: SENTRY_DSN
         sync: false
 
-  # ── FXC_BBD Sports Trading Desk (Static Site — standalone HTML) ───────────
+  # ── FXC_BBD Sports Exchange (Python/FastAPI — backend completo) ──────────
   - type: web
     name: sporttrade-fxcbbd
-    env: static
-    staticPublishPath: SPORTTRADE/frontend
-    buildCommand: ""
-    pullRequestPreviewsEnabled: false
-    headers:
-      - path: /*
-        name: Cache-Control
-        value: no-cache, no-store, must-revalidate
+    env: python
+    rootDir: SPORTTRADE
+    buildCommand: pip install fastapi uvicorn sqlalchemy asyncpg alembic aiohttp python-dotenv pydantic-settings celery redis
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "false"

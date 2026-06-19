@@ -14,7 +14,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from core.config import settings
 from core.database import init_db
@@ -109,19 +110,21 @@ app.include_router(exchange_router)
 app.include_router(backtesting_router)
 app.include_router(live_router)
 
+# Servir frontend estático
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
+
 
 # ─── ROOT ────────────────────────────────────────────────────────────────────
 
 @app.get("/", tags=["status"])
 async def root():
-    return {
-        "sistema":  "FXC_BBD — Financial Exchange Center BBD",
-        "version":  "1.0.0",
-        "estado":   "operacional",
-        "agentes":  9,
-        "brechas":  ["A-Kelly", "B-BackLay", "C-BrierScore", "D-WebSocket"],
-        "docs":     "/docs",
-    }
+    return FileResponse("frontend/index.html")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    from fastapi.responses import Response
+    return Response(status_code=204)
 
 
 @app.get("/health", tags=["status"])
