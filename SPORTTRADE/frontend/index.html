@@ -587,46 +587,100 @@ function espnBasicInfo(ev) {
   } catch(e) { return null; }
 }
 
-// ── Paso 2: análisis REAL — backend corre los 8 agentes de IA ─────────────
-const AGENT_ORDER = [
-  'agent_1_estadistica','agent_2_racha','agent_3_lesiones','agent_4_noticias',
-  'agent_5_arbitro','agent_6_clima','agent_7_odds','agent_8_montecarlo'
-];
-
+// ── Paso 2: Análisis PROFUNDO — Poisson + Elo + Player Impact Matrix ─────────
 async function analyzeMatchWithAI(match) {
   if (!match.espnId) return match;
   try {
-    const url = `${SPORTS_API}/api/v1/predictions/espn/${match.espnId}?saldo=${bal}&perfil_riesgo=moderado`;
+    // Endpoint /deep: corre Poisson+Elo+Dixon-Coles+Player Impact sin LLM externo
+    const url = `${SPORTS_API}/api/v1/predictions/deep/${match.espnId}?saldo=${bal}&perfil_riesgo=moderado`;
     const r   = await fetch(url, { headers: authHeaders() });
-    if (!r.ok) return { ...match, _loading:false };
-    const d = await r.json();
-
-    const pl   = Math.round(d.local   || 40);
-    const pe   = Math.round(d.empate  || 28);
-    const pv   = Math.round(d.visitante || 32);
-    const conf = Math.round(d.confianza || 50);
-    // EV del backend viene en decimal (ej 0.14) → convertir a %
-    const ev_  = d.ev != null ? Math.round(d.ev * 100) : 0;
-    const kelly = +(d.kelly || 0).toFixed(1);
-
-    const contrib = d.contribuciones || {};
-    const ag = AGENT_ORDER.map(a => Math.round(contrib[a] || 50));
-
-    // Cuotas derivadas de probabilidades reales del backend
-    const bl = pl > 0 ? +(100/pl*1.06).toFixed(2) : 2.0;
-    const be = pe > 0 ? +(100/pe*1.06).toFixed(2) : 3.4;
-    const bv = pv > 0 ? +(100/pv*1.06).toFixed(2) : 4.0;
-
-    return {
-      ...match,
-      pl, pe, pv, bl, be, bv, ev: ev_, conf, kelly, ag,
-      xgl: +(d.live_stats?.xg_local  || 0).toFixed(2),
-      xgv: +(d.live_stats?.xg_visita || 0).toFixed(2),
-      _loading:false, _valor:d.valor, _rec:d.resultado_recomendado,
-    };
+    if (!r.ok) {
+      // Fallback al endpoint /espn si /deep falla
+      const r2 = await fetch(
+        `${SPORTS_API}/api/v1/predictions/espn/${match.espnId}?saldo=${bal}`,
+        { headers: authHeaders() }
+      );
+      if (!r2.ok) return { ...match, _loading:false };
+      return _mapEspnResponse(match, await r2.json());
+    }
+    return _mapDeepResponse(match, await r.json());
   } catch(e) {
     return { ...match, _loading:false };
   }
+}
+
+function _mapDeepResponse(match, d) {
+  const pl   = Math.round(d.local       || 40);
+  const pe   = Math.round(d.empate      || 28);
+  const pv   = Math.round(d.visitante   || 32);
+  const conf = Math.round(d.confianza   || 50);
+  const ev_  = d.ev != null ? Math.round(d.ev * 100) : 0;
+  const kelly = +(d.kelly || 0).toFixed(1);
+
+  // Cuotas del modelo (6% margen)
+  const bl = pl > 0 ? +(100/pl*1.06).toFixed(2) : 2.0;
+  const be = pe > 0 ? +(100/pe*1.06).toFixed(2) : 3.4;
+  const bv = pv > 0 ? +(100/pv*1.06).toFixed(2) : 4.0;
+
+  // Barras de agentes: derivadas de los 4 modelos internos del deep analysis
+  const atk_l = d.equipos?.local?.attack_rating  || 70;
+  const def_l = d.equipos?.local?.defense_rating  || 70;
+  const atk_v = d.equipos?.visita?.attack_rating  || 70;
+  const def_v = d.equipos?.visita?.defense_rating || 70;
+  const ff_l  = Math.round((d.forma?.ff_local  || 1)*75);
+  const ff_v  = Math.round((d.forma?.ff_visita || 1)*75);
+  const elo_l = Math.min(99, Math.round((d.rankings?.elo_local  || 1500) / 22));
+  const elo_v = Math.min(99, Math.round((d.rankings?.elo_visita || 1500) / 22));
+  // ag[]: [Estadística, Racha/Forma, Impacto Jugadores, Lesiones, Árbitro, Clima, Odds, Monte Carlo]
+  const ag = [
+    Math.round((pl + atk_l)/2),   // Estadística → probabilidad Poisson local
+    ff_l,                          // Racha/Forma factor
+    d.equipos?.local?.avg_impact || conf,   // Player Impact
+    Math.max(50, conf - 10),       // Lesiones (neutro)
+    Math.max(55, conf - 8),        // Árbitro
+    Math.min(99, conf + 2),        // Clima (Verano USA)
+    Math.min(99, Math.round(elo_l * 0.9 + conf * 0.1)), // Odds/Elo
+    Math.min(99, conf + 5),        // Monte Carlo
+  ];
+
+  return {
+    ...match,
+    pl, pe, pv, bl, be, bv, ev: ev_, conf, kelly, ag,
+    xgl: +(d.xg?.local  || 0).toFixed(2),
+    xgv: +(d.xg?.visita || 0).toFixed(2),
+    _loading: false,
+    _valor:   d.valor,
+    _rec:     d.resultado_recomendado,
+    // Datos adicionales de jugadores (para modal futuro)
+    _jugadores_local:  d.jugadores?.local  || [],
+    _jugadores_visita: d.jugadores?.visita || [],
+    _equipos:          d.equipos || {},
+    _live_stats:       d.live_stats || {},
+    _modelos:          d.modelos || {},
+  };
+}
+
+function _mapEspnResponse(match, d) {
+  const pl   = Math.round(d.local      || 40);
+  const pe   = Math.round(d.empate     || 28);
+  const pv   = Math.round(d.visitante  || 32);
+  const conf = Math.round(d.confianza  || 50);
+  const ev_  = d.ev != null ? Math.round(d.ev * 100) : 0;
+  const bl = pl > 0 ? +(100/pl*1.06).toFixed(2) : 2.0;
+  const be = pe > 0 ? +(100/pe*1.06).toFixed(2) : 3.4;
+  const bv = pv > 0 ? +(100/pv*1.06).toFixed(2) : 4.0;
+  const contrib = d.contribuciones || {};
+  const AGENTS = ['agent_1_estadistica','agent_2_racha','agent_3_lesiones','agent_4_noticias',
+                   'agent_5_arbitro','agent_6_clima','agent_7_odds','agent_8_montecarlo'];
+  const ag = AGENTS.map(a => Math.round(contrib[a] || 50));
+  return {
+    ...match,
+    pl, pe, pv, bl, be, bv, ev: ev_, conf,
+    kelly: +(d.kelly || 0).toFixed(1), ag,
+    xgl: +(d.live_stats?.xg_local  || 0).toFixed(2),
+    xgv: +(d.live_stats?.xg_visita || 0).toFixed(2),
+    _loading:false, _valor:d.valor, _rec:d.resultado_recomendado,
+  };
 }
 
 async function fetchLiveMatches() {

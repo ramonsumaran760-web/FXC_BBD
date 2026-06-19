@@ -397,6 +397,210 @@ async def analizar_espn(
     }
 
 
+@router.get("/deep/{event_id}")
+async def analizar_deep(
+    event_id: str,
+    saldo: Optional[float] = None,
+    perfil_riesgo: str = "moderado",
+):
+    """
+    Análisis profundo sin LLM externo — pipeline estadístico completo:
+    • Elo por ranking FIFA de cada equipo
+    • Distribución de Poisson con Dixon-Coles correction
+    • Form factor por resultados en el torneo (standings ESPN)
+    • Player Impact Matrix por jugador individual (base de datos interna)
+    • xG en vivo (tiros a puerta del partido si está en curso)
+    • 8 agentes + Master AI con datos reales
+    • Kelly Criterion con bankroll del usuario
+
+    Retorna probabilidades reales + análisis jugador a jugador.
+    """
+    from services.espn_fetcher import fetch_event_summary, fetch_standings
+    from prompts.match_analysis import analyze_match_full
+    from finanzas import calcular_fraccion_kelly
+
+    # ── 1. Datos ESPN en paralelo ─────────────────────────────────────────────
+    import asyncio
+    event_data, standings = await asyncio.gather(
+        fetch_event_summary(event_id),
+        fetch_standings(),
+    )
+
+    home_name  = event_data.get("home_team", "LOCAL").upper()
+    away_name  = event_data.get("away_team", "VISITA").upper()
+    home_score = event_data.get("home_score", 0)
+    away_score = event_data.get("away_score", 0)
+    is_live    = event_data.get("status") == "in"
+    ticker     = f"{event_data.get('home_team','LOC')[:3].upper()}-{event_data.get('away_team','VIS')[:3].upper()}"
+
+    # Stats en vivo
+    hs = event_data.get("home_stats", {})
+    as_ = event_data.get("away_stats", {})
+    xg_live_home = round(hs.get("shotsOnTarget", 0) * 0.33, 2)
+    xg_live_away = round(as_.get("shotsOnTarget", 0) * 0.33, 2)
+    pos_home = hs.get("possessionPct", 50.0)
+    pos_away = as_.get("possessionPct", 50.0)
+
+    # Standings del torneo
+    def get_team_stats(name: str) -> dict:
+        for key, val in standings.items():
+            if name in key or key in name or (name.split() and name.split()[0] in key):
+                return val
+        return {"pj": 3, "pg": 1, "pe": 1, "pp": 1, "gf": 3, "gc": 3}
+
+    home_stats_wc = get_team_stats(home_name)
+    away_stats_wc = get_team_stats(away_name)
+
+    # ── 2. Pipeline estadístico profundo ─────────────────────────────────────
+    deep = analyze_match_full(
+        home_name=home_name,
+        away_name=away_name,
+        home_stats=home_stats_wc,
+        away_stats=away_stats_wc,
+        home_xg=xg_live_home,
+        away_xg=xg_live_away,
+        home_possession=pos_home,
+        away_possession=pos_away,
+        is_live=is_live,
+        home_score=home_score,
+        away_score=away_score,
+    )
+
+    p_loc = deep["prob_local"]  / 100
+    p_emp = deep["prob_empate"] / 100
+    p_vis = deep["prob_visitante"] / 100
+    confianza = deep["confianza"] / 100
+
+    # ── 3. Cuotas implícitas del modelo (margen 6%) ───────────────────────────
+    cuota_local  = round(1 / max(0.05, p_loc)  * 1.06, 2)
+    cuota_empate = round(1 / max(0.05, p_emp) * 1.06, 2)
+    cuota_visit  = round(1 / max(0.05, p_vis)  * 1.06, 2)
+
+    # ── 4. EV — mejor apuesta según el modelo ────────────────────────────────
+    ev_map = {
+        "local":     (p_loc,  cuota_local),
+        "empate":    (p_emp,  cuota_empate),
+        "visitante": (p_vis,  cuota_visit),
+    }
+    best_ev, best_rec, best_cuota = -999, "local", cuota_local
+    for resultado, (prob, cuota) in ev_map.items():
+        ev_resultado = prob * cuota - 1
+        if ev_resultado > best_ev:
+            best_ev, best_rec, best_cuota = ev_resultado, resultado, cuota
+
+    # ── 5. Kelly Criterion ────────────────────────────────────────────────────
+    kelly_fraccion = 0.0
+    monto_usd = 0.0
+    if best_ev > 0 and saldo:
+        prob_rec = ev_map[best_rec][0]
+        kelly_fraccion = calcular_fraccion_kelly(prob_rec, best_cuota, perfil_riesgo)
+        monto_usd = round(kelly_fraccion * saldo, 2)
+
+    # ── 6. Valor del modelo ───────────────────────────────────────────────────
+    if best_ev >= 0.12:
+        valor = "ALTO"
+    elif best_ev >= 0.05:
+        valor = "MEDIO"
+    elif best_ev > 0:
+        valor = "BAJO"
+    else:
+        valor = "SIN_VALOR"
+
+    # ── 7. Response completo ──────────────────────────────────────────────────
+    return {
+        # Predicción principal
+        "ticker":          ticker,
+        "local":           deep["prob_local"],
+        "empate":          deep["prob_empate"],
+        "visitante":       deep["prob_visitante"],
+        "confianza":       deep["confianza"],
+        "ev":              round(best_ev, 4),
+        "valor":           valor,
+        "kelly":           round(kelly_fraccion * 100, 2),
+        "monto_usd":       monto_usd,
+        "resultado_recomendado": best_rec,
+        "cuota_recomendada":     best_cuota,
+
+        # Estadísticas del torneo
+        "standings": {
+            "local":  home_stats_wc,
+            "visita": away_stats_wc,
+        },
+        "rankings": {
+            "local":  deep["ranking_local"],
+            "visita": deep["ranking_visita"],
+            "elo_local":  deep["elo_local"],
+            "elo_visita": deep["elo_visita"],
+        },
+
+        # xG y posesión
+        "xg": {
+            "local":  deep["xg_local"],
+            "visita": deep["xg_visita"],
+        },
+        "live_stats": {
+            "posesion_local":  pos_home,
+            "posesion_visita": pos_away,
+            "tiros_local":     hs.get("totalShots", 0),
+            "tiros_visita":    as_.get("totalShots", 0),
+            "corners_local":   hs.get("corners", 0),
+            "corners_visita":  as_.get("corners", 0),
+        },
+
+        # Form factor del torneo
+        "forma": {
+            "ff_local":  deep["ff_local"],
+            "ff_visita": deep["ff_visita"],
+        },
+
+        # Análisis del equipo
+        "equipos": {
+            "local": {
+                "nombre":           home_name,
+                "entrenador":       deep["entrenador_local"],
+                "estilo":           deep["estilo_local"],
+                "fortaleza":        deep["fortaleza_local"],
+                "debilidad":        deep["debilidad_local"],
+                "attack_rating":    deep["team_attack_local"],
+                "defense_rating":   deep["team_defense_local"],
+                "avg_impact":       deep["avg_impact_local"],
+                "top_player":       deep["top_player_local"],
+            },
+            "visita": {
+                "nombre":           away_name,
+                "entrenador":       deep["entrenador_visita"],
+                "estilo":           deep["estilo_visita"],
+                "fortaleza":        deep["fortaleza_visita"],
+                "debilidad":        deep["debilidad_visita"],
+                "attack_rating":    deep["team_attack_visita"],
+                "defense_rating":   deep["team_defense_visita"],
+                "avg_impact":       deep["avg_impact_visita"],
+                "top_player":       deep["top_player_visita"],
+            },
+        },
+
+        # Player Impact Matrix — top jugadores de cada equipo
+        "jugadores": {
+            "local":  deep["jugadores_local"],
+            "visita": deep["jugadores_visita"],
+        },
+
+        # Modelos internos (transparencia)
+        "modelos": {
+            "poisson": deep["_poisson"],
+            "elo":     deep["_elo"],
+        },
+
+        # Partido
+        "partido": {
+            "is_live":     is_live,
+            "score":       f"{home_score}-{away_score}" if (is_live or event_data.get('status')=='post') else "",
+            "event_id":    event_id,
+            "goles_clave": event_data.get("scoring", []),
+        },
+    }
+
+
 @router.get("/live", response_model=list[dict])
 async def predicciones_live(db: AsyncSession = Depends(get_db)):
     """Devuelve las últimas predicciones de partidos en vivo."""
