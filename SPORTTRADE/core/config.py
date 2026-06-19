@@ -11,7 +11,13 @@ class Settings(BaseSettings):
     APP_PORT: int = 8001
     DEBUG: bool = False
     SECRET_KEY: str = "changeme-in-production"
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8000"]
+    CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "https://sporttrade-one.onrender.com",
+        "https://fxc-bbd.onrender.com",
+        "*",
+    ]
 
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:///./sporttrade.db"

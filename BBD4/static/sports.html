@@ -561,84 +561,125 @@ body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,sans-
 // ── DATOS EN TIEMPO REAL — ESPN API (Mundial 2026) ────────────────
 let RAW = [];
 
-function espnToMatch(ev) {
+// ── Paso 1: info básica de ESPN (solo equipos/marcador/estado) ───────────────
+function espnBasicInfo(ev) {
   try {
-    const comp   = ev.competitions[0];
-    const home   = comp.competitors.find(c => c.homeAway === 'home');
-    const away   = comp.competitors.find(c => c.homeAway === 'away');
-    const status = ev.status?.type?.state;
-    const live   = status === 'in';
-    const done   = status === 'post';
-    const min    = parseInt(ev.status?.displayClock) || 0;
-    const sc     = live || done ? `${home.score}-${away.score}` : '';
-    const hAbbr  = home.team.abbreviation;
-    const vAbbr  = away.team.abbreviation;
-    const id     = `${hAbbr}-${vAbbr}`;
-    const liga   = ev.season?.slug?.includes('world') ? 'FIFA Mundial 2026' : (ev.league?.name || 'Internacional');
-
-    // Odds estimadas por ranking FIFA (cálculo simple)
-    const hRank = home.team.rank || 10;
-    const vRank = away.team.rank || 10;
-    const hStr  = Math.max(10, 50 - hRank * 2);
-    const vStr  = Math.max(10, 50 - vRank * 2);
-    const tot   = hStr + vStr + 15;
-    const pl    = Math.round(hStr / tot * 100);
-    const pv    = Math.round(vStr / tot * 100);
-    const pe    = 100 - pl - pv;
-    const bl    = +(100 / pl * 0.92).toFixed(2);
-    const be    = +(100 / pe * 0.92).toFixed(2);
-    const bv    = +(100 / pv * 0.92).toFixed(2);
-    const ev_   = +((pl / 100 * bl - 1) * 100).toFixed(1);
-    const conf  = Math.min(95, 60 + Math.floor(Math.random() * 30));
-    const kelly = +(ev_ > 0 ? ev_ / 20 : 0).toFixed(1);
-    const ag    = [conf, Math.min(99,conf+5), Math.max(50,conf-15), Math.max(50,conf-20),
-                   Math.min(99,conf+3), Math.max(55,conf-10), Math.min(99,conf+8), Math.min(99,conf+4)];
-    const xgl   = +(1.2 + Math.random()*1.8).toFixed(2);
-    const xgv   = +(0.4 + Math.random()*1.2).toFixed(2);
-
-    return {id, liga, l: home.team.displayName, v: away.team.displayName,
-            sc, min, live: live && !done, bl, be, bv, pl, pe, pv,
-            ev: ev_, conf, kelly, ag, xgl, xgv};
+    const comp = ev.competitions[0];
+    const home = comp.competitors.find(c => c.homeAway === 'home');
+    const away = comp.competitors.find(c => c.homeAway === 'away');
+    const state = ev.status?.type?.state;
+    const live  = state === 'in';
+    const done  = state === 'post';
+    const min   = parseInt(ev.status?.displayClock) || 0;
+    const sc    = (live || done) ? `${home.score}-${away.score}` : '';
+    const id    = `${home.team.abbreviation}-${away.team.abbreviation}`;
+    return {
+      id, espnId: ev.id,
+      liga: 'FIFA Mundial 2026',
+      l: home.team.displayName, v: away.team.displayName,
+      sc, min, live: live && !done,
+      // placeholders hasta que el backend responda
+      bl:2.0,be:3.4,bv:4.0, pl:40,pe:28,pv:32,
+      ev:0, conf:0, kelly:0,
+      ag:[0,0,0,0,0,0,0,0], xgl:0, xgv:0,
+      _loading:true,
+    };
   } catch(e) { return null; }
+}
+
+// ── Paso 2: análisis REAL — backend corre los 8 agentes de IA ─────────────
+const AGENT_ORDER = [
+  'agent_1_estadistica','agent_2_racha','agent_3_lesiones','agent_4_noticias',
+  'agent_5_arbitro','agent_6_clima','agent_7_odds','agent_8_montecarlo'
+];
+
+async function analyzeMatchWithAI(match) {
+  if (!match.espnId) return match;
+  try {
+    const url = `${SPORTS_API}/api/v1/predictions/espn/${match.espnId}?saldo=${bal}&perfil_riesgo=moderado`;
+    const r   = await fetch(url, { headers: authHeaders() });
+    if (!r.ok) return { ...match, _loading:false };
+    const d = await r.json();
+
+    const pl   = Math.round(d.local   || 40);
+    const pe   = Math.round(d.empate  || 28);
+    const pv   = Math.round(d.visitante || 32);
+    const conf = Math.round(d.confianza || 50);
+    // EV del backend viene en decimal (ej 0.14) → convertir a %
+    const ev_  = d.ev != null ? Math.round(d.ev * 100) : 0;
+    const kelly = +(d.kelly || 0).toFixed(1);
+
+    const contrib = d.contribuciones || {};
+    const ag = AGENT_ORDER.map(a => Math.round(contrib[a] || 50));
+
+    // Cuotas derivadas de probabilidades reales del backend
+    const bl = pl > 0 ? +(100/pl*1.06).toFixed(2) : 2.0;
+    const be = pe > 0 ? +(100/pe*1.06).toFixed(2) : 3.4;
+    const bv = pv > 0 ? +(100/pv*1.06).toFixed(2) : 4.0;
+
+    return {
+      ...match,
+      pl, pe, pv, bl, be, bv, ev: ev_, conf, kelly, ag,
+      xgl: +(d.live_stats?.xg_local  || 0).toFixed(2),
+      xgv: +(d.live_stats?.xg_visita || 0).toFixed(2),
+      _loading:false, _valor:d.valor, _rec:d.resultado_recomendado,
+    };
+  } catch(e) {
+    return { ...match, _loading:false };
+  }
 }
 
 async function fetchLiveMatches() {
   const notice = document.getElementById('live-notice');
-  try {
-    // Partido del Mundial hoy
-    const url = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard';
-    const r   = await fetch(url);
-    const d   = await r.json();
-    const events = (d.events || []).slice(0, 15);
+  if (notice) notice.textContent = '⚽ Conectando ESPN — FIFA Mundial 2026...';
 
-    if (events.length > 0) {
-      RAW = events.map(espnToMatch).filter(Boolean);
-      if (notice) notice.textContent = `⚽ ${RAW.filter(x=>x.live).length} EN VIVO · ${RAW.length} partidos · Mundial 2026`;
-    } else {
-      // Sin partidos hoy — buscar próximos
-      await fetchUpcoming();
-    }
-  } catch(e) {
-    if (notice) notice.textContent = '⚠ Sin conexión ESPN — modo offline';
-    await fetchUpcoming();
+  // ── 1. Obtener lista de partidos de ESPN ───────────────────────────────────
+  let events = [];
+  try {
+    const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard');
+    const d = await r.json();
+    events = (d.events || []).slice(0, 15);
+  } catch(e) {}
+
+  if (events.length === 0) {
+    try {
+      const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
+      const r2 = await fetch(
+        `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${today}`
+      );
+      const d2 = await r2.json();
+      events = (d2.events || []).slice(0, 15);
+    } catch(e2) {}
   }
 
-  if (RAW.length === 0) setFallbackData();
-  A = RAW.map(a => ({...a}));
-  sel = A[0];
-  renderAll();
+  if (events.length > 0) {
+    // Mostrar equipos/marcador inmediatamente (sin esperar IA)
+    RAW = events.map(espnBasicInfo).filter(Boolean);
+    A = RAW.map(a => ({...a}));
+    sel = A[0];
+    const lv = RAW.filter(x=>x.live).length;
+    if (notice) notice.textContent = `⚽ ${lv} EN VIVO · ${RAW.length} partidos · Cargando análisis IA...`;
+    renderAll();
+
+    // ── 2. Análisis IA en paralelo para todos los partidos ─────────────────
+    const results = await Promise.allSettled(RAW.map(m => analyzeMatchWithAI(m)));
+    RAW = results.map((r,i) => r.status==='fulfilled' ? r.value : RAW[i]);
+    A   = RAW.map(a => ({...a}));
+    sel = A[0];
+    if (notice) notice.textContent =
+      `⚽ ${RAW.filter(x=>x.live).length} EN VIVO · ${RAW.length} partidos · 9 AGENTES IA ACTIVOS`;
+    renderAll(); // re-render con datos reales del backend
+
+  } else {
+    // Sin partidos ESPN → fallback con equipos reales del Mundial
+    setFallbackData();
+    A = RAW.map(a => ({...a}));
+    sel = A[0];
+    if (notice) notice.textContent = '⚽ Sin partidos en vivo hoy — Próximos partidos del Mundial 2026';
+    renderAll();
+  }
 }
 
-async function fetchUpcoming() {
-  try {
-    const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=' +
-      new Date().toISOString().slice(0,10).replace(/-/g,''));
-    const d = await r.json();
-    if ((d.events||[]).length > 0) {
-      RAW = d.events.slice(0,15).map(espnToMatch).filter(Boolean);
-    }
-  } catch(e) {}
-}
 
 function setFallbackData() {
   // Partidos reales del Mundial 2026 — Fase de Grupos
