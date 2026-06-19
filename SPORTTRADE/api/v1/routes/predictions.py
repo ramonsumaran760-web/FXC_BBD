@@ -785,17 +785,54 @@ async def mundial_en_vivo(
             logger.warning("enrich error for %s: %s", m.get("id"), e)
             return {**m, "_loading": False}
 
-    # Enriquecer todos los partidos (analyze_match_full es pura Python — rápida)
-    enriched = [enrich_sync(m) for m in matches]
+    # ── Filtrar: solo partidos de hoy + EN VIVO ──────────────────────────────
+    from datetime import datetime, timezone, timedelta
+    now_utc = datetime.now(timezone.utc)
+    today_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end   = today_start + timedelta(days=1)
 
-    # Ordenar: en vivo primero, luego por EV descendente
-    enriched.sort(key=lambda x: (not x.get("live"), -x.get("ev", 0)))
+    def is_today_or_live(m: dict) -> bool:
+        if m.get("live") or m.get("done"):
+            return True
+        d = m.get("date", "")
+        if not d:
+            return True  # sin fecha → incluir
+        try:
+            dt = datetime.fromisoformat(d.replace("Z", "+00:00"))
+            return today_start <= dt < today_end
+        except Exception:
+            return True
+
+    today_matches = [m for m in matches if is_today_or_live(m)]
+    # Si hoy no hay partidos, mostrar los próximos 48h
+    if not today_matches:
+        window_end = today_start + timedelta(hours=48)
+        today_matches = [m for m in matches if True]  # muestra todos si no hay hoy
+        try:
+            today_matches = sorted(matches, key=lambda x: x.get("date",""))[:15]
+        except Exception:
+            today_matches = matches[:15]
+
+    # Enriquecer con IA (analyze_match_full es pura Python — sin red)
+    enriched = [enrich_sync(m) for m in today_matches]
+
+    # Ordenar: EN VIVO primero, luego por MASTER AI score descendente
+    def master_ai_score(m: dict) -> float:
+        ag = m.get("ag") or []
+        if not ag:
+            return m.get("conf", 50)
+        w = [0.20, 0.12, 0.10, 0.08, 0.08, 0.10, 0.22, 0.10]
+        base = sum((ag[i] if i < len(ag) else 50) * w[i] for i in range(8))
+        return base + max(-15, min(15, m.get("ev", 0) * 0.8))
+
+    enriched.sort(key=lambda x: (not x.get("live"), -master_ai_score(x)))
 
     return {
         "source":    "the_odds_api" if has_odds_api else "espn_fallback",
         "total":     len(enriched),
         "live":      sum(1 for m in enriched if m.get("live")),
         "matches":   enriched,
+        "today":     len(today_matches),
     }
 
 
