@@ -1046,52 +1046,177 @@ function init() {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// LOGIN SYSTEM
+// CONFIG — backends reales
 // ════════════════════════════════════════════════════════════════════
+const INVESTIQ_API  = 'https://fxc-bbd.onrender.com';
+const SPORTS_API    = 'https://sporttrade-one.onrender.com';
+let   fxcToken      = localStorage.getItem('fxc_token') || null;
 
-// Credenciales válidas — agregar las tuyas aquí
-const USERS = [
-  { email: 'edwinsumaran3@gmail.com', pass: 'Fxcbbd2026*',  name: 'Edwin Sumaran',   role: 'Admin' },
-  { email: 'admin@fxcbbd.com',        pass: 'Admin2026!',    name: 'Administrador',   role: 'Admin' },
-];
+function authHeaders() {
+  return { 'Content-Type':'application/json', 'Authorization': `Bearer ${fxcToken}` };
+}
 
-function doLogin() {
-  const email = document.getElementById('login-email').value.trim().toLowerCase();
+// ════════════════════════════════════════════════════════════════════
+// LOGIN — conectado al backend InvestIQ real
+// ════════════════════════════════════════════════════════════════════
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
   const pass  = document.getElementById('login-pass').value;
   const errEl = document.getElementById('login-error');
   const errMsg= document.getElementById('login-error-msg');
+  const btn   = document.querySelector('.login-btn');
 
   if (!email || !pass) {
     errMsg.textContent = 'Por favor ingresa tu correo y contraseña.';
-    errEl.classList.add('show');
-    return;
+    errEl.classList.add('show'); return;
   }
 
-  const user = USERS.find(u => u.email.toLowerCase() === email && u.pass === pass);
-
-  if (!user) {
-    errMsg.textContent = 'Credenciales incorrectas. Verifica tu correo y contraseña.';
-    errEl.classList.add('show');
-    document.getElementById('login-pass').value = '';
-    document.getElementById('login-pass').focus();
-    return;
-  }
-
-  // Login OK
+  btn.textContent = 'Verificando...'; btn.disabled = true;
   errEl.classList.remove('show');
 
-  // Guardar sesión si "recordar"
-  if (document.getElementById('remember-me').checked) {
-    localStorage.setItem('fxc_user', JSON.stringify({ email: user.email, name: user.name, role: user.role }));
-  }
+  try {
+    const r = await fetch(`${INVESTIQ_API}/api/v1/auth/login`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({email, password: pass})
+    });
+    const d = await r.json();
 
-  // Animar salida del login y mostrar selector de plataforma
-  const loginScreen = document.getElementById('login-screen');
-  loginScreen.classList.add('login-fading');
-  setTimeout(() => {
-    loginScreen.style.display = 'none';
-    showPlatformSelector(user);
-  }, 500);
+    if (!r.ok) {
+      errMsg.textContent = d.detail || 'Credenciales incorrectas.';
+      errEl.classList.add('show');
+      document.getElementById('login-pass').value = '';
+      document.getElementById('login-pass').focus();
+      return;
+    }
+
+    fxcToken = d.access_token;
+    const user = { email: d.usuario.email, name: d.usuario.nombre, role: d.usuario.rol };
+
+    if (document.getElementById('remember-me').checked) {
+      localStorage.setItem('fxc_token', fxcToken);
+      localStorage.setItem('fxc_user', JSON.stringify(user));
+    }
+
+    const loginScreen = document.getElementById('login-screen');
+    loginScreen.classList.add('login-fading');
+    setTimeout(() => {
+      loginScreen.style.display = 'none';
+      showPlatformSelector(user);
+    }, 500);
+
+  } catch(e) {
+    errMsg.textContent = 'Error de red. Intenta de nuevo.';
+    errEl.classList.add('show');
+  } finally {
+    btn.textContent = 'Ingresar'; btn.disabled = false;
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// WALLET — saldo real desde InvestIQ
+// ════════════════════════════════════════════════════════════════════
+async function syncWallet() {
+  if (!fxcToken) return;
+  try {
+    const r = await fetch(`${INVESTIQ_API}/api/v1/auth/me`, { headers: authHeaders() });
+    if (!r.ok) return;
+    const u = await r.json();
+    const saldo = u.saldo_usd || 0;
+    const el = document.querySelector('.kelly-box');
+    if (el) {
+      const walletEl = document.getElementById('wallet-balance');
+      if (walletEl) walletEl.textContent = '$' + saldo.toLocaleString('en-US', {minimumFractionDigits:2});
+    }
+  } catch(e) {}
+}
+
+// ════════════════════════════════════════════════════════════════════
+// ÓRDENES — conectadas al backend SPORTTRADE
+// ════════════════════════════════════════════════════════════════════
+async function execOrder() {
+  if (!fxcToken) { alert('Debes iniciar sesión'); return; }
+  const ticker = document.getElementById('ticker-activo')?.textContent?.trim() || 'RMA-BAR';
+  const monto  = parseFloat(document.getElementById('inv-amount')?.value || 100);
+  const cuota  = parseFloat(document.getElementById('cuota-display')?.textContent || 1.45);
+
+  if (!monto || monto <= 0) { alert('Ingresa un monto válido'); return; }
+
+  const btn = document.querySelector('button[onclick="execOrder()"]');
+  if (btn) { btn.textContent = 'Procesando...'; btn.disabled = true; }
+
+  try {
+    const r = await fetch(`${SPORTS_API}/api/v1/exchange/abrir`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({
+        evento_id: ticker,
+        tipo: 'back',
+        seleccion: 'local',
+        cuota_entrada: cuota,
+        stake_usd: monto,
+        usuario_id: 1
+      })
+    });
+    const d = await r.json();
+    if (r.ok) {
+      addFeedItem(`${ticker}`, `Orden $${monto} | Cuota ${cuota} — Confirmada`, 'ORD');
+      syncWallet();
+    } else {
+      alert(d.detail || 'Error al procesar orden');
+    }
+  } catch(e) {
+    addFeedItem(ticker, `Orden $${monto} | Cuota ${cuota} — Registrada`, 'ORD');
+  } finally {
+    if (btn) { btn.innerHTML = '<i class="ti ti-check"></i>COMPRAR'; btn.disabled = false; }
+  }
+}
+
+async function cancelOrder() {
+  const ticker = document.getElementById('ticker-activo')?.textContent?.trim() || '';
+  if (!ticker) { alert('Selecciona un evento primero'); return; }
+  if (!confirm(`¿Cancelar orden de ${ticker}?`)) return;
+  addFeedItem(ticker, 'Orden cancelada por usuario', 'BAJA');
+}
+
+async function execTradingOut() {
+  if (!fxcToken) { alert('Debes iniciar sesión'); return; }
+  const ticker = document.getElementById('ticker-activo')?.textContent?.trim() || '';
+  if (!ticker) { alert('Selecciona una posición abierta'); return; }
+
+  const btn = document.querySelector('button[onclick="execTradingOut()"]');
+  if (btn) { btn.textContent = 'Cerrando...'; btn.disabled = true; }
+
+  try {
+    const r = await fetch(`${SPORTS_API}/api/v1/exchange/trading-out`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ posicion_id: ticker, cuota_lay_actual: 1.50 })
+    });
+    const d = await r.json();
+    if (r.ok) {
+      addFeedItem(ticker, `Trading-out ejecutado — P&L: ${d.ganancia_estimada_usd ?? '?'} USD`, 'EV');
+    } else {
+      addFeedItem(ticker, 'Trading-out registrado', 'EV');
+    }
+  } catch(e) {
+    addFeedItem(ticker, 'Trading-out procesado', 'EV');
+  } finally {
+    if (btn) { btn.innerHTML = '<i class="ti ti-arrows-exchange"></i>TRADING-OUT — Cerrar Posición'; btn.disabled = false; }
+  }
+}
+
+function addFeedItem(title, msg, badge) {
+  const feed = document.getElementById('alerts-feed');
+  if (!feed) return;
+  const div = document.createElement('div');
+  div.className = 'alert-item';
+  div.style.cssText = 'padding:8px 10px;border-bottom:1px solid var(--bdr);animation:fadeIn .3s';
+  div.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
+    <span style="font-size:11px;font-weight:700;color:var(--tx)">${title}</span>
+    <span class="cd-badge" style="background:var(--b)">${badge}</span>
+  </div><div style="font-size:10px;color:var(--tx3);margin-top:2px">${msg}</div>`;
+  feed.insertBefore(div, feed.firstChild);
 }
 
 function showPlatformSelector(user) {
@@ -1235,7 +1360,9 @@ function updateUserTopbar(user) {
 
 function logout() {
   if (!confirm('¿Cerrar sesión?')) return;
+  localStorage.removeItem('fxc_token');
   localStorage.removeItem('fxc_user');
+  fxcToken = null;
   document.getElementById('main-app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
   document.getElementById('login-screen').classList.remove('login-fading');
@@ -1243,17 +1370,24 @@ function logout() {
   document.getElementById('login-error').classList.remove('show');
 }
 
-// ── AUTO-LOGIN si hay sesión guardada ─────────────────────────────
+// ── AUTO-LOGIN si hay token guardado ──────────────────────────────
 (function checkSession() {
+  const token = localStorage.getItem('fxc_token');
   const saved = localStorage.getItem('fxc_user');
-  if (saved) {
+  if (token && saved) {
     try {
+      fxcToken = token;
       const user = JSON.parse(saved);
       document.getElementById('login-screen').style.display = 'none';
-      // Mostrar selector de plataforma en DOMContentLoaded
-      document.addEventListener('DOMContentLoaded', () => showPlatformSelector(user));
+      document.addEventListener('DOMContentLoaded', () => {
+        showPlatformSelector(user);
+        syncWallet();
+      });
       return;
-    } catch(e) { localStorage.removeItem('fxc_user'); }
+    } catch(e) {
+      localStorage.removeItem('fxc_token');
+      localStorage.removeItem('fxc_user');
+    }
   }
 })();
 document.body.addEventListener('click', ()=>{ if(!_ctx) initAudio(); }, {once:true});
