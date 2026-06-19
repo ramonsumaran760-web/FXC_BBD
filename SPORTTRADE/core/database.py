@@ -7,12 +7,16 @@ class Base(DeclarativeBase):
     pass
 
 
+_is_sqlite = settings.DATABASE_URL.startswith("sqlite")
+
 engine = create_async_engine(
     settings.DATABASE_URL,
     echo=settings.DEBUG,
-    pool_pre_ping=True,
-    pool_size=20,
-    max_overflow=40,
+    **({} if _is_sqlite else {
+        "pool_pre_ping": True,
+        "pool_size": 20,
+        "max_overflow": 40,
+    })
 )
 
 AsyncSessionLocal = async_sessionmaker(
