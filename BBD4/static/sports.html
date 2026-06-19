@@ -684,14 +684,48 @@ function _mapEspnResponse(match, d) {
   };
 }
 
+// ── Enriquece cada partido con IA en background (sin bloquear el render) ────
+async function enrichMatchesWithAI() {
+  const notice = document.getElementById('live-notice');
+  for (let i = 0; i < RAW.length; i++) {
+    const m = RAW[i];
+    try {
+      let url = `${SPORTS_API}/api/v1/predictions/analizar-partido?` +
+        `home=${encodeURIComponent(m.l)}&away=${encodeURIComponent(m.v)}` +
+        `&saldo=${bal}&perfil_riesgo=moderado`;
+      if (m.bl > 1.01) url += `&bl=${m.bl}&be=${m.be}&bv=${m.bv}`;
+      const r = await fetch(url, { headers: authHeaders() });
+      if (r.ok) {
+        const d = await r.json();
+        RAW[i] = { ...RAW[i], ...d, _loading: false };
+        A[i]   = { ...RAW[i] };
+        if (sel && sel.id === RAW[i].id) sel = RAW[i];
+        renderAll();
+      } else {
+        RAW[i] = { ...RAW[i], _loading: false };
+      }
+    } catch(e) {
+      RAW[i] = { ...RAW[i], _loading: false };
+    }
+  }
+  // Final: re-sort by MASTER AI score and announce
+  const lv = RAW.filter(x=>x.live).length;
+  if (notice && !notice.textContent.includes('EJEMPLO')) {
+    notice.textContent = `⚽ ${lv} EN VIVO · ${RAW.length} partidos · 9 AGENTES IA · Análisis completo`;
+    notice.style.color = '';
+  }
+  renderAll();
+  if (audioOn) speakTopMatches();
+}
+
 async function fetchLiveMatches() {
   const notice = document.getElementById('live-notice');
   if (notice) notice.textContent = '⚽ Cargando partidos del Mundial 2026 — Bet365 · Pinnacle · Betfair...';
 
   try {
-    // ── Fuente: /mundial — The Odds API (40+ bookmakers) + análisis IA ──────
+    // ── Fuente: /mundial — The Odds API datos crudos RÁPIDO (< 5s) ──────────
     const ctrl  = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 28000); // 28s timeout
+    const timer = setTimeout(() => ctrl.abort(), 15000); // 15s timeout suficiente para datos crudos
     const r = await fetch(
       `${SPORTS_API}/api/v1/predictions/mundial?saldo=${bal}&perfil_riesgo=moderado`,
       { headers: authHeaders(), signal: ctrl.signal }
@@ -709,24 +743,25 @@ async function fetchLiveMatches() {
         const lv  = RAW.filter(x=>x.live).length;
         const src = data.source === 'the_odds_api' ? 'Bet365·Pinnacle·Betfair' : 'ESPN';
         if (notice) {
-          notice.textContent = `⚽ ${lv} EN VIVO · ${RAW.length} partidos · 9 AGENTES IA · ${src}`;
+          notice.textContent = `⚽ ${lv} EN VIVO · ${RAW.length} partidos · ${src} — analizando con 9 AGENTES IA...`;
           notice.style.color = '';
           notice.style.fontWeight = '';
         }
         renderAll();
+        // ── Enriquecer con IA en segundo plano (no bloquea UI) ────────────
+        enrichMatchesWithAI();
         return;
       }
-      // /mundial respondió pero sin partidos — mostrar por qué
-      if (notice) notice.textContent = `⚽ API OK · HTTP ${r.status} · 0 partidos (hoy sin fixtures): ${data.message || data.source || ''}`;
+      if (notice) notice.textContent = `⚽ API OK · 0 partidos hoy (${data.source || 'sin fixtures'}): ${data.message || ''}`;
     } else {
       if (notice) notice.textContent = `⚽ /mundial error HTTP ${r.status} — intentando ESPN...`;
     }
   } catch(e) {
-    if (notice) notice.textContent = `⚽ /mundial error: ${e.message} — intentando ESPN...`;
+    if (notice) notice.textContent = `⚽ /mundial timeout (${e.message}) — intentando ESPN...`;
   }
 
   // ── Fallback: cargar datos del Mundial directamente desde ESPN ────────────
-  if (notice) notice.textContent = '⚽ Conectando fuente alternativa...';
+  if (notice) notice.textContent = '⚽ Conectando fuente alternativa (ESPN)...';
   const todayStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
   const espnSlugs = ['fifa.world','worldcup','fifa.worldcup'];
   let d2 = null;
@@ -746,9 +781,8 @@ async function fetchLiveMatches() {
         RAW = events.map(espnBasicInfo).filter(Boolean);
         A   = RAW.map(a => ({...a}));
         sel = A[0];
-        if (notice) notice.textContent = `⚽ ${RAW.filter(x=>x.live).length} EN VIVO · ${RAW.length} partidos`;
+        if (notice) notice.textContent = `⚽ ${RAW.filter(x=>x.live).length} EN VIVO · ${RAW.length} partidos (ESPN)`;
         renderAll();
-        // Análisis IA en paralelo
         const results = await Promise.allSettled(RAW.map(m => analyzeMatchWithAI(m)));
         RAW = results.map((r,i) => r.status==='fulfilled' ? r.value : RAW[i]);
         A   = RAW.map(a => ({...a}));
@@ -756,12 +790,13 @@ async function fetchLiveMatches() {
         if (notice) notice.textContent =
           `⚽ ${RAW.filter(x=>x.live).length} EN VIVO · ${RAW.length} partidos · 9 AGENTES IA`;
         renderAll();
+        if (audioOn) speakTopMatches();
         return;
       }
     }
   } catch(e2) {}
 
-  // ── Fallback final: datos de EJEMPLO (no reales) ──────────────────────────
+  // ── Fallback final: datos de EJEMPLO ──────────────────────────────────────
   setFallbackData();
   A   = RAW.map(a => ({...a}));
   sel = A[0];
@@ -848,17 +883,95 @@ const SFX = {
   click:       () => beep(660,.06,.05),
 };
 
+// ── TTS — Voz IA narrador de resultados ──────────────────────────────────────
+let _ttsVoice = null;
+let _ttsActive = false;
+
+function ttsInit() {
+  if (!('speechSynthesis' in window)) return;
+  function pickVoice() {
+    const vv = window.speechSynthesis.getVoices();
+    const tries = [
+      v => v.lang === 'es-MX' && v.localService,
+      v => v.lang === 'es-ES' && v.localService,
+      v => v.lang.startsWith('es') && v.localService,
+      v => v.lang === 'es-MX',
+      v => v.lang === 'es-ES',
+      v => v.lang.startsWith('es'),
+    ];
+    for (const fn of tries) { const f = vv.find(fn); if (f) { _ttsVoice = f; break; } }
+  }
+  pickVoice();
+  window.speechSynthesis.onvoiceschanged = pickVoice;
+}
+
+function ttsSpeak(text) {
+  if (!('speechSynthesis' in window)) return;
+  window.speechSynthesis.cancel();
+  _ttsActive = true;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang  = 'es-MX';
+  u.rate  = 0.91;
+  u.pitch = 0.82;
+  if (_ttsVoice) u.voice = _ttsVoice;
+  u.onend = u.onerror = () => { _ttsActive = false; _ttsWaveStop(); };
+  _ttsWaveStart();
+  window.speechSynthesis.speak(u);
+}
+
+function _ttsWaveStart() {
+  const icon=document.getElementById('audioIcon');
+  const lbl=document.getElementById('audioLabel');
+  if (icon) icon.className='ti ti-volume-2';
+  if (lbl)  lbl.textContent='LEYENDO...';
+}
+
+function _ttsWaveStop() {
+  if (!audioOn) return;
+  const icon=document.getElementById('audioIcon');
+  const lbl=document.getElementById('audioLabel');
+  if (icon) icon.className='ti ti-volume';
+  if (lbl)  lbl.textContent='AUDIO ON';
+}
+
+function speakTopMatches() {
+  if (!audioOn || !RAW.length) return;
+  const top = [...RAW]
+    .filter(m => !m._loading && (m.pl > 0 || m.conf > 0))
+    .sort((a,b) => masterAiScore(b) - masterAiScore(a))
+    .slice(0, 3);
+  if (!top.length) return;
+
+  const lines = top.map((m, i) => {
+    const rec  = m.resultado_rec || (m.pl >= m.pv ? 'local' : 'visitante');
+    const equipo = rec === 'local' ? m.l : rec === 'visitante' ? m.v : 'empate';
+    const ev   = Math.round(m.ev || 0);
+    const ia   = masterAiScore(m);
+    return `Partido ${i+1}: ${m.l} versus ${m.v}. Recomendación ${equipo}. Valor esperado ${ev} por ciento. Confianza IA ${ia} por ciento.`;
+  });
+
+  ttsSpeak(`Análisis MASTER AI. Top ${top.length} partidos del Mundial. ${lines.join(' ')}`);
+}
+
 function toggleAudio() {
   initAudio();
+  ttsInit();
   audioOn = !audioOn;
   const btn=document.getElementById('audioBtn');
   const icon=document.getElementById('audioIcon');
   const lbl=document.getElementById('audioLabel');
   if (audioOn) {
-    btn.classList.add('on'); icon.className='ti ti-volume'; lbl.textContent='AUDIO ON';
+    btn.classList.add('on');
+    icon.className='ti ti-volume';
+    lbl.textContent='AUDIO ON';
     beep(880,.1);
+    setTimeout(() => speakTopMatches(), 600);
   } else {
-    btn.classList.remove('on'); icon.className='ti ti-volume-off'; lbl.textContent='AUDIO OFF';
+    window.speechSynthesis && window.speechSynthesis.cancel();
+    _ttsActive = false;
+    btn.classList.remove('on');
+    icon.className='ti ti-volume-off';
+    lbl.textContent='AUDIO OFF';
   }
 }
 
@@ -1703,6 +1816,7 @@ function logout() {
   }
 })();
 document.body.addEventListener('click', ()=>{ if(!_ctx) initAudio(); }, {once:true});
+ttsInit();
 // Cargar partidos reales del Mundial 2026 en cuanto el DOM esté listo
 document.addEventListener('DOMContentLoaded', fetchLiveMatches);
 </script>

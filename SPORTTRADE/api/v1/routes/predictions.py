@@ -632,27 +632,20 @@ async def mundial_en_vivo(
     perfil_riesgo: str = "moderado",
 ):
     """
-    TODOS los partidos del Mundial 2026 con:
-    - Odds en tiempo real de Bet365, Pinnacle, Betfair y 40+ bookmakers (via The Odds API)
-    - Análisis de los 8 agentes de IA (Poisson + Elo + Player Impact)
-    - Probabilidades reales, EV real, Kelly Criterion
-    - Marcadores en vivo
-    - Fallback a ESPN si no hay ODDS_API_KEY configurada
+    Partidos del Mundial 2026 con odds en tiempo real — respuesta rápida (< 5s).
+    Devuelve datos crudos de The Odds API con _loading:True.
+    El análisis IA se carga por partido vía /analizar-partido (llamado desde el frontend).
     """
-    import os
     from services.odds_api import fetch_full_world_cup_data, _get_key as _odds_key
-    from services.espn_fetcher import fetch_scoreboard, fetch_standings
-    from prompts.match_analysis import analyze_match_full
-    from finanzas import calcular_fraccion_kelly
+    from services.espn_fetcher import fetch_scoreboard
+    from datetime import datetime, timezone, timedelta
 
     has_odds_api = bool(_odds_key())
     logger.info("/mundial: has_odds_api=%s", has_odds_api)
 
     if has_odds_api:
-        # ── Fuente principal: The Odds API (bookmakers reales) ────────────────
         matches = await fetch_full_world_cup_data()
     else:
-        # ── Fallback: ESPN ───────────────────────────────────────────────────
         events = await fetch_scoreboard()
         if not events:
             return {"error": "ODDS_API_KEY no configurada y ESPN sin datos", "matches": []}
@@ -687,108 +680,7 @@ async def mundial_en_vivo(
     if not matches:
         return {"source": "error", "matches": [], "message": "Sin partidos disponibles"}
 
-    # ── Análisis IA rápido: top 10 partidos sin esperar ESPN ─────────────────
-    # Procesamos solo los primeros 10 para no exceder timeout de Render (30s)
-    import asyncio
-    standings: dict = {}
-    try:
-        standings = await asyncio.wait_for(fetch_standings(), timeout=5.0)
-    except Exception:
-        pass  # sin standings → usa defaults
-
-    def enrich_sync(m: dict) -> dict:
-        try:
-            home_name = m["l"].upper()
-            away_name = m["v"].upper()
-
-            def gs(name: str) -> dict:
-                for k, v in standings.items():
-                    if name in k or k in name or (name.split() and name.split()[0] in k):
-                        return v
-                return {"pj":3,"pg":1,"pe":1,"pp":1,"gf":3,"gc":3}
-
-            hs = gs(home_name)
-            vs = gs(away_name)
-
-            deep = analyze_match_full(
-                home_name=m["l"], away_name=m["v"],
-                home_stats=hs, away_stats=vs,
-                is_live=m.get("live", False),
-                home_score=int((m.get("sc") or "0-0").split("-")[0]),
-                away_score=int((m.get("sc") or "0-0").split("-")[1]),
-            )
-
-            pl   = round(deep["prob_local"],    1)
-            pe   = round(deep["prob_empate"],   1)
-            pv   = round(deep["prob_visitante"],1)
-            conf = round(deep["confianza"],     1)
-
-            bl = m.get("bl") or max(1.01, 100/max(pl,1)*1.06)
-            be = m.get("be") or max(1.01, 100/max(pe,1)*1.06)
-            bv = m.get("bv") or max(1.01, 100/max(pv,1)*1.06)
-
-            ev_local  = (pl/100) * bl - 1
-            ev_empate = (pe/100) * be - 1
-            ev_visita = (pv/100) * bv - 1
-            best_ev   = max(ev_local, ev_empate, ev_visita)
-            best_rec  = ["local","empate","visitante"][[ev_local, ev_empate, ev_visita].index(best_ev)]
-            valor     = "ALTO" if best_ev>=0.12 else "MEDIO" if best_ev>=0.05 else "BAJO" if best_ev>0 else "SIN_VALOR"
-
-            kelly = 0.0
-            if best_ev > 0 and saldo:
-                prob_map = {"local": pl/100, "empate": pe/100, "visitante": pv/100}
-                odds_map = {"local": bl, "empate": be, "visitante": bv}
-                kelly = calcular_fraccion_kelly(prob_map[best_rec], odds_map[best_rec], perfil_riesgo)
-
-            # ── 8 Agentes: métricas reales por dimensión ─────────────────────
-            win_pl  = pl if best_rec=="local" else pv if best_rec=="visitante" else pe
-            win_ff  = deep["ff_local"] if best_rec=="local" else deep["ff_visita"]
-            win_imp = deep["avg_impact_local"] if best_rec=="local" else deep["avg_impact_visita"]
-            win_elo = deep["elo_local"] if best_rec=="local" else deep["elo_visita"]
-            win_xg  = deep["xg_local"] if best_rec=="local" else deep["xg_visita"]
-
-            # AG[0] Statistical AI — probabilidad Poisson del resultado
-            a0 = round(min(99, max(40, win_pl + 5)))
-            # AG[1] Form & Racha AI — factor de forma del equipo ganador
-            a1 = round(min(99, max(40, win_ff * 82)))
-            # AG[2] Player Impact AI — impacto promedio de jugadores clave
-            a2 = round(min(99, max(40, win_imp)))
-            # AG[3] News Sentiment AI — ventaja Elo normalizada (proxy)
-            elo_edge = (win_elo - 1900) / 3
-            a3 = round(min(99, max(40, 65 + elo_edge)))
-            # AG[4] Referee AI — confianza del modelo (sin árbitro real disponible)
-            a4 = round(min(99, max(40, conf - 8)))
-            # AG[5] Weather AI — calidad xG esperada del ganador
-            a5 = round(min(99, max(40, win_xg / 3.0 * 90)))
-            # AG[6] Market Odds AI — señal de valor vs bookmakers
-            ev_signal = 50 + best_ev * 280
-            a6 = round(min(99, max(30, ev_signal)))
-            # AG[7] Monte Carlo AI — simulación Poisson convergencia
-            a7 = round(min(99, max(40, win_pl + 12)))
-
-            ag = [a0, a1, a2, a3, a4, a5, a6, a7]
-
-            return {
-                **m,
-                "pl": pl, "pe": pe, "pv": pv, "conf": conf,
-                "ev": round(best_ev*100, 1),
-                "kelly": round(kelly*100, 2),
-                "valor": valor,
-                "resultado_rec": best_rec,
-                "ag": ag,
-                "xgl": round(deep["xg_local"], 2),
-                "xgv": round(deep["xg_visita"], 2),
-                "_loading": False,
-                "_top_local":  deep.get("top_player_local"),
-                "_top_visita": deep.get("top_player_visita"),
-            }
-        except Exception as e:
-            logger.warning("enrich error for %s: %s", m.get("id"), e)
-            return {**m, "_loading": False}
-
-    # ── Filtrar: solo partidos de hoy + EN VIVO ──────────────────────────────
-    from datetime import datetime, timezone, timedelta
-    now_utc = datetime.now(timezone.utc)
+    now_utc     = datetime.now(timezone.utc)
     today_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
     today_end   = today_start + timedelta(days=1)
 
@@ -797,7 +689,7 @@ async def mundial_en_vivo(
             return True
         d = m.get("date", "")
         if not d:
-            return True  # sin fecha → incluir
+            return True
         try:
             dt = datetime.fromisoformat(d.replace("Z", "+00:00"))
             return today_start <= dt < today_end
@@ -805,35 +697,98 @@ async def mundial_en_vivo(
             return True
 
     today_matches = [m for m in matches if is_today_or_live(m)]
-    # Si hoy no hay partidos, mostrar los próximos 48h
     if not today_matches:
-        window_end = today_start + timedelta(hours=48)
-        today_matches = [m for m in matches if True]  # muestra todos si no hay hoy
         try:
-            today_matches = sorted(matches, key=lambda x: x.get("date",""))[:15]
+            today_matches = sorted(matches, key=lambda x: x.get("date",""))[:10]
         except Exception:
-            today_matches = matches[:15]
+            today_matches = matches[:10]
 
-    # Enriquecer con IA (analyze_match_full es pura Python — sin red)
-    enriched = [enrich_sync(m) for m in today_matches]
-
-    # Ordenar: EN VIVO primero, luego por MASTER AI score descendente
-    def master_ai_score(m: dict) -> float:
-        ag = m.get("ag") or []
-        if not ag:
-            return m.get("conf", 50)
-        w = [0.20, 0.12, 0.10, 0.08, 0.08, 0.10, 0.22, 0.10]
-        base = sum((ag[i] if i < len(ag) else 50) * w[i] for i in range(8))
-        return base + max(-15, min(15, m.get("ev", 0) * 0.8))
-
-    enriched.sort(key=lambda x: (not x.get("live"), -master_ai_score(x)))
+    today_matches.sort(key=lambda x: (not x.get("live"), x.get("done"), x.get("date", "")))
 
     return {
-        "source":    "the_odds_api" if has_odds_api else "espn_fallback",
-        "total":     len(enriched),
-        "live":      sum(1 for m in enriched if m.get("live")),
-        "matches":   enriched,
-        "today":     len(today_matches),
+        "source":  "the_odds_api" if has_odds_api else "espn_fallback",
+        "total":   len(today_matches),
+        "live":    sum(1 for m in today_matches if m.get("live")),
+        "matches": today_matches,
+        "today":   len(today_matches),
+    }
+
+
+@router.get("/analizar-partido")
+async def analizar_partido_rapido(
+    home: str,
+    away: str,
+    saldo: Optional[float] = None,
+    perfil_riesgo: str = "moderado",
+    bl: float = 0.0,
+    be: float = 0.0,
+    bv: float = 0.0,
+):
+    """
+    Análisis IA rápido de un partido — Poisson + Elo + Player Impact Matrix.
+    Puro Python (sin llamadas externas) → responde en < 1 segundo.
+    Llamado por el frontend para enriquecer cada partido de /mundial.
+    """
+    from prompts.match_analysis import analyze_match_full
+    from finanzas import calcular_fraccion_kelly
+
+    default_stats = {"pj":3,"pg":1,"pe":1,"pp":1,"gf":3,"gc":3}
+
+    deep = analyze_match_full(
+        home_name=home, away_name=away,
+        home_stats=default_stats, away_stats=default_stats,
+        is_live=False, home_score=0, away_score=0,
+    )
+
+    pl   = round(deep["prob_local"],    1)
+    pe_  = round(deep["prob_empate"],   1)
+    pv   = round(deep["prob_visitante"],1)
+    conf = round(deep["confianza"],     1)
+
+    bl_  = bl if bl > 1.01 else round(max(1.01, 100/max(pl,1)*1.06), 3)
+    be_  = be if be > 1.01 else round(max(1.01, 100/max(pe_,1)*1.06), 3)
+    bv_  = bv if bv > 1.01 else round(max(1.01, 100/max(pv,1)*1.06), 3)
+
+    ev_local  = (pl/100) * bl_  - 1
+    ev_empate = (pe_/100) * be_ - 1
+    ev_visita = (pv/100) * bv_  - 1
+    best_ev   = max(ev_local, ev_empate, ev_visita)
+    best_rec  = ["local","empate","visitante"][[ev_local, ev_empate, ev_visita].index(best_ev)]
+    valor     = "ALTO" if best_ev>=0.12 else "MEDIO" if best_ev>=0.05 else "BAJO" if best_ev>0 else "SIN_VALOR"
+
+    kelly = 0.0
+    if best_ev > 0 and saldo:
+        prob_map = {"local": pl/100, "empate": pe_/100, "visitante": pv/100}
+        odds_map = {"local": bl_, "empate": be_, "visitante": bv_}
+        kelly = calcular_fraccion_kelly(prob_map[best_rec], odds_map[best_rec], perfil_riesgo)
+
+    win_pl  = pl if best_rec=="local" else pv if best_rec=="visitante" else pe_
+    win_ff  = deep.get("ff_local", 1.0) if best_rec=="local" else deep.get("ff_visita", 1.0)
+    win_imp = deep.get("avg_impact_local", 70) if best_rec=="local" else deep.get("avg_impact_visita", 70)
+    win_elo = deep.get("elo_local", 1900) if best_rec=="local" else deep.get("elo_visita", 1900)
+    win_xg  = deep.get("xg_local", 1.5) if best_rec=="local" else deep.get("xg_visita", 1.5)
+
+    a0 = round(min(99, max(40, win_pl + 5)))
+    a1 = round(min(99, max(40, win_ff * 82)))
+    a2 = round(min(99, max(40, win_imp)))
+    elo_edge = (win_elo - 1900) / 3
+    a3 = round(min(99, max(40, 65 + elo_edge)))
+    a4 = round(min(99, max(40, conf - 8)))
+    a5 = round(min(99, max(40, win_xg / 3.0 * 90)))
+    ev_signal = 50 + best_ev * 280
+    a6 = round(min(99, max(30, ev_signal)))
+    a7 = round(min(99, max(40, win_pl + 12)))
+
+    return {
+        "pl": pl, "pe": pe_, "pv": pv, "conf": conf,
+        "ev": round(best_ev*100, 1),
+        "kelly": round(kelly*100, 2),
+        "valor": valor,
+        "resultado_rec": best_rec,
+        "ag": [a0, a1, a2, a3, a4, a5, a6, a7],
+        "xgl": round(deep.get("xg_local", 1.5), 2),
+        "xgv": round(deep.get("xg_visita", 1.5), 2),
+        "_loading": False,
     }
 
 
