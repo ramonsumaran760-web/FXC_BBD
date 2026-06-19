@@ -686,11 +686,16 @@ async def mundial_en_vivo(
     if not matches:
         return {"source": "error", "matches": [], "message": "Sin partidos disponibles"}
 
-    # ── Análisis IA en paralelo para cada partido ─────────────────────────────
+    # ── Análisis IA rápido: top 10 partidos sin esperar ESPN ─────────────────
+    # Procesamos solo los primeros 10 para no exceder timeout de Render (30s)
     import asyncio
-    standings = await fetch_standings()
+    standings: dict = {}
+    try:
+        standings = await asyncio.wait_for(fetch_standings(), timeout=5.0)
+    except Exception:
+        pass  # sin standings → usa defaults
 
-    async def enrich(m: dict) -> dict:
+    def enrich_sync(m: dict) -> dict:
         try:
             home_name = m["l"].upper()
             away_name = m["v"].upper()
@@ -705,7 +710,7 @@ async def mundial_en_vivo(
             vs = gs(away_name)
 
             deep = analyze_match_full(
-                home_name=home_name, away_name=away_name,
+                home_name=m["l"], away_name=m["v"],
                 home_stats=hs, away_stats=vs,
                 is_live=m.get("live", False),
                 home_score=int((m.get("sc") or "0-0").split("-")[0]),
@@ -717,18 +722,16 @@ async def mundial_en_vivo(
             pv   = round(deep["prob_visitante"],1)
             conf = round(deep["confianza"],     1)
 
-            # EV: compara modelo vs odds de mercado
-            bl = m.get("bl") or (100/max(pl,1)*1.06)
-            be = m.get("be") or (100/max(pe,1)*1.06)
-            bv = m.get("bv") or (100/max(pv,1)*1.06)
+            bl = m.get("bl") or max(1.01, 100/max(pl,1)*1.06)
+            be = m.get("be") or max(1.01, 100/max(pe,1)*1.06)
+            bv = m.get("bv") or max(1.01, 100/max(pv,1)*1.06)
 
             ev_local  = (pl/100) * bl - 1
             ev_empate = (pe/100) * be - 1
             ev_visita = (pv/100) * bv - 1
             best_ev   = max(ev_local, ev_empate, ev_visita)
             best_rec  = ["local","empate","visitante"][[ev_local, ev_empate, ev_visita].index(best_ev)]
-
-            valor = "ALTO" if best_ev>=0.12 else "MEDIO" if best_ev>=0.05 else "BAJO" if best_ev>0 else "SIN_VALOR"
+            valor     = "ALTO" if best_ev>=0.12 else "MEDIO" if best_ev>=0.05 else "BAJO" if best_ev>0 else "SIN_VALOR"
 
             kelly = 0.0
             if best_ev > 0 and saldo:
@@ -755,11 +758,9 @@ async def mundial_en_vivo(
                 "valor": valor,
                 "resultado_rec": best_rec,
                 "ag": ag,
-                "xgl": deep["xg_local"],
-                "xgv": deep["xg_visita"],
+                "xgl": round(deep["xg_local"], 2),
+                "xgv": round(deep["xg_visita"], 2),
                 "_loading": False,
-                "_equipo_local":  {"attack": deep["team_attack_local"],  "defense": deep["team_defense_local"]},
-                "_equipo_visita": {"attack": deep["team_attack_visita"], "defense": deep["team_defense_visita"]},
                 "_top_local":  deep.get("top_player_local"),
                 "_top_visita": deep.get("top_player_visita"),
             }
@@ -767,13 +768,17 @@ async def mundial_en_vivo(
             logger.warning("enrich error for %s: %s", m.get("id"), e)
             return {**m, "_loading": False}
 
-    enriched = await asyncio.gather(*[enrich(m) for m in matches])
+    # Enriquecer todos los partidos (analyze_match_full es pura Python — rápida)
+    enriched = [enrich_sync(m) for m in matches]
+
+    # Ordenar: en vivo primero, luego por EV descendente
+    enriched.sort(key=lambda x: (not x.get("live"), -x.get("ev", 0)))
 
     return {
         "source":    "the_odds_api" if has_odds_api else "espn_fallback",
         "total":     len(enriched),
         "live":      sum(1 for m in enriched if m.get("live")),
-        "matches":   list(enriched),
+        "matches":   enriched,
     }
 
 
