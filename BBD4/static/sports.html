@@ -686,53 +686,65 @@ function _mapEspnResponse(match, d) {
 
 async function fetchLiveMatches() {
   const notice = document.getElementById('live-notice');
-  if (notice) notice.textContent = '⚽ Conectando ESPN — FIFA Mundial 2026...';
+  if (notice) notice.textContent = '⚽ Cargando partidos del Mundial 2026 — Bet365 · Pinnacle · Betfair...';
 
-  // ── 1. Obtener lista de partidos de ESPN ───────────────────────────────────
-  let events = [];
   try {
-    const r = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard');
-    const d = await r.json();
-    events = (d.events || []).slice(0, 15);
+    // ── Fuente: /mundial — The Odds API (40+ bookmakers) + análisis IA ──────
+    const r = await fetch(
+      `${SPORTS_API}/api/v1/predictions/mundial?saldo=${bal}&perfil_riesgo=moderado`,
+      { headers: authHeaders() }
+    );
+
+    if (r.ok) {
+      const data = await r.json();
+      const matches = data.matches || [];
+
+      if (matches.length > 0) {
+        RAW = matches;
+        A   = RAW.map(a => ({...a}));
+        sel = A[0];
+        const lv  = RAW.filter(x=>x.live).length;
+        const src = data.source === 'the_odds_api' ? 'Bet365·Pinnacle·Betfair' : 'ESPN';
+        if (notice) notice.textContent =
+          `⚽ ${lv} EN VIVO · ${RAW.length} partidos · 9 AGENTES IA · ${src}`;
+        renderAll();
+        return;
+      }
+    }
   } catch(e) {}
 
-  if (events.length === 0) {
-    try {
-      const today = new Date().toISOString().slice(0,10).replace(/-/g,'');
-      const r2 = await fetch(
-        `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${today}`
-      );
+  // ── Fallback: cargar datos del Mundial directamente desde ESPN ────────────
+  if (notice) notice.textContent = '⚽ Conectando fuente alternativa...';
+  try {
+    const r2 = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard');
+    if (r2.ok) {
       const d2 = await r2.json();
-      events = (d2.events || []).slice(0, 15);
-    } catch(e2) {}
-  }
+      const events = (d2.events || []).slice(0,15);
+      if (events.length > 0) {
+        RAW = events.map(espnBasicInfo).filter(Boolean);
+        A   = RAW.map(a => ({...a}));
+        sel = A[0];
+        if (notice) notice.textContent = `⚽ ${RAW.filter(x=>x.live).length} EN VIVO · ${RAW.length} partidos`;
+        renderAll();
+        // Análisis IA en paralelo
+        const results = await Promise.allSettled(RAW.map(m => analyzeMatchWithAI(m)));
+        RAW = results.map((r,i) => r.status==='fulfilled' ? r.value : RAW[i]);
+        A   = RAW.map(a => ({...a}));
+        sel = A[0];
+        if (notice) notice.textContent =
+          `⚽ ${RAW.filter(x=>x.live).length} EN VIVO · ${RAW.length} partidos · 9 AGENTES IA`;
+        renderAll();
+        return;
+      }
+    }
+  } catch(e2) {}
 
-  if (events.length > 0) {
-    // Mostrar equipos/marcador inmediatamente (sin esperar IA)
-    RAW = events.map(espnBasicInfo).filter(Boolean);
-    A = RAW.map(a => ({...a}));
-    sel = A[0];
-    const lv = RAW.filter(x=>x.live).length;
-    if (notice) notice.textContent = `⚽ ${lv} EN VIVO · ${RAW.length} partidos · Cargando análisis IA...`;
-    renderAll();
-
-    // ── 2. Análisis IA en paralelo para todos los partidos ─────────────────
-    const results = await Promise.allSettled(RAW.map(m => analyzeMatchWithAI(m)));
-    RAW = results.map((r,i) => r.status==='fulfilled' ? r.value : RAW[i]);
-    A   = RAW.map(a => ({...a}));
-    sel = A[0];
-    if (notice) notice.textContent =
-      `⚽ ${RAW.filter(x=>x.live).length} EN VIVO · ${RAW.length} partidos · 9 AGENTES IA ACTIVOS`;
-    renderAll(); // re-render con datos reales del backend
-
-  } else {
-    // Sin partidos ESPN → fallback con equipos reales del Mundial
-    setFallbackData();
-    A = RAW.map(a => ({...a}));
-    sel = A[0];
-    if (notice) notice.textContent = '⚽ Sin partidos en vivo hoy — Próximos partidos del Mundial 2026';
-    renderAll();
-  }
+  // ── Fallback final: datos del Mundial sin conexión ─────────────────────────
+  setFallbackData();
+  A   = RAW.map(a => ({...a}));
+  sel = A[0];
+  if (notice) notice.textContent = '⚽ Sin conexión — Datos del Mundial 2026';
+  renderAll();
 }
 
 

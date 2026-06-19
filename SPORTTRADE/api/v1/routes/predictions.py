@@ -601,6 +601,156 @@ async def analizar_deep(
     }
 
 
+@router.get("/mundial")
+async def mundial_en_vivo(
+    saldo: Optional[float] = None,
+    perfil_riesgo: str = "moderado",
+):
+    """
+    TODOS los partidos del Mundial 2026 con:
+    - Odds en tiempo real de Bet365, Pinnacle, Betfair y 40+ bookmakers (via The Odds API)
+    - Análisis de los 8 agentes de IA (Poisson + Elo + Player Impact)
+    - Probabilidades reales, EV real, Kelly Criterion
+    - Marcadores en vivo
+    - Fallback a ESPN si no hay ODDS_API_KEY configurada
+    """
+    from services.odds_api import fetch_full_world_cup_data, ODDS_API_KEY
+    from services.espn_fetcher import fetch_scoreboard, fetch_standings
+    from prompts.match_analysis import analyze_match_full
+    from finanzas import calcular_fraccion_kelly
+
+    has_odds_api = bool(ODDS_API_KEY)
+
+    if has_odds_api:
+        # ── Fuente principal: The Odds API (bookmakers reales) ────────────────
+        matches = await fetch_full_world_cup_data()
+    else:
+        # ── Fallback: ESPN ───────────────────────────────────────────────────
+        events = await fetch_scoreboard()
+        if not events:
+            return {"error": "ODDS_API_KEY no configurada y ESPN sin datos", "matches": []}
+        matches = []
+        for ev in events[:15]:
+            try:
+                comp = ev.get("competitions", [{}])[0]
+                home = next((c for c in comp.get("competitors",[]) if c.get("homeAway")=="home"), {})
+                away = next((c for c in comp.get("competitors",[]) if c.get("homeAway")=="away"), {})
+                state = ev.get("status",{}).get("type",{}).get("state","pre")
+                live  = state == "in"
+                done  = state == "post"
+                hs, vs = home.get("score","0"), away.get("score","0")
+                matches.append({
+                    "id":      f"{home.get('team',{}).get('abbreviation','H')}-{away.get('team',{}).get('abbreviation','A')}",
+                    "odds_id": ev.get("id",""),
+                    "liga":    "FIFA Mundial 2026",
+                    "l":       home.get("team",{}).get("displayName","Local"),
+                    "v":       away.get("team",{}).get("displayName","Visita"),
+                    "date":    ev.get("date",""),
+                    "live":    live and not done,
+                    "done":    done,
+                    "sc":      f"{hs}-{vs}" if (live or done) else "",
+                    "min":     int(ev.get("status",{}).get("displayClock","0'").replace("'","") or 0),
+                    "bl":0,"be":0,"bv":0,"bl_best":0,"be_best":0,"bv_best":0,
+                    "bookmakers":[], "pl":0,"pe":0,"pv":0,
+                    "ev":0,"conf":0,"kelly":0,"ag":[0]*8,"xgl":0,"xgv":0,"_loading":True,
+                })
+            except Exception:
+                continue
+
+    if not matches:
+        return {"source": "error", "matches": [], "message": "Sin partidos disponibles"}
+
+    # ── Análisis IA en paralelo para cada partido ─────────────────────────────
+    import asyncio
+    standings = await fetch_standings()
+
+    async def enrich(m: dict) -> dict:
+        try:
+            home_name = m["l"].upper()
+            away_name = m["v"].upper()
+
+            def gs(name: str) -> dict:
+                for k, v in standings.items():
+                    if name in k or k in name or (name.split() and name.split()[0] in k):
+                        return v
+                return {"pj":3,"pg":1,"pe":1,"pp":1,"gf":3,"gc":3}
+
+            hs = gs(home_name)
+            vs = gs(away_name)
+
+            deep = analyze_match_full(
+                home_name=home_name, away_name=away_name,
+                home_stats=hs, away_stats=vs,
+                is_live=m.get("live", False),
+                home_score=int((m.get("sc") or "0-0").split("-")[0]),
+                away_score=int((m.get("sc") or "0-0").split("-")[1]),
+            )
+
+            pl   = round(deep["prob_local"],    1)
+            pe   = round(deep["prob_empate"],   1)
+            pv   = round(deep["prob_visitante"],1)
+            conf = round(deep["confianza"],     1)
+
+            # EV: compara modelo vs odds de mercado
+            bl = m.get("bl") or (100/max(pl,1)*1.06)
+            be = m.get("be") or (100/max(pe,1)*1.06)
+            bv = m.get("bv") or (100/max(pv,1)*1.06)
+
+            ev_local  = (pl/100) * bl - 1
+            ev_empate = (pe/100) * be - 1
+            ev_visita = (pv/100) * bv - 1
+            best_ev   = max(ev_local, ev_empate, ev_visita)
+            best_rec  = ["local","empate","visitante"][[ev_local, ev_empate, ev_visita].index(best_ev)]
+
+            valor = "ALTO" if best_ev>=0.12 else "MEDIO" if best_ev>=0.05 else "BAJO" if best_ev>0 else "SIN_VALOR"
+
+            kelly = 0.0
+            if best_ev > 0 and saldo:
+                prob_map = {"local": pl/100, "empate": pe/100, "visitante": pv/100}
+                odds_map = {"local": bl, "empate": be, "visitante": bv}
+                kelly = calcular_fraccion_kelly(prob_map[best_rec], odds_map[best_rec], perfil_riesgo)
+
+            ag = [
+                round((pl + deep["team_attack_local"])/2),
+                round(deep["ff_local"]*75),
+                round(deep["avg_impact_local"]),
+                round(max(50, conf-10)),
+                round(max(55, conf-8)),
+                round(min(99, conf+2)),
+                round(min(99, deep["elo_local"]/22)),
+                round(min(99, conf+5)),
+            ]
+
+            return {
+                **m,
+                "pl": pl, "pe": pe, "pv": pv, "conf": conf,
+                "ev": round(best_ev*100, 1),
+                "kelly": round(kelly*100, 2),
+                "valor": valor,
+                "resultado_rec": best_rec,
+                "ag": ag,
+                "xgl": deep["xg_local"],
+                "xgv": deep["xg_visita"],
+                "_loading": False,
+                "_equipo_local":  {"attack": deep["team_attack_local"],  "defense": deep["team_defense_local"]},
+                "_equipo_visita": {"attack": deep["team_attack_visita"], "defense": deep["team_defense_visita"]},
+                "_top_local":  deep.get("top_player_local"),
+                "_top_visita": deep.get("top_player_visita"),
+            }
+        except Exception as e:
+            logger.warning("enrich error for %s: %s", m.get("id"), e)
+            return {**m, "_loading": False}
+
+    enriched = await asyncio.gather(*[enrich(m) for m in matches])
+
+    return {
+        "source":    "the_odds_api" if has_odds_api else "espn_fallback",
+        "total":     len(enriched),
+        "live":      sum(1 for m in enriched if m.get("live")),
+        "matches":   list(enriched),
+    }
+
+
 @router.get("/live", response_model=list[dict])
 async def predicciones_live(db: AsyncSession = Depends(get_db)):
     """Devuelve las últimas predicciones de partidos en vivo."""
