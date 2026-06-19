@@ -118,7 +118,7 @@ app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
 @app.get("/", tags=["status"])
 async def root():
-    return FileResponse("frontend/index.html")
+    return FileResponse("frontend/index.html", media_type="text/html")
 
 
 @app.get("/favicon.ico", include_in_schema=False)
