@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from datetime import datetime
 import httpx
+import logging
 import time
 
 from core.database import get_db
@@ -27,6 +28,8 @@ from master_ai.agentes.agent_7_odds import MovimientoMercado, SnapshotOdds, calc
 from master_ai.agentes.agent_8_montecarlo import InputMonteCarlo, calcular as calc_mc
 from odds import CuotasMercado
 from finanzas import BankrollSettings
+
+logger = logging.getLogger("fxcbbd.predictions")
 
 ESPN_WC = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world"
 

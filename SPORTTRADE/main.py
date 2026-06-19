@@ -129,7 +129,7 @@ async def health():
     stats = latency_tracker.estadisticas()
     return {
         "status":          "ok",
-        "circuit_breaker": circuit_breaker.estado.value,
+        "circuit_breaker": circuit_breaker.estado,
         "latencia_p95_ms": stats.get("p95_ms"),
         "sla_cumplimiento":stats.get("cumplimiento_pct"),
     }

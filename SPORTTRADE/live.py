@@ -12,6 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import time
 from dataclasses import dataclass, field
 from typing import Callable, Optional, AsyncGenerator
@@ -94,6 +95,34 @@ class LatencyTracker:
         if self._total == 0:
             return 100.0
         return round((1 - self._sobre_sla / self._total) * 100, 1)
+
+    def sla_cumplimiento_pct(self) -> float:
+        """Alias en espanol conservado para los endpoints publicos."""
+        return self.sla_compliance_pct
+
+    def estadisticas(self) -> dict:
+        """Resume la ventana de latencias usando el contrato de la API live."""
+        latencias = sorted(rec.latencia_ms for rec in self._registros)
+        if not latencias:
+            return {
+                "promedio_ms": 0.0,
+                "p95_ms": 0,
+                "p99_ms": 0,
+                "cumplimiento_pct": self.sla_compliance_pct,
+                "total": 0,
+            }
+
+        def percentil(p: float) -> int:
+            indice = min(len(latencias) - 1, max(0, math.ceil(len(latencias) * p) - 1))
+            return latencias[indice]
+
+        return {
+            "promedio_ms": round(sum(latencias) / len(latencias), 1),
+            "p95_ms": percentil(0.95),
+            "p99_ms": percentil(0.99),
+            "cumplimiento_pct": self.sla_compliance_pct,
+            "total": len(latencias),
+        }
 
     def ultimos(self, n: int = 20) -> list[LatencyRecord]:
         return self._registros[-n:]

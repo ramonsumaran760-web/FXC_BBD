@@ -70,7 +70,7 @@ async def partidos_en_vivo(db: AsyncSession = Depends(get_db)):
     )
     partidos = result.scalars().all()
     return {
-        "circuit_breaker": circuit_breaker.estado.value,
+        "circuit_breaker": circuit_breaker.estado,
         "total_en_vivo":   len(partidos),
         "latencia_sla_pct": latency_tracker.sla_cumplimiento_pct(),
         "partidos": [
@@ -113,7 +113,7 @@ async def cuotas_live(ticker: str, db: AsyncSession = Depends(get_db)):
         "datos_frescos":   odds.datos_frescos,
         "es_live":         odds.es_live,
         "actualizado":     odds.actualizado.isoformat(),
-        "circuit_breaker": circuit_breaker.estado.value,
+        "circuit_breaker": circuit_breaker.estado,
     }
 
 
@@ -131,7 +131,7 @@ async def metricas_latencia():
         "p99_ms":          stats.get("p99_ms"),
         "cumplimiento_pct":stats.get("cumplimiento_pct"),
         "total_mediciones":stats.get("total"),
-        "circuit_breaker": circuit_breaker.estado.value,
+        "circuit_breaker": circuit_breaker.estado,
     }
 
 
@@ -156,7 +156,7 @@ async def websocket_odds(ticker: str, ws: WebSocket):
             except asyncio.TimeoutError:
                 # Timeout 30s → enviar heartbeat
                 await ws.send_json({"type": "heartbeat", "ticker": ticker,
-                                    "circuit_breaker": circuit_breaker.estado.value})
+                                    "circuit_breaker": circuit_breaker.estado})
             except WebSocketDisconnect:
                 break
     except Exception as e:
@@ -175,5 +175,5 @@ async def broadcast_odds_update(ticker: str, odds_data: dict):
         "type":            "odds_update",
         "ticker":          ticker,
         "data":            odds_data,
-        "circuit_breaker": circuit_breaker.estado.value,
+        "circuit_breaker": circuit_breaker.estado,
     })
