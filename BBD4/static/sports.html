@@ -715,10 +715,20 @@ async function fetchLiveMatches() {
 
   // ── Fallback: cargar datos del Mundial directamente desde ESPN ────────────
   if (notice) notice.textContent = '⚽ Conectando fuente alternativa...';
+  const todayStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const espnSlugs = ['fifa.world','worldcup','fifa.worldcup'];
+  let d2 = null;
+  for (const slug of espnSlugs) {
+    try {
+      const rx = await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/${slug}/scoreboard?dates=${todayStr}&limit=50`);
+      if (rx.ok) {
+        const tmp = await rx.json();
+        if ((tmp.events||[]).length > 0) { d2 = tmp; break; }
+      }
+    } catch(_){}
+  }
   try {
-    const r2 = await fetch('https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard');
-    if (r2.ok) {
-      const d2 = await r2.json();
+    if (d2) {
       const events = (d2.events || []).slice(0,15);
       if (events.length > 0) {
         RAW = events.map(espnBasicInfo).filter(Boolean);
@@ -739,35 +749,41 @@ async function fetchLiveMatches() {
     }
   } catch(e2) {}
 
-  // ── Fallback final: datos del Mundial sin conexión ─────────────────────────
+  // ── Fallback final: datos de EJEMPLO (no reales) ──────────────────────────
   setFallbackData();
   A   = RAW.map(a => ({...a}));
   sel = A[0];
-  if (notice) notice.textContent = '⚽ Sin conexión — Datos del Mundial 2026';
+  if (notice) {
+    notice.textContent = '⚠️ SIN CONEXIÓN — Mostrando datos de EJEMPLO. Para datos reales: configura ODDS_API_KEY en Render.';
+    notice.style.color = '#f97316';
+    notice.style.fontWeight = '700';
+  }
   renderAll();
 }
 
 
 function setFallbackData() {
-  // Genera fechas de hoy para los horarios típicos del Mundial 2026 (ET)
+  // Horarios típicos del Mundial 2026 (local — los partidos reales no están disponibles sin API)
   function wc(h, m) {
     const d = new Date();
     d.setHours(h, m, 0, 0);
-    // Si ya pasó la hora, ponerlo para mañana
     if (d < new Date()) d.setDate(d.getDate() + 1);
     return d.toISOString();
   }
+  // NOTA: estos son ejemplos plausibles de fase de grupos (distintas confederaciones).
+  // Los partidos reales requieren ODDS_API_KEY en Render o conexión ESPN.
+  // BRA-ARG, FRA-ESP, etc. son finales/semis — NO aparecen en grupos.
   RAW = [
-    {id:'USA-MEX', liga:'FIFA Mundial 2026',l:'Estados Unidos',v:'México',       sc:'',min:0, live:false,done:false,date:wc(12,0),bl:2.10,be:3.20,bv:3.80,pl:52,pe:26,pv:22,ev:9.2, conf:85,kelly:4.1,ag:[85,82,78,80,75,72,86,84],xgl:1.85,xgv:1.42},
-    {id:'BRA-ARG', liga:'FIFA Mundial 2026',l:'Brasil',        v:'Argentina',    sc:'',min:0, live:false,done:false,date:wc(15,0),bl:2.20,be:3.30,bv:3.20,pl:48,pe:27,pv:25,ev:5.6, conf:82,kelly:3.2,ag:[80,78,72,75,68,70,80,79],xgl:1.95,xgv:1.60},
-    {id:'FRA-ESP', liga:'FIFA Mundial 2026',l:'Francia',       v:'España',       sc:'',min:0, live:false,done:false,date:wc(18,0),bl:2.40,be:3.10,bv:2.90,pl:45,pe:28,pv:27,ev:8.0, conf:80,kelly:3.8,ag:[82,80,76,72,78,75,84,83],xgl:1.80,xgv:1.75},
-    {id:'ENG-GER', liga:'FIFA Mundial 2026',l:'Inglaterra',    v:'Alemania',     sc:'',min:0, live:false,done:false,date:wc(21,0),bl:2.50,be:3.20,bv:2.80,pl:42,pe:27,pv:31,ev:5.0, conf:76,kelly:2.8,ag:[76,72,80,75,70,68,76,79],xgl:1.70,xgv:1.65},
-    {id:'POR-URU', liga:'FIFA Mundial 2026',l:'Portugal',      v:'Uruguay',      sc:'',min:0, live:false,done:false,date:wc(21,0),bl:1.85,be:3.50,bv:4.60,pl:58,pe:24,pv:18,ev:7.3, conf:78,kelly:3.5,ag:[78,82,70,72,75,68,80,77],xgl:2.10,xgv:1.05},
-    {id:'NED-COL', liga:'FIFA Mundial 2026',l:'Países Bajos',  v:'Colombia',     sc:'',min:0, live:false,done:false,date:wc(12,0),bl:1.95,be:3.40,bv:4.20,pl:55,pe:25,pv:20,ev:7.2, conf:75,kelly:3.2,ag:[75,72,68,70,65,72,78,74],xgl:1.90,xgv:1.20},
-    {id:'ITA-BEL', liga:'FIFA Mundial 2026',l:'Italia',        v:'Bélgica',      sc:'',min:0, live:false,done:false,date:wc(15,0),bl:2.05,be:3.30,bv:3.70,pl:50,pe:27,pv:23,ev:2.5, conf:72,kelly:1.8,ag:[72,70,65,68,62,66,70,71],xgl:1.65,xgv:1.45},
-    {id:'MAR-SEN', liga:'FIFA Mundial 2026',l:'Marruecos',     v:'Senegal',      sc:'',min:0, live:false,done:false,date:wc(18,0),bl:2.30,be:3.10,bv:3.20,pl:46,pe:29,pv:25,ev:5.8, conf:70,kelly:2.5,ag:[70,68,72,65,62,66,72,69],xgl:1.55,xgv:1.40},
-    {id:'JPN-KOR', liga:'FIFA Mundial 2026',l:'Japón',         v:'Corea del Sur',sc:'',min:0, live:false,done:false,date:wc(21,0),bl:2.60,be:3.00,bv:2.70,pl:40,pe:31,pv:29,ev:4.0, conf:68,kelly:2.0,ag:[68,65,70,62,58,64,70,67],xgl:1.45,xgv:1.38},
-    {id:'AUS-CAN', liga:'FIFA Mundial 2026',l:'Australia',     v:'Canadá',       sc:'',min:0, live:false,done:false,date:wc(21,0),bl:2.80,be:3.10,bv:2.50,pl:38,pe:30,pv:32,ev:6.4, conf:65,kelly:2.2,ag:[65,62,68,60,55,62,68,64],xgl:1.35,xgv:1.50},
+    {id:'USA-CHI', liga:'FIFA Mundial 2026 · EJEMPLO',l:'Estados Unidos',v:'Chile',        sc:'',min:0,live:false,done:false,date:wc(12,0),bl:1.95,be:3.30,bv:4.20,pl:52,pe:26,pv:22,ev:9.2, conf:85,kelly:4.1,ag:[85,82,78,80,75,72,86,84],xgl:1.85,xgv:1.42},
+    {id:'BRA-SUI', liga:'FIFA Mundial 2026 · EJEMPLO',l:'Brasil',         v:'Suiza',        sc:'',min:0,live:false,done:false,date:wc(12,0),bl:1.60,be:3.80,bv:5.50,pl:62,pe:23,pv:15,ev:7.2, conf:82,kelly:3.5,ag:[84,80,76,78,72,74,84,83],xgl:2.20,xgv:0.90},
+    {id:'ARG-MAR', liga:'FIFA Mundial 2026 · EJEMPLO',l:'Argentina',      v:'Marruecos',    sc:'',min:0,live:false,done:false,date:wc(15,0),bl:1.70,be:3.60,bv:5.00,pl:59,pe:24,pv:17,ev:6.8, conf:80,kelly:3.2,ag:[82,80,72,75,70,72,82,81],xgl:2.05,xgv:1.05},
+    {id:'FRA-JPN', liga:'FIFA Mundial 2026 · EJEMPLO',l:'Francia',        v:'Japón',        sc:'',min:0,live:false,done:false,date:wc(15,0),bl:1.55,be:3.90,bv:6.00,pl:65,pe:22,pv:13,ev:8.5, conf:81,kelly:3.8,ag:[84,80,78,72,80,77,86,85],xgl:2.30,xgv:0.80},
+    {id:'ENG-MEX', liga:'FIFA Mundial 2026 · EJEMPLO',l:'Inglaterra',     v:'México',       sc:'',min:0,live:false,done:false,date:wc(18,0),bl:1.75,be:3.50,bv:4.80,pl:57,pe:25,pv:18,ev:6.2, conf:78,kelly:2.8,ag:[78,74,72,75,72,70,80,79],xgl:1.95,xgv:1.15},
+    {id:'ESP-NGA', liga:'FIFA Mundial 2026 · EJEMPLO',l:'España',         v:'Nigeria',      sc:'',min:0,live:false,done:false,date:wc(18,0),bl:1.65,be:3.70,bv:5.50,pl:61,pe:24,pv:15,ev:7.5, conf:80,kelly:3.5,ag:[82,82,76,74,78,74,84,83],xgl:2.15,xgv:0.95},
+    {id:'POR-COL', liga:'FIFA Mundial 2026 · EJEMPLO',l:'Portugal',       v:'Colombia',     sc:'',min:0,live:false,done:false,date:wc(21,0),bl:1.72,be:3.60,bv:4.90,pl:58,pe:25,pv:17,ev:7.3, conf:78,kelly:3.5,ag:[80,80,72,70,76,70,82,79],xgl:2.00,xgv:1.10},
+    {id:'GER-CAN', liga:'FIFA Mundial 2026 · EJEMPLO',l:'Alemania',       v:'Canadá',       sc:'',min:0,live:false,done:false,date:wc(21,0),bl:1.55,be:3.90,bv:6.00,pl:64,pe:23,pv:13,ev:7.5, conf:76,kelly:3.5,ag:[78,74,76,72,72,70,78,77],xgl:2.15,xgv:0.85},
+    {id:'NED-KOR', liga:'FIFA Mundial 2026 · EJEMPLO',l:'Países Bajos',   v:'Corea del Sur',sc:'',min:0,live:false,done:false,date:wc(21,0),bl:1.80,be:3.40,bv:4.60,pl:56,pe:26,pv:18,ev:6.0, conf:75,kelly:3.0,ag:[76,74,70,68,68,68,78,75],xgl:1.85,xgv:1.20},
+    {id:'ITA-ECU', liga:'FIFA Mundial 2026 · EJEMPLO',l:'Italia',         v:'Ecuador',      sc:'',min:0,live:false,done:false,date:wc(21,0),bl:1.85,be:3.40,bv:4.20,pl:55,pe:26,pv:19,ev:5.5, conf:74,kelly:2.8,ag:[74,72,68,68,65,68,74,73],xgl:1.75,xgv:1.30},
   ];
 }
 

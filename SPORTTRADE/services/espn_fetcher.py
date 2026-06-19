@@ -11,8 +11,12 @@ import httpx
 
 logger = logging.getLogger("fxcbbd.espn")
 
-ESPN_WC  = "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world"
+ESPN_BASE    = "https://site.api.espn.com/apis/site/v2/sports/soccer"
+ESPN_WC      = f"{ESPN_BASE}/fifa.world"   # used by standings/summary/teams
 ESPN_TIMEOUT = 8.0
+
+# Slugs a probar en orden — WC 2026 puede usar distinto slug según ESPN
+_ESPN_WC_SLUGS = ["fifa.world", "worldcup", "fifa.worldcup", "soccer_fifa_world_cup"]
 
 
 # ─── CLIENTE COMPARTIDO ───────────────────────────────────────────────────────
@@ -21,22 +25,41 @@ async def _get(url: str, params: dict | None = None) -> dict:
     try:
         async with httpx.AsyncClient(timeout=ESPN_TIMEOUT) as c:
             r = await c.get(url, params=params or {})
-            return r.json() if r.status_code == 200 else {}
+            if r.status_code == 200:
+                return r.json()
+            logger.warning("ESPN HTTP %s for %s", r.status_code, url)
     except Exception as e:
         logger.warning("ESPN fetch error %s: %s", url, e)
-        return {}
+    return {}
 
 
 # ─── SCOREBOARD (partidos del día) ────────────────────────────────────────────
 
 async def fetch_scoreboard(date: Optional[str] = None) -> list[dict]:
     """
-    Retorna lista de eventos del día.
-    date: 'YYYYMMDD' (opcional, default = hoy)
+    Retorna lista de eventos del día probando múltiples slugs ESPN para WC 2026.
+    date: 'YYYYMMDD' (opcional, default = hoy UTC)
     """
-    params = {"dates": date} if date else {}
-    d = await _get(f"{ESPN_WC}/scoreboard", params)
-    return d.get("events", [])
+    from datetime import datetime, timezone
+    today = date or datetime.now(timezone.utc).strftime("%Y%m%d")
+    params = {"dates": today, "limit": "50"}
+
+    for slug in _ESPN_WC_SLUGS:
+        url = f"{ESPN_BASE}/{slug}/scoreboard"
+        d = await _get(url, params)
+        events = d.get("events") or []
+        # ESPN a veces anida eventos dentro de leagues
+        if not events:
+            for lg in d.get("leagues", []):
+                events = lg.get("events", [])
+                if events:
+                    break
+        if events:
+            logger.info("ESPN scoreboard: %d eventos via slug '%s' fecha %s", len(events), slug, today)
+            return events
+
+    logger.warning("ESPN scoreboard: sin eventos para fecha %s", today)
+    return []
 
 
 # ─── STANDINGS (tabla del Mundial por grupo) ──────────────────────────────────
