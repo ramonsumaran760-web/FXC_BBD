@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 import httpx
 import logging
 import time
@@ -636,58 +636,25 @@ async def mundial_en_vivo(
 ):
     """
     Partidos del Mundial 2026 con odds en tiempo real — respuesta rápida (< 5s).
-    Devuelve datos crudos de The Odds API con _loading:True.
-    El análisis IA se carga por partido vía /analizar-partido (llamado desde el frontend).
+    Fusiona Odds API + ESPN para mostrar TODOS los partidos de hoy.
+    Devuelve datos crudos con _loading:True; el análisis IA llega vía /analizar-partido.
     """
+    import asyncio
     from services.odds_api import fetch_full_world_cup_data, _get_key as _odds_key
     from services.espn_fetcher import fetch_scoreboard
-    from datetime import datetime, timezone, timedelta
-
     has_odds_api = bool(_odds_key())
     logger.info("/mundial: has_odds_api=%s", has_odds_api)
 
-    if has_odds_api:
-        matches = await fetch_full_world_cup_data()
-    else:
-        events = await fetch_scoreboard()
-        if not events:
-            return {"error": "ODDS_API_KEY no configurada y ESPN sin datos", "matches": []}
-        matches = []
-        for ev in events[:15]:
-            try:
-                comp = ev.get("competitions", [{}])[0]
-                home = next((c for c in comp.get("competitors",[]) if c.get("homeAway")=="home"), {})
-                away = next((c for c in comp.get("competitors",[]) if c.get("homeAway")=="away"), {})
-                state = ev.get("status",{}).get("type",{}).get("state","pre")
-                live  = state == "in"
-                done  = state == "post"
-                hs, vs = home.get("score","0"), away.get("score","0")
-                matches.append({
-                    "id":      f"{home.get('team',{}).get('abbreviation','H')}-{away.get('team',{}).get('abbreviation','A')}",
-                    "odds_id": ev.get("id",""),
-                    "liga":    "FIFA Mundial 2026",
-                    "l":       home.get("team",{}).get("displayName","Local"),
-                    "v":       away.get("team",{}).get("displayName","Visita"),
-                    "date":    ev.get("date",""),
-                    "live":    live and not done,
-                    "done":    done,
-                    "sc":      f"{hs}-{vs}" if (live or done) else "",
-                    "min":     int(ev.get("status",{}).get("displayClock","0'").replace("'","") or 0),
-                    "bl":0,"be":0,"bv":0,"bl_best":0,"be_best":0,"bv_best":0,
-                    "bookmakers":[], "pl":0,"pe":0,"pv":0,
-                    "ev":0,"conf":0,"kelly":0,"ag":[0]*8,"xgl":0,"xgv":0,"_loading":True,
-                })
-            except Exception:
-                continue
-
-    if not matches:
-        return {"source": "error", "matches": [], "message": "Sin partidos disponibles"}
-
     now_utc     = datetime.now(timezone.utc)
-    today_start = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
-    today_end   = today_start + timedelta(days=1)
+    # Ventana amplia: ayer 06:00 UTC → mañana 06:00 UTC
+    # Captura partidos vespertinos/nocturnos en USA (UTC-4 a UTC-7)
+    window_start = (now_utc - timedelta(days=1)).replace(hour=6,  minute=0, second=0, microsecond=0)
+    window_end   = (now_utc + timedelta(days=1)).replace(hour=6,  minute=0, second=0, microsecond=0)
+    today_start  = now_utc.replace(hour=0, minute=0, second=0, microsecond=0)
+    today_end    = today_start + timedelta(days=1)
 
     def is_today_or_live(m: dict) -> bool:
+        # Partidos en vivo o terminados → siempre incluir
         if m.get("live") or m.get("done"):
             return True
         d = m.get("date", "")
@@ -695,21 +662,115 @@ async def mundial_en_vivo(
             return True
         try:
             dt = datetime.fromisoformat(d.replace("Z", "+00:00"))
-            return today_start <= dt < today_end
+            # Incluir si está dentro de la ventana amplia (ayer noche ↔ mañana madrugada)
+            return window_start <= dt < window_end
         except Exception:
             return True
 
+    def _espn_event_to_match(ev: dict) -> dict | None:
+        try:
+            comp = ev.get("competitions", [{}])[0]
+            home = next((c for c in comp.get("competitors", []) if c.get("homeAway") == "home"), {})
+            away = next((c for c in comp.get("competitors", []) if c.get("homeAway") == "away"), {})
+            if not home or not away:
+                return None
+
+            status_obj = ev.get("status", {})
+            state      = status_obj.get("type", {}).get("state", "pre")
+            live       = state == "in"
+            done       = state == "post"
+
+            # ── Inferir "live" cuando ESPN no actualiza el estado en tiempo real ──
+            # Si el partido está programado para hace menos de 115 minutos → casi seguro en curso
+            match_date_str = ev.get("date", "")
+            inferred_min   = 0
+            if not live and not done and match_date_str:
+                try:
+                    match_dt     = datetime.fromisoformat(match_date_str.replace("Z", "+00:00"))
+                    minutes_ago  = (datetime.now(timezone.utc) - match_dt).total_seconds() / 60
+                    if 1 <= minutes_ago <= 115:
+                        live        = True
+                        inferred_min = int(minutes_ago)
+                        logger.info(
+                            "Live inferido por tiempo: %s vs %s (hace %.0f min)",
+                            home.get("team", {}).get("displayName", ""),
+                            away.get("team", {}).get("displayName", ""),
+                            minutes_ago,
+                        )
+                except Exception:
+                    pass
+
+            hs     = home.get("score", "0")
+            vs     = away.get("score", "0")
+            h_abbr = home.get("team", {}).get("abbreviation", "H")
+            a_abbr = away.get("team", {}).get("abbreviation", "A")
+
+            # Minuto del partido: de ESPN si disponible, si no el inferido
+            clock_raw   = status_obj.get("displayClock", "0'") or "0'"
+            espn_min    = int(clock_raw.replace("'", "").replace("+", "").strip() or 0)
+            match_min   = espn_min if espn_min > 0 else inferred_min
+
+            return {
+                "id":        f"{h_abbr}-{a_abbr}",
+                "odds_id":   ev.get("id", ""),
+                "liga":      "FIFA Mundial 2026",
+                "l":         home.get("team", {}).get("displayName", "Local"),
+                "v":         away.get("team", {}).get("displayName", "Visita"),
+                "date":      match_date_str,
+                "live":      live and not done,
+                "done":      done,
+                "sc":        f"{hs}-{vs}" if (live or done) else "",
+                "min":       match_min,
+                "bl": 0, "be": 0, "bv": 0, "bl_best": 0, "be_best": 0, "bv_best": 0,
+                "bookmakers": [], "pl": 0, "pe": 0, "pv": 0,
+                "ev": 0, "conf": 0, "kelly": 0, "ag": [0] * 8, "xgl": 0, "xgv": 0,
+                "_loading":  True,
+                "_source":   "espn",
+            }
+        except Exception:
+            return None
+
+    # ── Fetch Odds API + ESPN en paralelo ─────────────────────────────────────
+    if has_odds_api:
+        odds_matches, espn_events = await asyncio.gather(
+            fetch_full_world_cup_data(),
+            fetch_scoreboard(),
+        )
+    else:
+        odds_matches = []
+        espn_events  = await fetch_scoreboard()
+
+    # ── Construir set de IDs ya presentes (Odds API) ──────────────────────────
+    odds_ids: set[str] = {m["id"] for m in odds_matches}
+
+    # ── Añadir partidos ESPN que no están en Odds API ─────────────────────────
+    espn_extra: list[dict] = []
+    for ev in (espn_events or [])[:20]:
+        em = _espn_event_to_match(ev)
+        if em and em["id"] not in odds_ids and is_today_or_live(em):
+            espn_extra.append(em)
+
+    matches = odds_matches + espn_extra
+
+    if not matches:
+        return {"source": "error", "matches": [], "message": "Sin partidos disponibles"}
+
+    # ── Filtrar hoy ───────────────────────────────────────────────────────────
     today_matches = [m for m in matches if is_today_or_live(m)]
     if not today_matches:
         try:
-            today_matches = sorted(matches, key=lambda x: x.get("date",""))[:10]
+            today_matches = sorted(matches, key=lambda x: x.get("date", ""))[:10]
         except Exception:
             today_matches = matches[:10]
 
     today_matches.sort(key=lambda x: (not x.get("live"), x.get("done"), x.get("date", "")))
 
+    source = "the_odds_api" if has_odds_api else "espn_fallback"
+    if espn_extra:
+        source += f"+espn({len(espn_extra)} extra)"
+
     return {
-        "source":  "the_odds_api" if has_odds_api else "espn_fallback",
+        "source":  source,
         "total":   len(today_matches),
         "live":    sum(1 for m in today_matches if m.get("live")),
         "matches": today_matches,

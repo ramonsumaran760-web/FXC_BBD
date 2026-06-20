@@ -5,6 +5,7 @@ Fetcha sin API key usando los endpoints públicos de ESPN.
 from __future__ import annotations
 import asyncio
 import logging
+from datetime import datetime, timezone, timedelta
 from typing import Optional
 
 import httpx
@@ -12,11 +13,17 @@ import httpx
 logger = logging.getLogger("fxcbbd.espn")
 
 ESPN_BASE    = "https://site.api.espn.com/apis/site/v2/sports/soccer"
-ESPN_WC      = f"{ESPN_BASE}/fifa.world"   # used by standings/summary/teams
-ESPN_TIMEOUT = 8.0
+ESPN_WC      = f"{ESPN_BASE}/fifa.world"
+ESPN_TIMEOUT = 10.0
 
-# Slugs a probar en orden — WC 2026 puede usar distinto slug según ESPN
-_ESPN_WC_SLUGS = ["fifa.world", "worldcup", "fifa.worldcup", "soccer_fifa_world_cup"]
+# Slugs del Mundial 2026 — ESPN puede cambiar el slug en cualquier momento
+_ESPN_WC_SLUGS = [
+    "fifa.world",
+    "worldcup",
+    "fifa.worldcup",
+    "soccer_fifa_world_cup",
+    "fifa.world.2026",
+]
 
 
 # ─── CLIENTE COMPARTIDO ───────────────────────────────────────────────────────
@@ -33,33 +40,91 @@ async def _get(url: str, params: dict | None = None) -> dict:
     return {}
 
 
-# ─── SCOREBOARD (partidos del día) ────────────────────────────────────────────
+def _extract_events(d: dict) -> list[dict]:
+    """Extrae la lista de eventos de la respuesta ESPN (varios formatos posibles)."""
+    events = d.get("events") or []
+    if events:
+        return events
+    # Algunos endpoints anidan por leagues
+    for lg in d.get("leagues", []):
+        ev = lg.get("events", [])
+        if ev:
+            return ev
+    # O por sports
+    for sp in d.get("sports", []):
+        for lg in sp.get("leagues", []):
+            ev = lg.get("events", [])
+            if ev:
+                return ev
+    return []
+
+
+# ─── SCOREBOARD (partidos en vivo + del día) ──────────────────────────────────
 
 async def fetch_scoreboard(date: Optional[str] = None) -> list[dict]:
     """
-    Retorna lista de eventos del día probando múltiples slugs ESPN para WC 2026.
-    date: 'YYYYMMDD' (opcional, default = hoy UTC)
+    Retorna lista de eventos del Mundial 2026 — cubre:
+    • Partidos en vivo ahora mismo (sin parámetro de fecha → ESPN devuelve live)
+    • Partidos del día de hoy UTC
+    • Partidos del día de ayer UTC (partidos nocturnos en zonas horarias americanas)
+
+    Desduplicados por ID de evento ESPN.
     """
-    from datetime import datetime, timezone
-    today = date or datetime.now(timezone.utc).strftime("%Y%m%d")
-    params = {"dates": today, "limit": "50"}
+    now_utc = datetime.now(timezone.utc)
+    today   = date or now_utc.strftime("%Y%m%d")
+    ayer    = (now_utc - timedelta(days=1)).strftime("%Y%m%d")
+
+    seen_ids:   set[str]  = set()
+    all_events: list[dict] = []
+
+    # Estrategias de fetch en orden de prioridad:
+    # 1) Sin fecha    → ESPN retorna partidos en vivo / más recientes
+    # 2) Fecha hoy    → todos los partidos programados para hoy
+    # 3) Fecha ayer   → partidos que pueden seguir en vivo desde ayer (zonas horarias)
+    fetch_params = [
+        {},                          # live / sin filtro de fecha
+        {"dates": today, "limit": "50"},
+        {"dates": ayer,  "limit": "50"},
+    ]
 
     for slug in _ESPN_WC_SLUGS:
         url = f"{ESPN_BASE}/{slug}/scoreboard"
-        d = await _get(url, params)
-        events = d.get("events") or []
-        # ESPN a veces anida eventos dentro de leagues
-        if not events:
-            for lg in d.get("leagues", []):
-                events = lg.get("events", [])
-                if events:
-                    break
-        if events:
-            logger.info("ESPN scoreboard: %d eventos via slug '%s' fecha %s", len(events), slug, today)
-            return events
+        slug_found = False
 
-    logger.warning("ESPN scoreboard: sin eventos para fecha %s", today)
-    return []
+        for params in fetch_params:
+            p = dict(params)
+            p.setdefault("limit", "50")
+            d = await _get(url, p)
+            events = _extract_events(d)
+
+            new_count = 0
+            for ev in events:
+                eid = str(ev.get("id", ""))
+                if eid and eid not in seen_ids:
+                    seen_ids.add(eid)
+                    all_events.append(ev)
+                    new_count += 1
+
+            if new_count:
+                slug_found = True
+                logger.info(
+                    "ESPN scoreboard: +%d eventos slug='%s' params=%s",
+                    new_count, slug, p,
+                )
+
+        if slug_found:
+            # Con el primer slug que devuelve eventos dejamos de probar otros
+            break
+
+    live_count = sum(
+        1 for ev in all_events
+        if ev.get("status", {}).get("type", {}).get("state") == "in"
+    )
+    logger.info(
+        "ESPN scoreboard total: %d eventos (%d en vivo)",
+        len(all_events), live_count,
+    )
+    return all_events
 
 
 # ─── STANDINGS (tabla del Mundial por grupo) ──────────────────────────────────
@@ -113,7 +178,6 @@ async def fetch_event_summary(event_id: str) -> dict:
     """
     d = await _get(f"{ESPN_WC}/summary", {"event": event_id})
 
-    # Extraer equipos del header
     comp = (d.get("header", {}).get("competitions") or [{}])[0]
     competitors = comp.get("competitors", [])
     home_c = next((x for x in competitors if x.get("homeAway") == "home"), {})
@@ -138,7 +202,6 @@ async def fetch_event_summary(event_id: str) -> dict:
         else:
             away_stats = extract_stats(ts)
 
-    # Línea de goles
     scoring = []
     for play in d.get("keyEvents", []):
         scoring.append({
