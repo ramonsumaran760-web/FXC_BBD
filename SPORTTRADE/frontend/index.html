@@ -437,7 +437,8 @@ body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,sans-
   </div>
 
   <!-- Tabs -->
-  <div style="display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid #243242;padding-bottom:0">
+  <div style="display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid #243242;padding-bottom:0;
+              position:sticky;top:0;background:rgba(7,10,14,.97);z-index:10;padding-top:2px">
     <button class="piz-tab active" id="tab-pizarra" onclick="pizTab('pizarra')">
       <i class="ti ti-topology-star-3"></i> Pizarra
     </button>
@@ -2274,7 +2275,8 @@ async function openPizarra(espnId, liga, matchMin, home, away) {
       (src === 'squad_estimate' ? ' &nbsp;<span style="color:#7c3aed;font-size:7px">⚠ Estadísticas proyectadas — se actualizan al inicio del partido</span>'
        : src !== 'sofascore' ? ' &nbsp;<span style="color:#475569;font-size:7px">⚠ km = estimado por posición</span>' : '');
 
-    pizTab('pizarra');
+    // En vivo → abrir directo en tabla de stats; previa → campo
+    pizTab(matchMin > 0 ? 'tabla' : 'pizarra');
   } catch(e) {
     document.getElementById('piz-loading').style.display = 'none';
     document.getElementById('piz-error').style.display = 'block';
