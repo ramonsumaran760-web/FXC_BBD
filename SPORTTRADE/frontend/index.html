@@ -1745,13 +1745,41 @@ function renderAll() {
   document.getElementById('live-count').textContent = A.filter(a=>a.live).length;
 }
 
+async function liveRefreshSel() {
+  if (!sel || !sel.live) return; // solo partidos en vivo seleccionados
+  try {
+    let url = `${SPORTS_API}/api/v1/predictions/analizar-partido?` +
+      `home=${encodeURIComponent(sel.l)}&away=${encodeURIComponent(sel.v)}` +
+      `&saldo=${bal}&perfil_riesgo=moderado`;
+    if (sel.bl > 1.01) url += `&bl=${sel.bl}&be=${sel.be}&bv=${sel.bv}`;
+    if (sel.live) {
+      url += `&live=true&match_min=${sel.min||0}`;
+      if (sel.sc) {
+        const [gh, ga] = (sel.sc || '0-0').split('-').map(Number);
+        url += `&score_h=${gh||0}&score_a=${ga||0}`;
+      }
+    }
+    const r = await fetch(url, {headers: authHeaders()});
+    if (!r.ok) return;
+    const d = await r.json();
+    // Actualizar en A y RAW
+    const ai = A.findIndex(x => x.id === sel.id);
+    if (ai >= 0) { A[ai] = {...A[ai], ...d}; sel = A[ai]; }
+    const ri = RAW.findIndex(x => x.id === sel.id);
+    if (ri >= 0) RAW[ri] = {...RAW[ri], ...d};
+    renderAgents();
+    renderMasterBars();
+  } catch(e) { /* silencioso */ }
+}
+
 function init() {
   renderAll();
   renderFeedInitial();
 
   setInterval(updateClock,   1000);
   setInterval(tickCountdowns,1000);
-  setInterval(simTick,       3200); // fake WebSocket tick
+  setInterval(simTick,       3200);
+  setInterval(liveRefreshSel, 60000); // re-analiza partido seleccionado cada 60s
   updateClock();
 }
 

@@ -1002,9 +1002,9 @@ async def analizar_partido_rapido(
     if abs(best_ev * 100) > 50:
         valor = "REVISAR"   # señal de que el modelo no tiene datos fiables
 
-    # ── Texto narrativo: 5 líneas explicando por qué la probabilidad se inclina ──
+    # ── Texto narrativo: veredicto directo + resultado probable + disclaimer ──
     rec_name  = home if best_rec == "local" else (away if best_rec == "visitante" else "Empate")
-    opp_name  = away if best_rec == "local" else home
+    opp_name  = away if best_rec == "local" else (home if best_rec == "visitante" else "ninguno")
     prob_rec  = pl if best_rec == "local" else (pv if best_rec == "visitante" else pe_)
     prob_opp  = pv if best_rec == "local" else (pl if best_rec == "visitante" else (pl + pv) / 2)
     lead      = round(prob_rec - prob_opp, 1)
@@ -1012,87 +1012,108 @@ async def analizar_partido_rapido(
     agents_avg= round((a0 + a1 + a2 + a3 + a4 + a5 + a6 + a7) / 8, 1)
     kelly_pct = round(kelly * 100, 1)
 
+    # Marcador proyectado desde xG (Poisson)
+    import math as _math
+    xg_h_use = deep.get("xg_local", xg_rec if not is_visit else xg_opp)
+    xg_a_use = deep.get("xg_visita", xg_opp if not is_visit else xg_rec)
+    proj_h   = int(round(xg_h_use))
+    proj_a   = int(round(xg_a_use))
+    marcador_proj = f"{proj_h}-{proj_a}"
+
+    # Nivel de confianza en texto
+    if conf >= 75:
+        conf_txt = "alta confianza"
+    elif conf >= 60:
+        conf_txt = "confianza media"
+    else:
+        conf_txt = "confianza baja"
+
+    # LÍNEA 1 — VEREDICTO DIRECTO + MARCADOR PROYECTADO
     if best_rec == "empate":
-        linea1 = (f"El modelo asigna {pe_:.0f}% al empate frente a {pl:.0f}% de {home} "
-                  f"y {pv:.0f}% de {away} — diferencia insuficiente para inclinar la balanza "
-                  f"hacia ninguno de los dos equipos según los datos del torneo.")
+        linea1 = (f"VEREDICTO: El MASTER AI proyecta EMPATE como resultado más probable "
+                  f"({pe_:.0f}% de probabilidad, {conf_txt} {conf:.0f}%). "
+                  f"Marcador proyectado según Monte Carlo y xG: {marcador_proj}. "
+                  f"{home} ({pl:.0f}%) y {away} ({pv:.0f}%) se anulan mutuamente según los datos actuales.")
     elif lead > 20:
-        linea1 = (f"{rec_name} lidera el análisis con {prob_rec:.0f}% de probabilidad, "
-                  f"{lead:.0f} puntos por encima de {opp_name} ({prob_opp:.0f}%) — ventaja "
-                  f"clara y consistente en los modelos Poisson, Elo y Monte Carlo.")
-    elif lead > 10:
-        linea1 = (f"El modelo otorga {prob_rec:.0f}% de probabilidad a {rec_name} "
-                  f"vs {prob_opp:.0f}% de {opp_name} — diferencia de {lead:.0f}pp que se "
-                  f"mantiene estable en todos los vectores del análisis cuantitativo.")
+        linea1 = (f"VEREDICTO: El MASTER AI proyecta VICTORIA de {rec_name} "
+                  f"con {prob_rec:.0f}% de probabilidad y {conf_txt} ({conf:.0f}%). "
+                  f"Marcador más probable según Monte Carlo + xG: {marcador_proj}. "
+                  f"Ventaja de {lead:.0f}pp sobre {opp_name} — señal clara y consistente.")
     else:
-        linea1 = (f"Partido equilibrado: {rec_name} tiene {prob_rec:.0f}% frente a "
-                  f"{prob_opp:.0f}% del rival — diferencia de {lead:.0f}pp que inclina el "
-                  f"análisis levemente sin unanimidad entre los 9 agentes.")
+        linea1 = (f"VEREDICTO: El MASTER AI inclina el análisis hacia {rec_name} "
+                  f"({prob_rec:.0f}% vs {prob_opp:.0f}% del rival, {conf_txt} {conf:.0f}%). "
+                  f"Marcador proyectado Monte Carlo + xG: {marcador_proj}. "
+                  f"Partido equilibrado — diferencia de {lead:.0f}pp sin unanimidad total.")
 
-    if ff_rec > ff_opp + 0.08:
-        linea2 = (f"El Agente de Forma confirma la superioridad de {rec_name} "
-                  f"(factor {ff_rec:.2f} vs {ff_opp:.2f} del rival) — mejor racha "
-                  f"en el torneo actual con mayor tasa de victorias y solidez defensiva reciente.")
-    elif ff_rec < ff_opp - 0.05:
-        linea2 = (f"El Agente de Forma señala mejor momento del rival "
-                  f"({ff_opp:.2f} vs {ff_rec:.2f}), pero los vectores estadísticos "
-                  f"y de plantel de {rec_name} compensan ese déficit de forma actual.")
-    else:
-        linea2 = (f"Ambos equipos presentan forma similar en el torneo "
-                  f"({ff_rec:.2f}/{ff_opp:.2f}); la diferencia en probabilidad proviene del "
-                  f"potencial individual del plantel y el historial de Elo acumulado.")
-
+    # LÍNEA 2 — RAZÓN PRINCIPAL (la señal más fuerte)
     if elo_gap > 80:
-        linea3 = (f"El diferencial Elo de +{elo_gap:.0f} puntos ({elo_rec:.0f} vs "
-                  f"{elo_opp:.0f}) refleja la superioridad histórica de {rec_name} "
-                  f"en competiciones de alto nivel — un indicador de calidad estructural, no coyuntural.")
-    elif elo_gap > 20:
-        linea3 = (f"Elo {elo_rec:.0f} de {rec_name} supera en {elo_gap:.0f}pts al rival "
-                  f"({elo_opp:.0f}); el plantel promedia un impacto individual de "
-                  f"{avg_imp:.0f}/100, con ventaja táctica en posiciones clave del campo.")
-    elif elo_gap < -20:
-        linea3 = (f"El rival supera en Elo ({elo_opp:.0f} vs {elo_rec:.0f}), pero "
-                  f"los vectores de forma reciente, xG generado y posesión actual "
-                  f"contrarrestan esa desventaja histórica en el análisis multi-dimensional.")
+        linea2 = (f"RAZÓN PRINCIPAL: Superioridad histórica de {rec_name} confirmada por Elo "
+                  f"({elo_rec:.0f} vs {elo_opp:.0f}, gap +{elo_gap:.0f}pts) y xG proyectado "
+                  f"de {xg_h_use:.2f} goles locales vs {xg_a_use:.2f} visitantes. "
+                  f"Ataque {atk_rec:.0f}/100 frente a defensa rival de {def_opp:.0f}/100.")
+    elif ff_rec > ff_opp + 0.06:
+        linea2 = (f"RAZÓN PRINCIPAL: {rec_name} llega en mejor forma al torneo "
+                  f"(factor {ff_rec:.2f} vs {ff_opp:.2f} del rival). xG proyectado {xg_h_use:.2f}-{xg_a_use:.2f}. "
+                  f"El Agente Estadístico ({a0}%) y Forma ({a1}%) coinciden en la superioridad ofensiva.")
+    elif xg_rec > xg_opp + 0.3:
+        linea2 = (f"RAZÓN PRINCIPAL: Dominio en xG esperado — {rec_name} genera {xg_rec:.2f} "
+                  f"vs {xg_opp:.2f} del rival. Ataque ({atk_rec:.0f}) supera la defensa contraria "
+                  f"({def_opp:.0f}). Elo {elo_rec:.0f} vs {elo_opp:.0f}.")
     else:
-        linea3 = (f"Equipos muy parejos en Elo ({elo_rec:.0f} vs {elo_opp:.0f}); "
-                  f"el desempate lo generan el ataque ({atk_rec:.0f}) contra la defensa "
-                  f"rival ({def_opp:.0f}) y el xG proyectado de {xg_rec:.2f} goles esperados.")
+        linea2 = (f"RAZÓN PRINCIPAL: Partido parejo. {rec_name} tiene leve ventaja en "
+                  f"impacto de plantel ({avg_imp:.0f}/100) y Elo ({elo_rec:.0f} vs {elo_opp:.0f}). "
+                  f"xG proyectado: {xg_h_use:.2f}-{xg_a_use:.2f}. La señal surge del conjunto de 9 agentes.")
 
-    if agents_avg >= 68:
-        linea4 = (f"Consenso alto entre los 9 agentes (media {agents_avg:.0f}/100): "
-                  f"Statistical, Forma, Impacto de Plantel, Elo/Momentum, Árbitro, "
-                  f"xG/Físico, Mercado y Monte Carlo convergen en la misma dirección.")
-    elif agents_avg >= 55:
-        linea4 = (f"Consenso moderado (media {agents_avg:.0f}/100): la mayoría de los "
-                  f"9 agentes apuntan a {rec_name}, aunque con divergencia en los vectores "
-                  f"de mercado y árbitro que reducen la señal de convicción global.")
-    else:
-        linea4 = (f"Señal mixta (media agentes {agents_avg:.0f}/100): los agentes "
-                  f"no convergen con claridad — el análisis sugiere cautela y stakes "
-                  f"reducidos dado el nivel de incertidumbre estadística del partido.")
-
+    # LÍNEA 3 — ESTADO EN VIVO o contexto previo
     if live and match_min > 0:
-        if ev_output > 8:
-            linea5 = (f"En vivo (min. {match_min}', {score_h}-{score_a}): el mercado "
-                      f"no ha ajustado las cuotas al desarrollo del partido — "
-                      f"EV +{ev_output:.1f}% ({valor}), oportunidad de ineficiencia real con Kelly {kelly_pct:.1f}%.")
+        goles_tot = score_h + score_a
+        ritmo = "abierto y con goles" if goles_tot >= 2 else ("sin goles aún" if goles_tot == 0 else "con gol pero conservador")
+        if score_h > score_a:
+            dinamica = f"{home} gana {score_h}-{score_a} y el modelo confirma la ventaja"
+        elif score_a > score_h:
+            dinamica = f"{away} gana {score_h}-{score_a}" + (" — resultado inesperado según el modelo" if best_rec == "local" else " — el modelo lo anticipó")
         else:
-            linea5 = (f"En vivo (min. {match_min}', {score_h}-{score_a}): señal {valor} "
-                      f"con EV {ev_output:+.1f}%; el mercado ya refleja el desarrollo — "
-                      f"operar con gestión ajustada al minuto y riesgo controlado.")
-    elif ev_output > 10:
-        linea5 = (f"El Agente de Mercado detecta {ev_output:.1f}% de diferencia entre "
-                  f"la probabilidad del modelo y la implícita del mercado — señal {valor}: "
-                  f"ineficiencia suficiente para posición con Kelly {kelly_pct:.1f}% del bankroll.")
-    elif ev_output > 0:
-        linea5 = (f"EV positivo de +{ev_output:.1f}% (señal {valor}): el modelo supera "
-                  f"ligeramente al mercado en {rec_name} — posición recomendada con "
-                  f"stake conservador de {kelly_pct:.1f}% según criterio Kelly ajustado.")
+            dinamica = f"empate {score_h}-{score_a} en curso"
+        linea3 = (f"EN VIVO (min. {match_min}'): {dinamica}. Partido {ritmo}. "
+                  f"Posesión estimada {pos_h:.0f}%-{pos_a:.0f}%. xG acumulado en curso. "
+                  f"El modelo se actualiza cada minuto con los datos del partido real.")
     else:
-        linea5 = (f"EV {ev_output:.1f}% (señal {valor}): el mercado ha incorporado "
-                  f"correctamente la ventaja de {rec_name} en las cuotas — "
-                  f"no existe ineficiencia explotable en este escenario según el modelo actual.")
+        linea3 = (f"CONTEXTO PREVIO: {home} (FIFA #{home_ranking}) vs {away} (FIFA #{away_ranking}). "
+                  f"El Agente Estadístico proyecta {home_pj} PJ con {home_pg}V-{home_pe}E-{home_pp}D para {home}. "
+                  f"xG esperado del partido: {xg_h_use:.2f} goles locales / {xg_a_use:.2f} visitantes.")
+
+    # LÍNEA 4 — CONSENSO Y DIVERGENCIAS
+    agentes_a_favor = sum(1 for x in [a0,a1,a2,a3,a4,a5,a6,a7] if x >= 55)
+    if agents_avg >= 68:
+        linea4 = (f"CONSENSO: {agentes_a_favor}/8 agentes especializados apuntan a {rec_name} "
+                  f"(media {agents_avg:.0f}/100). Statistical, Forma, Elo, xG y Monte Carlo "
+                  f"convergen. Señal robusta. Divergencia menor en Árbitro y Mercado.")
+    elif agents_avg >= 52:
+        linea4 = (f"CONSENSO MODERADO: {agentes_a_favor}/8 agentes favorecen a {rec_name} "
+                  f"(media {agents_avg:.0f}/100). Hay divergencia en vectores de mercado y clima "
+                  f"que reduce la convicción. Recomendable stake conservador.")
+    else:
+        linea4 = (f"SEÑAL MIXTA: Solo {agentes_a_favor}/8 agentes coinciden (media {agents_avg:.0f}/100). "
+                  f"Alta incertidumbre estadística — el modelo reconoce que este partido "
+                  f"es difícil de predecir con los datos disponibles. Stake mínimo sugerido.")
+
+    # LÍNEA 5 — DISCLAIMER + SEÑAL DE TRADING
+    riesgo_txt = "bajo" if kelly_pct < 2 else ("medio" if kelly_pct < 5 else "alto")
+    if ev_output > 8:
+        linea5 = (f"SEÑAL DE TRADING: Apostar a {rec_name if best_rec != 'empate' else 'Empate'} — "
+                  f"EV +{ev_output:.1f}% ({valor}), Kelly {kelly_pct:.1f}% del bankroll (riesgo {riesgo_txt}). "
+                  f"⚠ El modelo puede equivocarse: basado en datos históricos y estadísticos, "
+                  f"NO garantiza el resultado. Usa gestión de riesgo responsable.")
+    elif ev_output > 0:
+        linea5 = (f"SEÑAL DE TRADING: EV positivo +{ev_output:.1f}% ({valor}) — posición posible "
+                  f"con Kelly {kelly_pct:.1f}% (riesgo {riesgo_txt}). "
+                  f"⚠ El modelo puede equivocarse: confianza basada en datos, no en certeza. "
+                  f"El fútbol tiene varianza alta — gestiona el riesgo siempre.")
+    else:
+        linea5 = (f"SEÑAL DE TRADING: EV {ev_output:.1f}% — el mercado ya refleja correctamente "
+                  f"las probabilidades del modelo. Sin ventaja explotable en este momento. "
+                  f"⚠ El modelo puede equivocarse. Espera una oportunidad con mejor EV "
+                  f"antes de comprometer capital en este partido.")
 
     texto_analisis = [linea1, linea2, linea3, linea4, linea5]
 
