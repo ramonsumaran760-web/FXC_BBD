@@ -1624,7 +1624,24 @@ function init() {
 // ════════════════════════════════════════════════════════════════════
 const INVESTIQ_API  = 'https://fxc-bbd.onrender.com';
 const SPORTS_API    = 'https://sporttrade-one.onrender.com';
-let   fxcToken      = localStorage.getItem('fxc_token') || null;
+
+// _ls: wrapper seguro de localStorage — si Tracking Prevention lo bloquea,
+// usa memoria de sesión en lugar de crashear todo el script.
+const _ls = (() => {
+  try {
+    localStorage.getItem('__probe__');
+    return localStorage;
+  } catch(e) {
+    const mem = Object.create(null);
+    return {
+      getItem:    k   => (k in mem ? mem[k] : null),
+      setItem:    (k,v) => { mem[k] = String(v); },
+      removeItem: k   => { delete mem[k]; }
+    };
+  }
+})();
+
+let fxcToken = _ls.getItem('fxc_token') || null;
 
 function authHeaders() {
   const headers = { 'Content-Type':'application/json' };
@@ -1675,11 +1692,11 @@ async function doLogin() {
       d.usuario?.saldo_usd ?? d.usuario?.saldo ?? d.usuario?.balance ?? 0
     );
     bal = saldo;
-    localStorage.setItem('fxc_balance', String(saldo));
+    _ls.setItem('fxc_balance', String(saldo));
 
     if (document.getElementById('remember-me').checked) {
-      localStorage.setItem('fxc_token', fxcToken);
-      localStorage.setItem('fxc_user', JSON.stringify(user));
+      _ls.setItem('fxc_token', fxcToken);
+      _ls.setItem('fxc_user', JSON.stringify(user));
     }
 
     const loginScreen = document.getElementById('login-screen');
@@ -1707,12 +1724,12 @@ function syncWallet() {
   if (!fxcToken) return;
   if (jwtExpired(fxcToken)) {
     fxcToken = null;
-    localStorage.removeItem('fxc_token');
-    localStorage.removeItem('fxc_user');
-    localStorage.removeItem('fxc_balance');
+    _ls.removeItem('fxc_token');
+    _ls.removeItem('fxc_user');
+    _ls.removeItem('fxc_balance');
     return;
   }
-  bal = parseFloat(localStorage.getItem('fxc_balance') || '0');
+  bal = parseFloat(_ls.getItem('fxc_balance') || '0');
   const balEl = document.getElementById('balance');
   if (balEl) balEl.textContent = '$' + bal.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
   if (sel) renderOrderPanel();
@@ -1727,7 +1744,7 @@ async function refreshBalance() {
     if (!r.ok) return;
     const u = await r.json();
     bal = parseFloat(u.saldo_usd || u.saldo || u.balance || 0);
-    localStorage.setItem('fxc_balance', String(bal));
+    _ls.setItem('fxc_balance', String(bal));
     const balEl = document.getElementById('balance');
     if (balEl) balEl.textContent = '$' + bal.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
     if (sel) renderOrderPanel();
@@ -1931,7 +1948,7 @@ function enterBoth(email, name, role) {
 }
 
 function logoutFromSelector() {
-  localStorage.removeItem('fxc_user');
+  _ls.removeItem('fxc_user');
   const sel = document.getElementById('platform-selector');
   if (sel) sel.remove();
   document.getElementById('login-screen').style.display = 'flex';
@@ -1973,8 +1990,8 @@ function updateUserTopbar(user) {
 
 function logout() {
   if (!confirm('¿Cerrar sesión?')) return;
-  localStorage.removeItem('fxc_token');
-  localStorage.removeItem('fxc_user');
+  _ls.removeItem('fxc_token');
+  _ls.removeItem('fxc_user');
   fxcToken = null;
   document.getElementById('main-app').style.display = 'none';
   document.getElementById('login-screen').style.display = 'flex';
@@ -1996,21 +2013,21 @@ function jwtExpired(token) {
 // preguntarle al servidor si el token es válido — si no venció, es válido.
 // Esto elimina completamente los errores 401 del console en page load.
 (function checkSession() {
-  const token = localStorage.getItem('fxc_token');
-  const saved = localStorage.getItem('fxc_user');
+  const token = _ls.getItem('fxc_token');
+  const saved = _ls.getItem('fxc_user');
   if (!token || !saved) return;
 
   if (jwtExpired(token)) {
-    localStorage.removeItem('fxc_token');
-    localStorage.removeItem('fxc_user');
-    localStorage.removeItem('fxc_balance');
+    _ls.removeItem('fxc_token');
+    _ls.removeItem('fxc_user');
+    _ls.removeItem('fxc_balance');
     return;
   }
 
   let user;
   try { user = JSON.parse(saved); } catch(e) {
-    localStorage.removeItem('fxc_token');
-    localStorage.removeItem('fxc_user');
+    _ls.removeItem('fxc_token');
+    _ls.removeItem('fxc_user');
     return;
   }
 
