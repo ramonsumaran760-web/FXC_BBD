@@ -1272,10 +1272,16 @@ function masterSignal(score) {
 }
 
 function renderTop10() {
-  // Excluir partidos terminados y EV irreales; priorizar EN VIVO > PRE > ...
+  // Excluir partidos terminados, EV irreales y duplicados por par de equipos
+  const seenPairs = new Set();
   const sorted = [...A]
-    .filter(a => !a.done)                          // nunca mostrar partidos finalizados
-    .filter(a => Math.abs(a.ev || 0) <= 55)        // cap: EV >55% = datos stale/error
+    .filter(a => !a.done)
+    .filter(a => Math.abs(a.ev || 0) <= 55)
+    .filter(a => {
+      const key = `${(a.l||'').toUpperCase()}|${(a.v||'').toUpperCase()}`;
+      if (seenPairs.has(key)) return false;
+      seenPairs.add(key); return true;
+    })
     .sort((a,b) => {
       if (a.live && !b.live) return -1;
       if (!a.live && b.live) return  1;

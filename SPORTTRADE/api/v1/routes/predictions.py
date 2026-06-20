@@ -747,15 +747,25 @@ async def mundial_en_vivo(
         odds_matches = []
         espn_events  = await fetch_scoreboard()
 
-    # ── Construir set de IDs ya presentes (Odds API) ──────────────────────────
-    odds_ids: set[str] = {m["id"] for m in odds_matches}
+    # ── Construir set de pares de equipos ya presentes (Odds API) ───────────
+    # Usamos nombres de equipo (no IDs) porque ESPN puede dar abreviaciones
+    # distintas para el mismo equipo según el slug (NET vs NED, etc.)
+    odds_pairs: set[tuple] = {
+        (m["l"].upper().strip(), m["v"].upper().strip()) for m in odds_matches
+    }
 
     # ── Añadir partidos ESPN que no están en Odds API ─────────────────────────
     espn_extra: list[dict] = []
-    for ev in (espn_events or [])[:20]:
+    seen_espn_pairs: set[tuple] = set()
+    for ev in (espn_events or [])[:50]:
         em = _espn_event_to_match(ev)
-        if em and em["id"] not in odds_ids and is_today_or_live(em):
-            espn_extra.append(em)
+        if not em or not is_today_or_live(em):
+            continue
+        pair = (em["l"].upper().strip(), em["v"].upper().strip())
+        if pair in odds_pairs or pair in seen_espn_pairs:
+            continue
+        seen_espn_pairs.add(pair)
+        espn_extra.append(em)
 
     matches = odds_matches + espn_extra
 
