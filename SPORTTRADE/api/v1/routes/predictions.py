@@ -710,10 +710,17 @@ async def mundial_en_vivo(
             espn_min    = int(clock_raw.replace("'", "").replace("+", "").strip() or 0)
             match_min   = espn_min if espn_min > 0 else inferred_min
 
+            # Nombre de liga desde el fetcher; fallback al nombre ESPN de la competición
+            league_name = (
+                ev.get("_league_name")
+                or (comp.get("league") or {}).get("name")
+                or "Fútbol Internacional"
+            )
+
             return {
                 "id":        f"{h_abbr}-{a_abbr}",
                 "odds_id":   ev.get("id", ""),
-                "liga":      "FIFA Mundial 2026",
+                "liga":      league_name,
                 "l":         home.get("team", {}).get("displayName", "Local"),
                 "v":         away.get("team", {}).get("displayName", "Visita"),
                 "date":      match_date_str,

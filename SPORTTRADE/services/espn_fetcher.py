@@ -1,5 +1,5 @@
 """
-espn_fetcher.py — Servicio de datos ESPN para el Mundial 2026.
+espn_fetcher.py — Servicio de datos ESPN para fútbol en vivo (todas las competiciones).
 Fetcha sin API key usando los endpoints públicos de ESPN.
 """
 from __future__ import annotations
@@ -16,14 +16,49 @@ ESPN_BASE    = "https://site.api.espn.com/apis/site/v2/sports/soccer"
 ESPN_WC      = f"{ESPN_BASE}/fifa.world"
 ESPN_TIMEOUT = 10.0
 
-# Slugs del Mundial 2026 — ESPN puede cambiar el slug en cualquier momento
-_ESPN_WC_SLUGS = [
-    "fifa.world",
-    "worldcup",
-    "fifa.worldcup",
-    "soccer_fifa_world_cup",
-    "fifa.world.2026",
+# (slug, nombre_display) — ordenadas por prioridad
+# El slug del Mundial va primero; si devuelve datos se usa como fuente principal.
+# Las demás ligas se intentan en paralelo para mostrar todos los partidos del día.
+_COMPETITIONS: list[tuple[str, str]] = [
+    # ── FIFA World Cup 2026 ───────────────────────────────────────────
+    ("fifa.world",             "FIFA Mundial 2026"),
+    ("worldcup",               "FIFA Mundial 2026"),
+    ("fifa.worldcup",          "FIFA Mundial 2026"),
+    ("fifa.world.2026",        "FIFA Mundial 2026"),
+    # ── UEFA ──────────────────────────────────────────────────────────
+    ("uefa.champions",         "Champions League"),
+    ("uefa.europa",            "Europa League"),
+    ("uefa.nations",           "UEFA Nations League"),
+    ("uefa.euro",              "Eurocopa"),
+    # ── Ligas Europa ──────────────────────────────────────────────────
+    ("eng.1",                  "Premier League"),
+    ("esp.1",                  "La Liga"),
+    ("ger.1",                  "Bundesliga"),
+    ("ita.1",                  "Serie A"),
+    ("fra.1",                  "Ligue 1"),
+    ("por.1",                  "Primeira Liga"),
+    ("ned.1",                  "Eredivisie"),
+    ("tur.1",                  "Süper Lig"),
+    ("sco.1",                  "Scottish Premiership"),
+    # ── Américas ──────────────────────────────────────────────────────
+    ("usa.1",                  "MLS"),
+    ("mex.1",                  "Liga MX"),
+    ("arg.1",                  "Liga Profesional Argentina"),
+    ("bra.1",                  "Brasileirao"),
+    ("col.1",                  "Liga BetPlay Colombia"),
+    ("chi.1",                  "Primera División Chile"),
+    ("conmebol.copa.america",  "Copa América"),
+    ("conmebol.libertadores",  "Copa Libertadores"),
+    ("conmebol.sudamericana",  "Copa Sudamericana"),
+    ("concacaf.gold",          "Gold Cup CONCACAF"),
+    ("concacaf.champions",     "Concacaf Champions Cup"),
+    # ── Asia / África ─────────────────────────────────────────────────
+    ("afc.asian.qual",         "Clasificatorias AFC"),
+    ("caf.nations",            "Copa Africana de Naciones"),
 ]
+
+# Subset: solo slugs del Mundial (para compatibilidad con funciones legacy)
+_ESPN_WC_SLUGS = [slug for slug, name in _COMPETITIONS if "Mundial" in name]
 
 
 # ─── CLIENTE COMPARTIDO ───────────────────────────────────────────────────────
@@ -59,70 +94,83 @@ def _extract_events(d: dict) -> list[dict]:
     return []
 
 
-# ─── SCOREBOARD (partidos en vivo + del día) ──────────────────────────────────
+# ─── SCOREBOARD (todas las competiciones, partidos en vivo + del día) ────────
 
 async def fetch_scoreboard(date: Optional[str] = None) -> list[dict]:
     """
-    Retorna lista de eventos del Mundial 2026 — cubre:
-    • Partidos en vivo ahora mismo (sin parámetro de fecha → ESPN devuelve live)
-    • Partidos del día de hoy UTC
-    • Partidos del día de ayer UTC (partidos nocturnos en zonas horarias americanas)
+    Retorna partidos EN VIVO y del día de TODAS las competiciones configuradas.
 
-    Desduplicados por ID de evento ESPN.
+    Estrategia:
+    1. Busca slugs del Mundial (con fallback de fechas para cubrir lag de ESPN).
+    2. Busca otras ligas EN PARALELO (solo fecha actual → más rápido).
+    3. Desduplicación global por ID de evento ESPN.
+    4. Cada evento lleva `_league_name` con el nombre de su competición.
     """
     now_utc = datetime.now(timezone.utc)
     today   = date or now_utc.strftime("%Y%m%d")
     ayer    = (now_utc - timedelta(days=1)).strftime("%Y%m%d")
 
-    seen_ids:   set[str]  = set()
-    all_events: list[dict] = []
+    seen_ids:    set[str]   = set()
+    all_events:  list[dict] = []
 
-    # Estrategias de fetch en orden de prioridad:
-    # 1) Sin fecha    → ESPN retorna partidos en vivo / más recientes
-    # 2) Fecha hoy    → todos los partidos programados para hoy
-    # 3) Fecha ayer   → partidos que pueden seguir en vivo desde ayer (zonas horarias)
-    fetch_params = [
-        {},                          # live / sin filtro de fecha
-        {"dates": today, "limit": "50"},
-        {"dates": ayer,  "limit": "50"},
-    ]
-
-    for slug in _ESPN_WC_SLUGS:
-        url = f"{ESPN_BASE}/{slug}/scoreboard"
-        slug_found = False
-
-        for params in fetch_params:
-            p = dict(params)
-            p.setdefault("limit", "50")
-            d = await _get(url, p)
-            events = _extract_events(d)
-
-            new_count = 0
-            for ev in events:
+    # ── Paso 1: Mundial — 3 estrategias de fecha por si ESPN tiene lag ────────
+    wc_slugs = [(s, n) for s, n in _COMPETITIONS if "Mundial" in n]
+    wc_found = False
+    for slug, league_name in wc_slugs:
+        if wc_found:
+            break
+        for params in [{}, {"dates": today, "limit": "50"}, {"dates": ayer, "limit": "50"}]:
+            p = {**params, "limit": "50"}
+            d = await _get(f"{ESPN_BASE}/{slug}/scoreboard", p)
+            new = 0
+            for ev in _extract_events(d):
                 eid = str(ev.get("id", ""))
                 if eid and eid not in seen_ids:
                     seen_ids.add(eid)
+                    ev["_league_name"] = league_name
                     all_events.append(ev)
-                    new_count += 1
+                    new += 1
+            if new:
+                logger.info("ESPN WC: +%d eventos slug='%s'", new, slug)
+                wc_found = True
+                break  # slug encontrado — no probar más fechas para este slug
 
-            if new_count:
-                slug_found = True
-                logger.info(
-                    "ESPN scoreboard: +%d eventos slug='%s' params=%s",
-                    new_count, slug, p,
-                )
+    # ── Paso 2: Resto de competiciones — fetch en paralelo ────────────────────
+    other_comps = [(s, n) for s, n in _COMPETITIONS if "Mundial" not in n]
 
-        if slug_found:
-            # Con el primer slug que devuelve eventos dejamos de probar otros
-            break
+    async def _fetch_other(slug: str, league_name: str) -> list[dict]:
+        results: list[dict] = []
+        try:
+            for params in [{}, {"dates": today, "limit": "30"}]:
+                p = {**params, "limit": "30"}
+                d = await _get(f"{ESPN_BASE}/{slug}/scoreboard", p)
+                new = 0
+                for ev in _extract_events(d):
+                    eid = str(ev.get("id", ""))
+                    if eid and eid not in seen_ids:
+                        seen_ids.add(eid)
+                        ev["_league_name"] = league_name
+                        results.append(ev)
+                        new += 1
+                if new:
+                    logger.info("ESPN other: +%d eventos liga='%s'", new, league_name)
+                    break
+        except Exception as exc:
+            logger.debug("ESPN fetch error slug=%s: %s", slug, exc)
+        return results
+
+    other_batches = await asyncio.gather(*[_fetch_other(s, n) for s, n in other_comps])
+    for batch in other_batches:
+        all_events.extend(batch)
 
     live_count = sum(
         1 for ev in all_events
         if ev.get("status", {}).get("type", {}).get("state") == "in"
     )
     logger.info(
-        "ESPN scoreboard total: %d eventos (%d en vivo)",
+        "ESPN scoreboard total: %d eventos (%d en vivo) de %d competiciones",
         len(all_events), live_count,
+        len({ev.get("_league_name") for ev in all_events}),
     )
     return all_events
 
