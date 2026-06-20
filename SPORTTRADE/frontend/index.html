@@ -725,7 +725,25 @@ async function enrichMatchesWithAI() {
       let url = `${SPORTS_API}/api/v1/predictions/analizar-partido?` +
         `home=${encodeURIComponent(m.l)}&away=${encodeURIComponent(m.v)}` +
         `&saldo=${bal}&perfil_riesgo=moderado`;
+      // Cuotas reales
       if (m.bl > 1.01) url += `&bl=${m.bl}&be=${m.be}&bv=${m.bv}`;
+      // Stats reales del torneo (desde ESPN/Odds API)
+      if (m.standings_home) {
+        const sh = m.standings_home;
+        url += `&home_pj=${sh.pj||3}&home_pg=${sh.pg||1}&home_pe=${sh.pe||1}&home_pp=${sh.pp||1}&home_gf=${sh.gf||2}&home_gc=${sh.gc||2}`;
+      }
+      if (m.standings_away) {
+        const sa = m.standings_away;
+        url += `&away_pj=${sa.pj||3}&away_pg=${sa.pg||1}&away_pe=${sa.pe||1}&away_pp=${sa.pp||1}&away_gf=${sa.gf||2}&away_gc=${sa.gc||2}`;
+      }
+      // Estado en vivo
+      if (m.live) {
+        url += `&live=true&match_min=${m.min||0}`;
+        if (m.sc) {
+          const [gh, ga] = (m.sc || '0-0').split('-').map(Number);
+          url += `&score_h=${gh||0}&score_a=${ga||0}`;
+        }
+      }
       const r = await fetch(url, { headers: authHeaders() });
       if (r.ok) {
         const d = await r.json();

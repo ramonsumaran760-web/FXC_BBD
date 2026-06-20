@@ -313,10 +313,17 @@ def analyze_match_full(
         p_loc /= total; p_emp /= total; p_vis /= total
 
     # ── Paso 9: Confianza del modelo ─────────────────────────────────────────
-    # Mayor confianza cuando: datos de torneo suficientes + modelos coinciden
-    data_quality = min(1.0, (h.get("pj",0) + v.get("pj",0)) / 8)
-    agreement = 1 - abs(p_loc_poisson - p_loc_elo)  # cuánto acuerdan los modelos
-    confianza = max(0.4, min(0.95, data_quality * 0.5 + agreement * 0.3 + 0.25))
+    # Mayor confianza cuando hay más partidos jugados Y los modelos coinciden.
+    # Con 3 partidos por equipo (6 total / 12 necesarios) → calidad 0.50 → conf ~65%.
+    # Con 5 partidos por equipo (10 total) → calidad 0.83 → conf ~80%.
+    # Solo supera 85% con datos de torneo completos + alta concordancia inter-modelo.
+    total_pj     = h.get("pj", 0) + v.get("pj", 0)
+    data_quality = min(1.0, total_pj / 12)                    # necesita 6 partidos por equipo
+    agreement    = max(0.0, 1 - abs(p_loc_poisson - p_loc_elo) * 2.5)  # penaliza desacuerdo
+    squad_bonus  = min(0.08, (home_players["avg_impact"] + away_players["avg_impact"]) / 2800)
+    confianza    = max(0.35, min(0.88,
+        data_quality * 0.42 + agreement * 0.32 + 0.18 + squad_bonus
+    ))
 
     # ── Paso 10: Player ratings individuales en formato para el frontend ──────
     # Impacto individual de top jugadores (0-100)
