@@ -359,7 +359,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,sans-
      padding:5px 16px;font-size:10px;color:#00c864;text-align:center;letter-spacing:.5px;
      display:flex;align-items:center;justify-content:center;gap:8px;">
   <span class="dot dot-g"></span>
-  <span id="live-notice-text">⚽ Cargando partidos FIFA Mundial 2026 — TODAS LAS CONFERENCIAS...</span>
+  <span id="live-notice-text">⚽ Cargando partidos en vivo — Mundial 2026 · Premier · Champions · Copa América...</span>
   <span id="live-conf-badges" style="display:flex;gap:4px;flex-shrink:0">
     <span style="font-size:7px;padding:1px 5px;border-radius:3px;background:rgba(59,130,246,.2);color:#3b82f6;font-weight:800">UEFA</span>
     <span style="font-size:7px;padding:1px 5px;border-radius:3px;background:rgba(16,185,129,.2);color:#10b981;font-weight:800">CONMEBOL</span>
@@ -750,7 +750,7 @@ async function enrichMatchesWithAI() {
 
   const lv = RAW.filter(x=>x.live).length;
   if (notice) {
-    notice.textContent = `⚽ ${lv} EN VIVO · ${RAW.length} partidos FIFA WC 2026 · 9 AGENTES IA · Análisis completo`;
+    notice.textContent = `⚽ ${lv} EN VIVO · ${RAW.length} partidos · 9 AGENTES IA · Análisis completo`;
     notice.style.color = '';
     notice.style.fontWeight = '';
   }
@@ -760,7 +760,7 @@ async function enrichMatchesWithAI() {
 
 async function fetchLiveMatches() {
   const notice = document.getElementById('live-notice-text');
-  if (notice) notice.textContent = '⚽ Cargando partidos del Mundial 2026 — Bet365 · Pinnacle · Betfair...';
+  if (notice) notice.textContent = '⚽ Cargando partidos en vivo — Bet365 · Pinnacle · Betfair · ESPN...';
 
   try {
     // ── Fuente: /mundial — The Odds API datos crudos RÁPIDO (< 5s) ──────────
@@ -813,14 +813,20 @@ async function fetchLiveMatches() {
     if (notice) notice.textContent = `⚽ /mundial timeout (${e.message}) — intentando ESPN...`;
   }
 
-  // ── Fallback: cargar datos del Mundial directamente desde ESPN ────────────
-  if (notice) notice.textContent = '⚽ Conectando fuente alternativa (ESPN)...';
-  const todayStr = new Date().toISOString().slice(0,10).replace(/-/g,'');
-  const yesterStr= new Date(Date.now()-864e5).toISOString().slice(0,10).replace(/-/g,'');
-  const espnSlugs = ['fifa.world','worldcup','fifa.worldcup'];
-  let d2 = null;
+  // ── Fallback: cargar datos directamente desde ESPN (todas las ligas) ────────
+  if (notice) notice.textContent = '⚽ Conectando ESPN directo — buscando en todas las ligas...';
+  const todayStr  = new Date().toISOString().slice(0,10).replace(/-/g,'');
+  const yesterStr = new Date(Date.now()-864e5).toISOString().slice(0,10).replace(/-/g,'');
+  // Ligas en orden de probabilidad de tener partidos ahora mismo
+  const espnSlugs = [
+    'fifa.world','worldcup','fifa.worldcup',      // Mundial 2026 (prioridad)
+    'uefa.champions','uefa.europa','uefa.nations', // UEFA
+    'eng.1','esp.1','ger.1','ita.1','fra.1',       // Big 5
+    'usa.1','mex.1','bra.1','arg.1',               // Américas
+    'conmebol.copa.america','concacaf.gold',        // Copas
+  ];
+  let d2 = null; let d2League = '';
   for (const slug of espnSlugs) {
-    // Intentar sin fecha primero (retorna live), luego con hoy, luego con ayer
     for (const dateParam of ['', `&dates=${todayStr}`, `&dates=${yesterStr}`]) {
       try {
         const rx = await fetch(
@@ -828,7 +834,7 @@ async function fetchLiveMatches() {
         );
         if (rx.ok) {
           const tmp = await rx.json();
-          if ((tmp.events||[]).length > 0) { d2 = tmp; break; }
+          if ((tmp.events||[]).length > 0) { d2 = tmp; d2League = slug; break; }
         }
       } catch(_){}
     }
@@ -836,12 +842,12 @@ async function fetchLiveMatches() {
   }
   try {
     if (d2) {
-      const events = (d2.events || []).slice(0,15);
+      const events = (d2.events || []).slice(0,20);
       if (events.length > 0) {
         RAW = events.map(espnBasicInfo).filter(Boolean);
         A   = RAW.map(a => ({...a}));
         sel = A[0];
-        if (notice) notice.textContent = `⚽ ${RAW.filter(x=>x.live).length} EN VIVO · ${RAW.length} partidos (ESPN)`;
+        if (notice) notice.textContent = `⚽ ${RAW.filter(x=>x.live).length} EN VIVO · ${RAW.length} partidos (ESPN · ${d2League})`;
         renderAll();
         const results = await Promise.allSettled(RAW.map(m => analyzeMatchWithAI(m)));
         RAW = results.map((r,i) => r.status==='fulfilled' ? r.value : RAW[i]);
@@ -861,7 +867,7 @@ async function fetchLiveMatches() {
   A   = RAW.map(a => ({...a}));
   sel = A[0];
   if (notice) {
-    notice.textContent = '⚽ 10 EN VIVO · FIFA WC 2026 · Todas las conferencias · Análisis IA activo';
+    notice.textContent = '⚽ 10 EN VIVO · Partidos en curso · Análisis IA activo (datos en caché)';
     notice.style.color = '';
     notice.style.fontWeight = '';
   }
