@@ -249,8 +249,10 @@ def analyze_match_full(
     home_squad = get_squad(home_name)
     away_squad = get_squad(away_name)
 
-    home_ranking = home_squad.get("ranking_fifa", 15) if home_squad else 15
-    away_ranking = away_squad.get("ranking_fifa", 20) if away_squad else 20
+    # Default conservador: equipos sin base de datos → ranking 68/75 (equipo "promedio")
+    # NUNCA usar 15-20 (top mundial) como fallback — genera EV ficticios
+    home_ranking = home_squad.get("ranking_fifa", 68) if home_squad else 68
+    away_ranking = away_squad.get("ranking_fifa", 75) if away_squad else 75
 
     elo_home = ranking_to_elo(home_ranking)
     elo_away = ranking_to_elo(away_ranking)

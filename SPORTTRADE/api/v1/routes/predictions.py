@@ -770,7 +770,14 @@ async def mundial_en_vivo(
         except Exception:
             today_matches = matches[:10]
 
-    today_matches.sort(key=lambda x: (not x.get("live"), x.get("done"), x.get("date", "")))
+    # Separar: primero en vivo, luego próximos, al final los terminados
+    live_m    = [m for m in today_matches if m.get("live") and not m.get("done")]
+    upcoming  = [m for m in today_matches if not m.get("live") and not m.get("done")]
+    finished  = [m for m in today_matches if m.get("done")]
+    live_m.sort(key=lambda x: x.get("date", ""))
+    upcoming.sort(key=lambda x: x.get("date", ""))
+    finished.sort(key=lambda x: x.get("date", ""), reverse=True)
+    today_matches = live_m + upcoming + finished
 
     source = "the_odds_api" if has_odds_api else "espn_fallback"
     if espn_extra:
@@ -980,10 +987,15 @@ async def analizar_partido_rapido(
     mc_noise    = _var * 45                       # varianza determinista de simulación
     a7 = round(min(97, max(30, mc_base + mc_noise)))
 
+    # Cap de seguridad: EV >50% indica modelo fuera de rango (datos faltantes)
+    ev_output = round(max(-30.0, min(50.0, best_ev * 100)), 1)
+    if abs(best_ev * 100) > 50:
+        valor = "REVISAR"   # señal de que el modelo no tiene datos fiables
+
     return {
         "pl": pl, "pe": pe_, "pv": pv, "conf": conf,
-        "ev": round(best_ev*100, 1),
-        "kelly": round(kelly*100, 2),
+        "ev": ev_output,
+        "kelly": round(kelly * 100, 2),
         "valor": valor,
         "resultado_rec": best_rec,
         "ag": [a0, a1, a2, a3, a4, a5, a6, a7],

@@ -1272,8 +1272,10 @@ function masterSignal(score) {
 }
 
 function renderTop10() {
-  // Prioriza EN VIVO, luego por MASTER AI score (EV + confianza ponderados)
+  // Excluir partidos terminados y EV irreales; priorizar EN VIVO > PRE > ...
   const sorted = [...A]
+    .filter(a => !a.done)                          // nunca mostrar partidos finalizados
+    .filter(a => Math.abs(a.ev || 0) <= 55)        // cap: EV >55% = datos stale/error
     .sort((a,b) => {
       if (a.live && !b.live) return -1;
       if (!a.live && b.live) return  1;
