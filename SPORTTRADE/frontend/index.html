@@ -2267,9 +2267,12 @@ async function openPizarra(espnId, liga, matchMin, home, away) {
     const src = d.source || 'espn';
     const srcBadge = src === 'sofascore'
       ? '<span style="background:rgba(250,204,21,.15);color:#facc15;border:1px solid rgba(250,204,21,.3);padding:2px 8px;border-radius:10px;font-size:8px;font-weight:800">⚡ SOFASCORE — Datos Reales</span>'
+      : src === 'squad_estimate'
+      ? '<span style="background:rgba(168,85,247,.12);color:#a855f7;border:1px solid rgba(168,85,247,.3);padding:2px 8px;border-radius:10px;font-size:8px;font-weight:800">🧠 ALINEACIÓN ESTIMADA — Plantel Oficial</span>'
       : '<span style="background:rgba(59,130,246,.1);color:#3b82f6;border:1px solid rgba(59,130,246,.2);padding:2px 8px;border-radius:10px;font-size:8px;font-weight:800">ESPN Boxscore</span>';
     document.getElementById('piz-sub').innerHTML = `${liga} &nbsp;${srcBadge}` +
-      (src !== 'sofascore' ? ' &nbsp;<span style="color:#475569;font-size:7px">⚠ km = estimado por posición</span>' : '');
+      (src === 'squad_estimate' ? ' &nbsp;<span style="color:#7c3aed;font-size:7px">⚠ Estadísticas proyectadas — se actualizan al inicio del partido</span>'
+       : src !== 'sofascore' ? ' &nbsp;<span style="color:#475569;font-size:7px">⚠ km = estimado por posición</span>' : '');
 
     pizTab('pizarra');
   } catch(e) {

@@ -241,6 +241,164 @@ def _parse_players(boxscore_players: list[dict], match_min: int) -> list[dict]:
     return teams_out
 
 
+# ── Alineación estimada desde plantillas del Mundial ─────────────────────────
+
+def _norm_team(name: str) -> str:
+    import unicodedata, re
+    n = unicodedata.normalize("NFD", name.upper())
+    n = "".join(c for c in n if unicodedata.category(c) != "Mn")
+    n = re.sub(r"\b(FC|CF|SC|AC|RC|CD|UD|SD|AS|SS|SK|NK|BK|IF|IK|FK|SV|VFB|TSV|FSV|BSV|RCD|AFC|MK|GK|KFC|JK|FK|CS|CA|SE)\b", "", n)
+    return n.strip()
+
+_SQUAD_ALIASES: dict[str, str] = {
+    "USA": "UNITED STATES", "US": "UNITED STATES", "ESTADOS UNIDOS": "UNITED STATES",
+    "ENGLAND": "ENGLAND", "ALEMANIA": "GERMANY", "ESPANA": "SPAIN", "ESPANHA": "SPAIN",
+    "FRANCIA": "FRANCE", "BRASIL": "BRAZIL", "JAPON": "JAPAN", "BELGICA": "BELGIUM",
+    "HOLANDA": "NETHERLANDS", "PAISES BAJOS": "NETHERLANDS", "HOLAND": "NETHERLANDS",
+    "COREA": "SOUTH KOREA", "COREA DEL SUR": "SOUTH KOREA", "KOREA": "SOUTH KOREA",
+    "MAROC": "MOROCCO", "MARRUECOS": "MOROCCO", "IRAN": "IR IRAN",
+    "SUIZA": "SWITZERLAND", "SUECIA": "SWEDEN", "DINAMARCA": "DENMARK",
+    "AUSTRALIA": "AUSTRALIA", "MEXICO": "MEXICO", "ECUAD": "ECUADOR",
+    "SENEG": "SENEGAL", "CAMERU": "CAMEROON", "GHANA": "GHANA",
+    "NIGERIA": "NIGERIA", "TUNEZ": "TUNISIA", "TUNICIA": "TUNISIA",
+    "IVORY COAST": "CÔTE D'IVOIRE", "COTE DIVOIRE": "CÔTE D'IVOIRE",
+}
+
+def _find_squad(name: str) -> Optional[dict]:
+    from prompts.world_cup_squads import SQUADS
+    norm = _norm_team(name)
+    # exact match
+    for key, squad in SQUADS.items():
+        if _norm_team(key) == norm:
+            return {"name": key, **squad}
+    # alias lookup
+    alias = _SQUAD_ALIASES.get(norm)
+    if alias:
+        for key, squad in SQUADS.items():
+            if _norm_team(key) == _norm_team(alias):
+                return {"name": key, **squad}
+    # partial match (first word)
+    first = norm.split()[0] if norm.split() else norm
+    for key, squad in SQUADS.items():
+        if first in _norm_team(key) or _norm_team(key).startswith(first[:4]):
+            return {"name": key, **squad}
+    return None
+
+
+def _player_from_squad(jugador: dict, match_min: int, starter: bool) -> dict:
+    pos      = jugador.get("pos", "CM")
+    name     = jugador.get("nombre", "Jugador")
+    impacto  = jugador.get("impacto", 70)
+    dorsal   = jugador.get("dorsal", 0)
+
+    frac     = max(0.0, min(1.0, match_min / 90)) if match_min > 0 else 1.0
+    km       = _km_estimate(pos, int(match_min or 90), name)
+
+    # Estadísticas proporcionales al impacto
+    precision = round(55 + impacto * 0.38, 1)
+    toques    = int((impacto / 100) * 65 * frac + 10)
+    toques_ok = int(toques * precision / 100)
+    toques_err= max(0, toques - toques_ok)
+    goles     = 1 if impacto >= 90 and pos in ("ST","CF","FW","CAM") and frac >= 0.9 else 0
+    asist     = 1 if impacto >= 88 and pos in ("CAM","CM","RW","LW") and frac >= 0.9 else 0
+    tiros     = max(0, int((impacto / 100) * 3 * frac)) if pos in ("ST","CF","CAM","RW","LW","FW") else 0
+    tiros_ok  = max(0, tiros // 2)
+    faltas    = max(0, int((100 - impacto) / 100 * 2 * frac))
+    bloqueos  = max(0, int(impacto / 100 * 3 * frac)) if pos in ("CB","DM","CM","CDM","SW","DC") else 0
+    inter     = max(0, int(impacto / 100 * 2 * frac)) if pos in ("CB","DM","CDM","LB","RB") else 0
+    tackeos   = max(0, int(impacto / 100 * 2 * frac)) if pos not in ("GK","ST","CF") else 0
+    amarillas = 0
+    rojas     = 0
+
+    balance = (
+        precision * 0.40 + goles * 15 + asist * 10 + tiros_ok * 4
+        + bloqueos * 3 + inter * 2 + tackeos * 2
+        - faltas * 3 - amarillas * 8 - rojas * 25 - toques_err * 0.5
+    )
+    balance = round(max(0.0, min(100.0, balance)), 1)
+
+    radar = {
+        "precision":  precision,
+        "km":         round(min(100, km / 13 * 100), 1),
+        "ofensiva":   round(min(100, goles * 15 + asist * 10 + tiros_ok * 4), 1),
+        "defensiva":  round(min(100, bloqueos * 8 + inter * 6 + tackeos * 5), 1),
+        "disciplina": round(max(0, 100 - faltas * 5 - amarillas * 15 - rojas * 40), 1),
+    }
+
+    return {
+        "name": name, "jersey": str(dorsal), "pos": pos,
+        "starter": starter, "active": True, "min": int(match_min or 90),
+        "toques": toques, "toques_ok": toques_ok, "toques_err": toques_err,
+        "precision": precision, "km": km,
+        "goles": goles, "asist": asist,
+        "tiros": tiros, "tiros_ok": tiros_ok,
+        "faltas": faltas, "amarillas": amarillas, "rojas": rojas,
+        "bloqueos": bloqueos, "interc": inter, "tackeos": tackeos,
+        "lesionado": False, "balance": balance, "radar": radar,
+    }
+
+
+def _build_squad_lineup(home: str, away: str, match_min: int, event_id: str) -> dict:
+    home_sq = _find_squad(home)
+    away_sq = _find_squad(away)
+
+    teams_out = []
+    for squad, ha in [(home_sq, "home"), (away_sq, "away")]:
+        if not squad:
+            continue
+        jugadores = squad.get("jugadores", [])
+        sorted_j  = sorted(jugadores, key=lambda j: j.get("impacto", 0), reverse=True)
+        starters_data = sorted_j[:11]
+        subs_data     = sorted_j[11:]
+
+        starters = [_player_from_squad(j, match_min or 90, True)  for j in starters_data]
+        subs     = [_player_from_squad(j, 0,  False) for j in subs_data]
+        players  = starters + subs
+
+        team_toques    = sum(p["toques"]     for p in starters)
+        team_toques_ok = sum(p["toques_ok"]  for p in starters)
+        team_precision = round(team_toques_ok / max(1, team_toques) * 100, 1)
+        team_km        = round(sum(p["km"]   for p in starters), 1)
+        team_balance   = round(sum(p["balance"] for p in starters) / max(1, len(starters)), 1)
+        team_radar     = {
+            k: round(sum(p["radar"][k] for p in starters) / max(1, len(starters)), 1)
+            for k in ["precision", "km", "ofensiva", "defensiva", "disciplina"]
+        }
+
+        teams_out.append({
+            "team":           squad["name"],
+            "team_id":        "",
+            "home_away":      ha,
+            "players":        players,
+            "starters":       starters,
+            "subs":           subs,
+            "team_km":        team_km,
+            "team_toques":    team_toques,
+            "team_precision": team_precision,
+            "team_goles":     sum(p["goles"] for p in starters),
+            "team_asist":     sum(p["asist"] for p in starters),
+            "team_faltas":    sum(p["faltas"] for p in starters),
+            "team_balance":   team_balance,
+            "team_radar":     team_radar,
+            "lesionados":     [],
+            "source":         "squad_estimate",
+            "entrenador":     squad.get("entrenador", ""),
+            "estilo":         squad.get("estilo", ""),
+        })
+
+    if not teams_out:
+        return {"teams": []}
+
+    return {
+        "event_id":  event_id,
+        "source":    "squad_estimate",
+        "state":     "pre",
+        "clock":     "Previa",
+        "match_min": match_min or 90,
+        "teams":     teams_out,
+    }
+
+
 # ── Función principal ─────────────────────────────────────────────────────────
 
 async def fetch_player_stats(
@@ -296,9 +454,13 @@ async def fetch_player_stats(
 
     bp = raw.get("boxscore", {}).get("players", [])
     if not bp:
+        # ── Fuente 3: Plantillas del Mundial (alineación estimada) ────────────
+        if home and away:
+            squad_result = _build_squad_lineup(home, away, match_min, event_id)
+            if squad_result.get("teams"):
+                return squad_result
         return {
-            "error":    "Sin datos de jugadores en SofaScore ni ESPN para este partido. "
-                        "Intenta cuando el partido lleve al menos 10 minutos en curso.",
+            "error":    "Sin datos de jugadores disponibles para este partido.",
             "teams":    [],
             "event_id": event_id,
         }
