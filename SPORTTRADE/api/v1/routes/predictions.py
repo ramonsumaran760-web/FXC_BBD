@@ -1110,6 +1110,20 @@ async def analizar_partido_rapido(
     }
 
 
+@router.get("/jugadores/{event_id}")
+async def jugadores_partido(
+    event_id: str,
+    liga: Optional[str] = None,
+    match_min: int = 45,
+):
+    """
+    Estadísticas por jugador de un partido en tiempo real vía ESPN.
+    Métricas: toques acertados/errados, km estimados, asistencias, goles, balance.
+    """
+    from services.player_stats import fetch_player_stats
+    return await fetch_player_stats(event_id, liga, match_min)
+
+
 @router.get("/live", response_model=list[dict])
 async def predicciones_live(db: AsyncSession = Depends(get_db)):
     """Devuelve las últimas predicciones de partidos en vivo."""

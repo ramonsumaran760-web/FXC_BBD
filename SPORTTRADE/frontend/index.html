@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FXC_BBD — Sports Trading Desk</title>
 <link rel="stylesheet" href="https://unpkg.com/@tabler/icons-webfont@3.31.0/tabler-icons.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
 /* ── LOGIN SCREEN ─────────────────────────────────────────── */
 #login-screen{
@@ -406,6 +407,104 @@ body{background:var(--bg);color:var(--tx);font-family:'Segoe UI',system-ui,sans-
     <div style="font-size:8px;color:var(--tx3);margin-top:2px">Celery Beat: <span style="color:var(--g)">ONLINE</span></div>
   </div>
 </div>
+
+<!-- ═══ PIZARRA TÁCTICA — MODAL JUGADORES ════════════════════════ -->
+<div id="pizarra-overlay" style="display:none;position:fixed;inset:0;z-index:8500;
+  background:rgba(7,10,14,.96);overflow-y:auto;padding:16px">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+    <div style="display:flex;align-items:center;gap:8px;flex:1">
+      <div style="width:32px;height:32px;border-radius:8px;
+        background:linear-gradient(135deg,#10b981,#3b82f6);
+        display:grid;place-items:center">
+        <i class="ti ti-playstation-triangle" style="color:#fff;font-size:15px"></i>
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:900;color:#f1f5f9" id="piz-titulo">Pizarra Táctica</div>
+        <div style="font-size:9px;color:#64748b" id="piz-sub">Estadísticas en tiempo real</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <span id="piz-clock" style="font-size:11px;font-weight:800;color:#10b981;
+        background:rgba(16,185,129,.12);border:1px solid rgba(16,185,129,.3);
+        padding:3px 10px;border-radius:12px"></span>
+      <button onclick="closePizarra()" style="background:#1e2938;border:1px solid #243242;
+        border-radius:6px;color:#94a3b8;cursor:pointer;padding:6px 10px;font-size:12px">
+        <i class="ti ti-x"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div style="display:flex;gap:4px;margin-bottom:14px;border-bottom:1px solid #243242;padding-bottom:0">
+    <button class="piz-tab active" id="tab-pizarra" onclick="pizTab('pizarra')">
+      <i class="ti ti-topology-star-3"></i> Pizarra
+    </button>
+    <button class="piz-tab" id="tab-tabla" onclick="pizTab('tabla')">
+      <i class="ti ti-table"></i> Tabla Jugadores
+    </button>
+    <button class="piz-tab" id="tab-balance" onclick="pizTab('balance')">
+      <i class="ti ti-chart-bar"></i> Balance Equipos
+    </button>
+    <button class="piz-tab" id="tab-radar" onclick="pizTab('radar')">
+      <i class="ti ti-chart-radar"></i> Radar IA
+    </button>
+  </div>
+
+  <!-- Contenido de cada tab -->
+  <div id="piz-content-pizarra" class="piz-content">
+    <div id="piz-field-wrap" style="display:flex;gap:14px;flex-wrap:wrap"></div>
+  </div>
+  <div id="piz-content-tabla" class="piz-content" style="display:none">
+    <div id="piz-tabla-wrap"></div>
+  </div>
+  <div id="piz-content-balance" class="piz-content" style="display:none">
+    <div id="piz-balance-wrap" style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start"></div>
+  </div>
+  <div id="piz-content-radar" class="piz-content" style="display:none">
+    <div id="piz-radar-wrap" style="display:flex;gap:14px;flex-wrap:wrap"></div>
+  </div>
+
+  <!-- Loading state -->
+  <div id="piz-loading" style="display:none;text-align:center;padding:60px 20px">
+    <i class="ti ti-loader" style="font-size:28px;color:#3b82f6;animation:spin 1s linear infinite"></i>
+    <div style="margin-top:12px;color:#64748b;font-size:12px">Cargando estadísticas ESPN...</div>
+  </div>
+  <div id="piz-error" style="display:none;text-align:center;padding:40px 20px">
+    <i class="ti ti-alert-circle" style="font-size:28px;color:#ef4444"></i>
+    <div style="margin-top:10px;color:#94a3b8;font-size:12px" id="piz-error-msg">Sin datos disponibles</div>
+    <div style="margin-top:6px;color:#475569;font-size:10px">ESPN no tiene estadísticas de jugadores para este partido todavía.<br>Intenta cuando el partido lleve al menos 10 minutos en curso.</div>
+  </div>
+</div>
+
+<style>
+@keyframes spin{to{transform:rotate(360deg)}}
+.piz-tab{
+  padding:7px 13px;background:transparent;border:none;border-bottom:2px solid transparent;
+  color:#64748b;cursor:pointer;font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.06em;display:flex;align-items:center;gap:5px;transition:all .15s;
+  margin-bottom:-1px;
+}
+.piz-tab:hover{color:#94a3b8}
+.piz-tab.active{color:#3b82f6;border-bottom-color:#3b82f6}
+.piz-content{}
+
+/* Campo de fútbol SVG */
+.piz-field-svg{width:100%;max-width:480px;border-radius:8px;border:1px solid #1e2938}
+
+/* Tabla de jugadores */
+.piz-tbl{width:100%;border-collapse:collapse;font-size:9px}
+.piz-tbl th{background:#0f151d;color:#64748b;font-weight:700;text-transform:uppercase;
+             letter-spacing:.06em;padding:6px 8px;text-align:left;position:sticky;top:0;z-index:1}
+.piz-tbl td{padding:5px 8px;border-bottom:1px solid #0f151d;color:#f1f5f9}
+.piz-tbl tr:hover td{background:#0f151d;cursor:pointer}
+.piz-tbl tr.titular td{background:rgba(59,130,246,.04)}
+.bal-bar{height:6px;border-radius:3px;background:#1e2938;overflow:hidden;width:60px}
+.bal-fill{height:100%;border-radius:3px;transition:width .3s}
+.pos-badge{display:inline-block;padding:1px 5px;border-radius:3px;font-size:8px;
+           font-weight:800;background:#1e2938;color:#94a3b8}
+</style>
 
 <!-- MAIN AREA -->
 <div class="main">
@@ -1356,6 +1455,12 @@ function renderTop10() {
       </div>
       ${liveDisplay(a)}
       ${recBadge(a)}
+      <button onclick="event.stopPropagation();openPizarra('${a.odds_id||''}','${(a.liga||'').replace(/'/g,'').replace(/"/g,'')}',${a.min||0},'${a.l.replace(/'/g,'').replace(/"/g,'')}','${a.v.replace(/'/g,'').replace(/"/g,'')}')"
+        style="margin-top:5px;width:100%;padding:3px 0;background:rgba(16,185,129,.08);
+               border:1px solid rgba(16,185,129,.2);border-radius:4px;color:#10b981;
+               font-size:8px;font-weight:800;cursor:pointer;letter-spacing:.05em">
+        <i class="ti ti-users"></i> JUGADORES EN CAMPO
+      </button>
     </div>`;
   }).join('');
 }
@@ -2074,6 +2179,518 @@ document.body.addEventListener('click', ()=>{ if(!_ctx) initAudio(); }, {once:tr
 ttsInit();
 // Cargar partidos reales del Mundial 2026 en cuanto el DOM esté listo
 document.addEventListener('DOMContentLoaded', fetchLiveMatches);
-</script>
+
+// ════════════════════════════════════════════════════════════════════
+// PIZARRA TÁCTICA — Sistema de estadísticas por jugador
+// ════════════════════════════════════════════════════════════════════
+let _pizData    = null;  // último resultado del endpoint jugadores
+let _pizChart   = null;  // instancia Chart.js activa
+let _pizSelPly  = null;  // jugador seleccionado para radar
+let _pizMatch   = {};    // metadata del partido actual
+
+// ── Posiciones en el campo (SVG 420×260) ─────────────────────────────────────
+// Orden por índice en el equipo: GK, DEF×4, MID×4, FWD×2 (4-4-2 base)
+const _POS_MAP = {
+  GK:['G'],
+  DEF:['CB','SW','DC','LB','RB','LWB','RWB','WB'],
+  MID:['DM','CDM','DLP','CM','MC','BOX','CAM','AM','LM','RM'],
+  FWD:['CF','FW','ST','F','SS','LW','RW','WG','ATT'],
+};
+
+function _posZone(pos) {
+  if (_POS_MAP.GK.includes(pos))  return 'GK';
+  if (_POS_MAP.DEF.includes(pos)) return 'DEF';
+  if (_POS_MAP.MID.includes(pos)) return 'MID';
+  return 'FWD';
+}
+
+function _fieldPositions(starters, isHome) {
+  // Agrupa por zona y distribuye en y
+  const zones = {GK:[], DEF:[], MID:[], FWD:[]};
+  starters.forEach(p => zones[_posZone(p.pos)].push(p));
+  const result = [];
+  const W = 420, H = 260;
+  const zoneX = isHome
+    ? {GK: W*0.07, DEF: W*0.22, MID: W*0.45, FWD: W*0.70}
+    : {GK: W*0.93, DEF: W*0.78, MID: W*0.55, FWD: W*0.30};
+  Object.entries(zones).forEach(([zone, players]) => {
+    const n = players.length;
+    players.forEach((p, i) => {
+      const y = H * (i + 1) / (n + 1);
+      result.push({...p, fx: zoneX[zone], fy: y});
+    });
+  });
+  return result;
+}
+
+function _balColor(b) {
+  if (b >= 70) return '#10b981';
+  if (b >= 50) return '#f59e0b';
+  if (b >= 30) return '#ef4444';
+  return '#64748b';
+}
+
+// ── Abrir pizarra ─────────────────────────────────────────────────────────────
+async function openPizarra(espnId, liga, matchMin, home, away) {
+  const ov = document.getElementById('pizarra-overlay');
+  ov.style.display = 'block';
+  document.getElementById('piz-loading').style.display = 'block';
+  document.getElementById('piz-error').style.display = 'none';
+  ['pizarra','tabla','balance','radar'].forEach(t =>
+    document.getElementById(`piz-content-${t}`).style.display = 'none'
+  );
+  document.getElementById('piz-titulo').textContent = `${home} vs ${away}`;
+  document.getElementById('piz-sub').textContent = liga || 'Fútbol Internacional';
+  document.getElementById('piz-clock').textContent = matchMin ? `${matchMin}'` : '';
+  _pizMatch = {espnId, liga, matchMin, home, away};
+
+  if (!espnId) {
+    document.getElementById('piz-loading').style.display = 'none';
+    document.getElementById('piz-error').style.display = 'block';
+    document.getElementById('piz-error-msg').textContent =
+      'Este partido no tiene ID ESPN — solo disponible para partidos con datos en vivo';
+    return;
+  }
+
+  try {
+    const url = `${SPORTS_API}/api/v1/predictions/jugadores/${espnId}` +
+                `?liga=${encodeURIComponent(liga)}&match_min=${matchMin||45}`;
+    const r = await fetch(url, {headers: authHeaders()});
+    const d = await r.json();
+
+    document.getElementById('piz-loading').style.display = 'none';
+
+    if (!r.ok || d.error || !d.teams || d.teams.length === 0) {
+      document.getElementById('piz-error').style.display = 'block';
+      document.getElementById('piz-error-msg').textContent =
+        d.error || 'Sin datos de jugadores para este partido';
+      return;
+    }
+
+    _pizData = d;
+    _pizSelPly = (d.teams[0]?.starters || [])[0] || null;
+    pizTab('pizarra');
+  } catch(e) {
+    document.getElementById('piz-loading').style.display = 'none';
+    document.getElementById('piz-error').style.display = 'block';
+    document.getElementById('piz-error-msg').textContent = 'Error de red: ' + e.message;
+  }
+}
+
+function closePizarra() {
+  document.getElementById('pizarra-overlay').style.display = 'none';
+  if (_pizChart) { _pizChart.destroy(); _pizChart = null; }
+}
+
+// ── Cambiar tab ───────────────────────────────────────────────────────────────
+function pizTab(name) {
+  ['pizarra','tabla','balance','radar'].forEach(t => {
+    document.getElementById(`piz-content-${t}`).style.display = t === name ? '' : 'none';
+    document.getElementById(`tab-${t}`).classList.toggle('active', t === name);
+  });
+  if (!_pizData) return;
+  if (name === 'pizarra') renderPizarraField();
+  if (name === 'tabla')   renderPizarraTabla();
+  if (name === 'balance') renderPizarraBalance();
+  if (name === 'radar')   renderPizarraRadar(_pizSelPly);
+}
+
+// ── Tab 1: Campo táctico SVG ──────────────────────────────────────────────────
+function renderPizarraField() {
+  const wrap = document.getElementById('piz-field-wrap');
+  const W = 420, H = 260;
+
+  const teams = _pizData.teams;
+  const home  = teams.find(t => t.home_away === 'home') || teams[0];
+  const away  = teams.find(t => t.home_away === 'away') || teams[1];
+
+  function teamFieldSVG(team, isHome) {
+    if (!team) return '';
+    const players = _fieldPositions(team.starters || [], isHome);
+
+    const dots = players.map(p => {
+      const bc = _balColor(p.balance);
+      const inj = p.lesionado ? '⚠' : '';
+      return `
+        <g class="ply-dot" onclick="pizSelectPlayer('${team.home_away}','${p.name.replace(/'/g,'')}')" style="cursor:pointer">
+          <circle cx="${p.fx}" cy="${p.fy}" r="14" fill="${bc}22" stroke="${bc}" stroke-width="1.5"/>
+          <text x="${p.fx}" y="${p.fy-1}" text-anchor="middle" dominant-baseline="middle"
+            fill="${bc}" font-size="9" font-weight="800">${p.jersey}</text>
+          <text x="${p.fx}" y="${p.fy+11}" text-anchor="middle" dominant-baseline="middle"
+            fill="#94a3b8" font-size="6.5">${p.name.split(' ').pop()}${inj}</text>
+          <text x="${p.fx}" y="${p.fy+19}" text-anchor="middle" dominant-baseline="middle"
+            fill="${bc}" font-size="6" opacity=".8">${p.balance}pts</text>
+        </g>`;
+    }).join('');
+
+    return `
+      <div style="flex:1;min-width:300px">
+        <div style="font-size:9px;font-weight:800;color:#94a3b8;text-transform:uppercase;
+                    margin-bottom:6px;letter-spacing:.08em">
+          ${isHome ? '🏠' : '✈'} ${team.team}
+          <span style="color:#64748b;font-weight:400"> — Balance ${team.team_balance}/100</span>
+        </div>
+        <svg viewBox="0 0 ${W} ${H}" class="piz-field-svg" style="background:#0d1a0d">
+          <!-- Campo -->
+          <rect x="0" y="0" width="${W}" height="${H}" fill="#0d1a0d" rx="6"/>
+          <!-- Líneas campo -->
+          <rect x="10" y="10" width="${W-20}" height="${H-20}" fill="none" stroke="#1a3a1a" stroke-width="1.5"/>
+          <line x1="${W/2}" y1="10" x2="${W/2}" y2="${H-10}" stroke="#1a3a1a" stroke-width="1"/>
+          <circle cx="${W/2}" cy="${H/2}" r="30" fill="none" stroke="#1a3a1a" stroke-width="1"/>
+          <!-- Áreas -->
+          <rect x="10" y="${H/2-40}" width="55" height="80" fill="none" stroke="#1a3a1a" stroke-width="1"/>
+          <rect x="${W-65}" y="${H/2-40}" width="55" height="80" fill="none" stroke="#1a3a1a" stroke-width="1"/>
+          <!-- Jugadores -->
+          ${dots}
+          <!-- Leyenda balance -->
+          <rect x="${W-120}" y="${H-24}" width="10" height="10" rx="2" fill="#10b981"/>
+          <text x="${W-107}" y="${H-16}" fill="#64748b" font-size="7">≥70 Excelente</text>
+          <rect x="${W-120}" y="${H-12}" width="10" height="10" rx="2" fill="#f59e0b"/>
+          <text x="${W-107}" y="${H-4}" fill="#64748b" font-size="7">50-69 Bueno</text>
+        </svg>
+        <!-- Resumen del equipo -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          ${[
+            ['🏃 KM Total', team.team_km + ' km'],
+            ['👆 Precisión', team.team_precision + '%'],
+            ['⚽ Goles',     team.team_goles],
+            ['🟨 Faltas',   team.team_faltas],
+          ].map(([l,v]) => `
+            <div style="flex:1;min-width:70px;background:#0f151d;border:1px solid #1e2938;
+                        border-radius:5px;padding:5px 8px;text-align:center">
+              <div style="font-size:8px;color:#64748b">${l}</div>
+              <div style="font-size:12px;font-weight:800;color:#f1f5f9;margin-top:2px">${v}</div>
+            </div>`).join('')}
+        </div>
+        ${team.lesionados.length ? `
+          <div style="margin-top:8px;padding:6px 10px;background:rgba(239,68,68,.08);
+                      border:1px solid rgba(239,68,68,.2);border-radius:5px;font-size:8px;color:#ef4444">
+            ⚠ Posibles lesiones: ${team.lesionados.join(', ')}
+          </div>` : ''}
+      </div>`;
+  }
+
+  wrap.innerHTML = teamFieldSVG(home, true) + teamFieldSVG(away, false);
+}
+
+// ── Tab 2: Tabla de jugadores ─────────────────────────────────────────────────
+function renderPizarraTabla() {
+  const wrap = document.getElementById('piz-tabla-wrap');
+  const teams = _pizData.teams;
+
+  const tablePart = (team) => `
+    <div style="margin-bottom:18px">
+      <div style="font-size:10px;font-weight:800;color:#f1f5f9;margin-bottom:7px;
+                  display:flex;align-items:center;gap:6px">
+        <span style="display:inline-block;width:10px;height:10px;border-radius:50%;
+          background:${team.home_away==='home'?'#3b82f6':'#ef4444'}"></span>
+        ${team.team}
+        <span style="color:#64748b;font-weight:400;font-size:8px">Balance equipo: ${team.team_balance}/100</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="piz-tbl">
+          <thead><tr>
+            <th>#</th><th>Jugador</th><th>Pos</th><th>Min</th>
+            <th>Toques</th><th>T.OK%</th><th>T.ERR</th>
+            <th>KM</th><th>G</th><th>A</th>
+            <th>Tiros</th><th>Faltas</th><th>🟨</th><th>🟥</th>
+            <th>Balance</th><th>Radar</th>
+          </tr></thead>
+          <tbody>
+            ${[...team.starters, ...team.subs].map(p => {
+              const bc = _balColor(p.balance);
+              const injBadge = p.lesionado
+                ? '<span style="color:#ef4444;font-weight:800">⚠ LESIÓN</span>'
+                : p.active ? '' : '<span style="color:#64748b">INACTIVO</span>';
+              return `<tr class="${p.starter?'titular':''}"
+                onclick="pizSelectPlayer('${team.home_away}','${p.name.replace(/'/g,'')}');pizTab('radar')">
+                <td style="font-family:monospace;font-weight:800;color:#64748b">${p.jersey}</td>
+                <td style="font-weight:700;color:${p.starter?'#f1f5f9':'#64748b'}">
+                  ${p.name} ${injBadge}
+                  ${!p.starter?'<span style="color:#475569;font-size:7px">SUB</span>':''}
+                </td>
+                <td><span class="pos-badge">${p.pos}</span></td>
+                <td style="font-family:monospace">${p.min}'</td>
+                <td style="font-family:monospace">${p.toques}</td>
+                <td>
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <div class="bal-bar">
+                      <div class="bal-fill" style="width:${p.precision}%;
+                        background:${p.precision>=70?'#10b981':p.precision>=50?'#f59e0b':'#ef4444'}">
+                      </div>
+                    </div>
+                    <span style="font-size:8px;color:${p.precision>=70?'#10b981':'#94a3b8'}">${p.precision}%</span>
+                  </div>
+                </td>
+                <td style="color:#ef4444;font-family:monospace">${p.toques_err}</td>
+                <td style="font-family:monospace;color:#06b6d4">${p.km}</td>
+                <td style="font-family:monospace;font-weight:800;color:#10b981">${p.goles||'—'}</td>
+                <td style="font-family:monospace;color:#8b5cf6">${p.asist||'—'}</td>
+                <td style="font-family:monospace;color:#f59e0b">${p.tiros}/${p.tiros_ok}</td>
+                <td style="font-family:monospace;color:#ef4444">${p.faltas}</td>
+                <td style="font-family:monospace">${p.amarillas||'—'}</td>
+                <td style="font-family:monospace">${p.rojas||'—'}</td>
+                <td>
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <div class="bal-bar"><div class="bal-fill"
+                      style="width:${p.balance}%;background:${bc}"></div></div>
+                    <span style="color:${bc};font-weight:800;font-size:8px">${p.balance}</span>
+                  </div>
+                </td>
+                <td><button onclick="event.stopPropagation();pizSelectPlayer('${team.home_away}','${p.name.replace(/'/g,'')}');pizTab('radar')"
+                  style="background:#1e2938;border:1px solid #243242;border-radius:3px;
+                         color:#3b82f6;font-size:7px;cursor:pointer;padding:2px 5px">
+                  <i class="ti ti-chart-radar"></i>
+                </button></td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+
+  wrap.innerHTML = teams.map(t => tablePart(t)).join('');
+}
+
+// ── Tab 3: Balance por equipo ─────────────────────────────────────────────────
+function renderPizarraBalance() {
+  const wrap  = document.getElementById('piz-balance-wrap');
+  const teams = _pizData.teams;
+  if (teams.length < 2) { wrap.innerHTML = '<div style="color:#64748b">Solo un equipo disponible</div>'; return; }
+
+  const home = teams.find(t=>t.home_away==='home') || teams[0];
+  const away = teams.find(t=>t.home_away==='away') || teams[1];
+
+  const metrics = [
+    {label:'Balance General',  h: home.team_balance,  a: away.team_balance,  max:100, unit:'pts', col:'#8b5cf6'},
+    {label:'Precisión Toques', h: home.team_precision, a: away.team_precision, max:100, unit:'%',  col:'#10b981'},
+    {label:'KM Recorridos',    h: home.team_km,        a: away.team_km,        max:130, unit:'km', col:'#06b6d4'},
+    {label:'Goles',            h: home.team_goles,     a: away.team_goles,     max:5,   unit:'',   col:'#f59e0b'},
+    {label:'Asistencias',      h: home.team_asist,     a: away.team_asist,     max:5,   unit:'',   col:'#3b82f6'},
+    {label:'Faltas Cometidas', h: home.team_faltas,    a: away.team_faltas,    max:30,  unit:'',   col:'#ef4444'},
+  ];
+
+  const barGroup = (m) => {
+    const hw = Math.round(m.h / m.max * 100);
+    const aw = Math.round(m.a / m.max * 100);
+    const hWin = m.label === 'Faltas Cometidas' ? m.h <= m.a : m.h >= m.a;
+    return `
+      <div style="margin-bottom:10px">
+        <div style="font-size:8px;color:#64748b;font-weight:700;text-transform:uppercase;
+                    margin-bottom:4px">${m.label}</div>
+        <!-- Home bar -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+          <div style="font-size:8px;color:#94a3b8;width:100px;text-align:right;
+                      font-weight:${hWin?'800':'400'};color:${hWin?'#f1f5f9':'#64748b'}">
+            ${home.team.split(' ').pop()}
+          </div>
+          <div style="flex:1;background:#1e2938;border-radius:3px;height:14px;overflow:hidden">
+            <div style="width:${hw}%;height:100%;background:${m.col};
+                        opacity:${hWin?1:.45};border-radius:3px;transition:width .6s"></div>
+          </div>
+          <div style="font-size:9px;font-weight:800;color:${hWin?m.col:'#64748b'};
+                      width:40px;font-family:monospace">${m.h}${m.unit}</div>
+        </div>
+        <!-- Away bar -->
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="font-size:8px;width:100px;text-align:right;
+                      font-weight:${!hWin?'800':'400'};color:${!hWin?'#f1f5f9':'#64748b'}">
+            ${away.team.split(' ').pop()}
+          </div>
+          <div style="flex:1;background:#1e2938;border-radius:3px;height:14px;overflow:hidden">
+            <div style="width:${aw}%;height:100%;background:${m.col};
+                        opacity:${!hWin?1:.45};border-radius:3px;transition:width .6s"></div>
+          </div>
+          <div style="font-size:9px;font-weight:800;color:${!hWin?m.col:'#64748b'};
+                      width:40px;font-family:monospace">${m.a}${m.unit}</div>
+        </div>
+      </div>`;
+  };
+
+  // Top performers de cada equipo
+  const topPlayer = (team) => {
+    const best = [...(team.starters||[])].sort((a,b)=>b.balance-a.balance)[0];
+    if (!best) return '';
+    return `
+      <div style="padding:8px 10px;background:#0f151d;border:1px solid #1e2938;border-radius:6px;margin-top:8px">
+        <div style="font-size:7px;color:#64748b;font-weight:700;text-transform:uppercase;margin-bottom:4px">
+          MVP ${team.team}
+        </div>
+        <div style="font-size:10px;font-weight:800;color:#f1f5f9">${best.name}</div>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <span style="font-size:8px;color:#10b981">${best.balance}/100 pts</span>
+          <span style="font-size:8px;color:#06b6d4">${best.km} km</span>
+          <span style="font-size:8px;color:#f59e0b">${best.precision}% prec.</span>
+        </div>
+      </div>`;
+  };
+
+  wrap.innerHTML = `
+    <div style="flex:1;min-width:280px">
+      <div style="font-size:10px;font-weight:800;color:#f1f5f9;margin-bottom:12px">
+        <i class="ti ti-chart-bar" style="color:#8b5cf6"></i> Comparativa Equipos
+      </div>
+      ${metrics.map(barGroup).join('')}
+    </div>
+    <div style="min-width:200px;flex:0 0 220px">
+      <div style="font-size:10px;font-weight:800;color:#f1f5f9;margin-bottom:8px">Top Performers</div>
+      ${teams.map(t => topPlayer(t)).join('')}
+      <div style="margin-top:14px">
+        <canvas id="piz-balance-chart" height="200"></canvas>
+      </div>
+    </div>`;
+
+  // Chart.js: radar de equipos
+  setTimeout(() => {
+    const ctx = document.getElementById('piz-balance-chart');
+    if (!ctx || !window.Chart) return;
+    if (_pizChart) { _pizChart.destroy(); _pizChart = null; }
+    const labels = ['Precisión','KM/13','Ofensiva','Defensiva','Disciplina'];
+    _pizChart = new Chart(ctx, {
+      type: 'radar',
+      data: {
+        labels,
+        datasets: [
+          {label: home.team, data: Object.values(home.team_radar),
+           borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,.15)',
+           pointBackgroundColor:'#3b82f6', borderWidth:2},
+          {label: away.team, data: Object.values(away.team_radar),
+           borderColor:'#ef4444', backgroundColor:'rgba(239,68,68,.12)',
+           pointBackgroundColor:'#ef4444', borderWidth:2},
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:true,
+        scales:{r:{min:0,max:100,ticks:{display:false},grid:{color:'#1e2938'},
+                   pointLabels:{color:'#64748b',font:{size:9}},angleLines:{color:'#1e2938'}}},
+        plugins:{legend:{labels:{color:'#94a3b8',font:{size:9},boxWidth:10}}},
+      }
+    });
+  }, 50);
+}
+
+// ── Tab 4: Radar individual ───────────────────────────────────────────────────
+function pizSelectPlayer(homeAway, name) {
+  const team = (_pizData?.teams || []).find(t => t.home_away === homeAway);
+  if (!team) return;
+  const p = [...(team.players||[])].find(x => x.name.includes(name) || name.includes(x.name.split(' ').pop()));
+  if (p) _pizSelPly = p;
+}
+
+function renderPizarraRadar(player) {
+  const wrap = document.getElementById('piz-radar-wrap');
+  if (!player) {
+    wrap.innerHTML = '<div style="color:#64748b;padding:20px">Selecciona un jugador de la Tabla o la Pizarra</div>';
+    return;
+  }
+  if (_pizChart) { _pizChart.destroy(); _pizChart = null; }
+
+  const bc = _balColor(player.balance);
+  wrap.innerHTML = `
+    <div style="flex:1;min-width:280px;max-width:340px">
+      <!-- Ficha jugador -->
+      <div style="background:#0f151d;border:1px solid #1e2938;border-radius:8px;padding:14px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="width:36px;height:36px;border-radius:50%;
+            background:${bc}22;border:2px solid ${bc};
+            display:grid;place-items:center;font-size:14px;font-weight:900;color:${bc}">
+            ${player.jersey}
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:800;color:#f1f5f9">${player.name}</div>
+            <div style="font-size:9px;color:#64748b">${player.pos} · ${player.min}' jugados</div>
+          </div>
+          <div style="margin-left:auto;text-align:right">
+            <div style="font-size:18px;font-weight:900;color:${bc}">${player.balance}</div>
+            <div style="font-size:7px;color:#64748b">Balance</div>
+          </div>
+        </div>
+        <!-- Stats grid -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+          ${[
+            ['👆 Toques Totales', player.toques,       '#06b6d4'],
+            ['✅ Toques OK',      player.toques_ok,     '#10b981'],
+            ['❌ Toques ERR',     player.toques_err,    '#ef4444'],
+            ['🎯 Precisión',      player.precision+'%', player.precision>=70?'#10b981':'#f59e0b'],
+            ['🏃 KM Recorridos',  player.km+' km',      '#8b5cf6'],
+            ['⚽ Goles',          player.goles,          '#f59e0b'],
+            ['🅰 Asistencias',    player.asist,          '#3b82f6'],
+            ['🎯 Tiros/Puerta',   `${player.tiros}/${player.tiros_ok}`, '#f59e0b'],
+            ['🛡 Bloqueos',       player.bloqueos,       '#10b981'],
+            ['⚡ Intercep.',      player.interc,         '#06b6d4'],
+            ['💪 Tackeos',        player.tackeos,         '#3b82f6'],
+            ['⚠ Faltas',         player.faltas,          '#ef4444'],
+          ].map(([l,v,c]) => `
+            <div style="background:#070a0e;border-radius:4px;padding:5px 8px">
+              <div style="font-size:7px;color:#475569">${l}</div>
+              <div style="font-size:11px;font-weight:800;color:${c};font-family:monospace">${v}</div>
+            </div>`).join('')}
+        </div>
+        ${player.lesionado ? `
+          <div style="margin-top:8px;padding:5px 8px;background:rgba(239,68,68,.1);
+                      border:1px solid rgba(239,68,68,.2);border-radius:4px;
+                      font-size:9px;color:#ef4444;font-weight:700">
+            ⚠ POSIBLE LESIÓN DETECTADA — Jugador inactivo en el partido
+          </div>` : ''}
+      </div>
+    </div>
+    <div style="flex:1;min-width:260px;max-width:340px">
+      <div style="font-size:9px;color:#64748b;text-transform:uppercase;margin-bottom:8px;font-weight:700">
+        <i class="ti ti-chart-radar" style="color:#3b82f6"></i> Radar de Rendimiento
+      </div>
+      <canvas id="piz-radar-chart"></canvas>
+      <div style="margin-top:12px;padding:8px;background:#0f151d;border:1px solid #1e2938;border-radius:6px">
+        <div style="font-size:8px;color:#64748b;margin-bottom:6px;font-weight:700;text-transform:uppercase">
+          Diagnóstico Balance (${player.balance}/100)
+        </div>
+        ${[
+          ['Precisión de toques', player.radar.precision, '%'],
+          ['Kilómetros cubiertos', player.radar.km, '/100'],
+          ['Aportación ofensiva', player.radar.ofensiva, '/100'],
+          ['Aportación defensiva', player.radar.defensiva, '/100'],
+          ['Disciplina táctica', player.radar.disciplina, '/100'],
+        ].map(([l,v,u]) => {
+          const c = v>=70?'#10b981':v>=50?'#f59e0b':'#ef4444';
+          return `
+            <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+              <div style="font-size:8px;color:#64748b;width:130px">${l}</div>
+              <div style="flex:1;background:#1e2938;border-radius:2px;height:5px">
+                <div style="width:${v}%;height:100%;background:${c};border-radius:2px"></div>
+              </div>
+              <div style="font-size:8px;color:${c};font-family:monospace;width:35px">${v}${u}</div>
+            </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+
+  // Radar Chart.js
+  setTimeout(() => {
+    const ctx = document.getElementById('piz-radar-chart');
+    if (!ctx || !window.Chart) return;
+    const r = player.radar;
+    _pizChart = new Chart(ctx, {
+      type: 'radar',
+      data: {
+        labels: ['Precisión','KM','Ofensiva','Defensiva','Disciplina'],
+        datasets: [{
+          label: player.name,
+          data: [r.precision, r.km, r.ofensiva, r.defensiva, r.disciplina],
+          borderColor: bc,
+          backgroundColor: bc + '22',
+          pointBackgroundColor: bc,
+          pointRadius: 4,
+          borderWidth: 2,
+        }]
+      },
+      options: {
+        responsive:true,
+        scales:{r:{min:0,max:100,ticks:{display:false,stepSize:25},
+                   grid:{color:'#1e2938'},angleLines:{color:'#1e2938'},
+                   pointLabels:{color:'#64748b',font:{size:9}}}},
+        plugins:{legend:{display:false}},
+      }
+    });
+  }, 50);
+}
 </body>
 </html>
