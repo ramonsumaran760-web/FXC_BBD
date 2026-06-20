@@ -408,6 +408,66 @@ SQUADS: dict[str, dict] = {
             {"nombre": "Charles De Ketelaere","pos":"CAM", "edad": 23, "impacto": 78, "dorsal": 17},
         ],
     },
+
+    "ECUADOR": {
+        "ranking_fifa": 39, "entrenador": "Sébastien Beccacece",
+        "estilo": "presión alta, juego físico, rápidas transiciones",
+        "fortaleza": "Moisés Caicedo en el mediocampo, Pervis Estupiñán en banda",
+        "debilidad": "dependencia excesiva de Valencia en ataque",
+        "jugadores": [
+            {"nombre": "Hernán Galíndez",    "pos": "GK",  "edad": 36, "impacto": 74, "dorsal": 1},
+            {"nombre": "Angelo Preciado",    "pos": "RB",  "edad": 25, "impacto": 76, "dorsal": 2},
+            {"nombre": "Félix Torres",       "pos": "CB",  "edad": 27, "impacto": 80, "dorsal": 3},
+            {"nombre": "Piero Hincapié",     "pos": "CB",  "edad": 23, "impacto": 82, "dorsal": 5},
+            {"nombre": "Pervis Estupiñán",   "pos": "LB",  "edad": 26, "impacto": 85, "dorsal": 4},
+            {"nombre": "Carlos Gruezo",      "pos": "DM",  "edad": 29, "impacto": 75, "dorsal": 8},
+            {"nombre": "Moisés Caicedo",     "pos": "CM",  "edad": 23, "impacto": 91, "dorsal": 6},
+            {"nombre": "Jeremy Sarmiento",   "pos": "CAM", "edad": 23, "impacto": 79, "dorsal": 10},
+            {"nombre": "Gonzalo Plata",      "pos": "RW",  "edad": 23, "impacto": 80, "dorsal": 7},
+            {"nombre": "Alan Minda",         "pos": "LW",  "edad": 24, "impacto": 74, "dorsal": 11},
+            {"nombre": "Enner Valencia",     "pos": "ST",  "edad": 35, "impacto": 83, "dorsal": 9},
+        ],
+    },
+
+    "IVORY COAST": {
+        "ranking_fifa": 52, "entrenador": "Emerse Faé",
+        "estilo": "atletismo explosivo, pressing intenso, potencia física desbordante",
+        "fortaleza": "velocidad y fortaleza física, Haller y Koné en ataque",
+        "debilidad": "organización táctica colectiva, profundidad de banco",
+        "jugadores": [
+            {"nombre": "Yahia Fofana",       "pos": "GK",  "edad": 31, "impacto": 76, "dorsal": 1},
+            {"nombre": "Serge Aurier",       "pos": "RB",  "edad": 32, "impacto": 76, "dorsal": 2},
+            {"nombre": "Willy Boly",         "pos": "CB",  "edad": 33, "impacto": 75, "dorsal": 4},
+            {"nombre": "Simon Adingra",      "pos": "CB",  "edad": 22, "impacto": 72, "dorsal": 5},
+            {"nombre": "Ghislain Konan",     "pos": "LB",  "edad": 29, "impacto": 74, "dorsal": 3},
+            {"nombre": "Jean-Michaël Seri",  "pos": "DM",  "edad": 32, "impacto": 77, "dorsal": 6},
+            {"nombre": "Ibrahim Sangaré",    "pos": "CM",  "edad": 27, "impacto": 84, "dorsal": 8},
+            {"nombre": "Franck Kessié",      "pos": "CAM", "edad": 28, "impacto": 87, "dorsal": 10},
+            {"nombre": "Wilfried Zaha",      "pos": "RW",  "edad": 32, "impacto": 83, "dorsal": 7},
+            {"nombre": "Nicolas Pépé",       "pos": "LW",  "edad": 29, "impacto": 80, "dorsal": 11},
+            {"nombre": "Sébastien Haller",   "pos": "ST",  "edad": 30, "impacto": 85, "dorsal": 9},
+        ],
+    },
+
+    "CURACAO": {
+        "ranking_fifa": 86, "entrenador": "Remko Bicentini",
+        "estilo": "bloque bajo, contraataque rápido",
+        "fortaleza": "compacto defensivamente, Bacuna en mediocampo",
+        "debilidad": "limitada profundidad de plantel, poca experiencia en torneos top",
+        "jugadores": [
+            {"nombre": "Eloy Room",          "pos": "GK",  "edad": 33, "impacto": 70, "dorsal": 1},
+            {"nombre": "Cuco Martina",       "pos": "RB",  "edad": 34, "impacto": 69, "dorsal": 2},
+            {"nombre": "Vurnon Anita",       "pos": "CB",  "edad": 35, "impacto": 68, "dorsal": 5},
+            {"nombre": "Juriën Gaari",       "pos": "CB",  "edad": 27, "impacto": 70, "dorsal": 4},
+            {"nombre": "Darryl Lachman",     "pos": "LB",  "edad": 30, "impacto": 69, "dorsal": 3},
+            {"nombre": "Leandro Bacuna",     "pos": "DM",  "edad": 33, "impacto": 77, "dorsal": 6},
+            {"nombre": "Chedric Bazoer",     "pos": "CM",  "edad": 26, "impacto": 71, "dorsal": 8},
+            {"nombre": "Gevaro Nepomuceno",  "pos": "CAM", "edad": 30, "impacto": 73, "dorsal": 10},
+            {"nombre": "Rangelo Janga",      "pos": "RW",  "edad": 30, "impacto": 74, "dorsal": 7},
+            {"nombre": "Gilson Tavares",     "pos": "LW",  "edad": 26, "impacto": 70, "dorsal": 11},
+            {"nombre": "Quentin Already",   "pos": "ST",  "edad": 28, "impacto": 72, "dorsal": 9},
+        ],
+    },
 }
 
 # ── Aliases para nombres alternativos de ESPN ──────────────────────────────────
@@ -435,6 +495,15 @@ ALIASES: dict[str, str] = {
     "PORTUGAL": "PORTUGAL",
     "ARGENTINA": "ARGENTINA",
     "URUGUAY": "URUGUAY",
+    "ECUADOR": "ECUADOR",
+    "CURACAO": "CURACAO",
+    "CURAÇAO": "CURACAO",
+    "CURAZAO": "CURACAO",
+    "CUR": "CURACAO",
+    "ECU": "ECUADOR",
+    "IVORY COAST": "IVORY COAST",
+    "CÔTE D'IVOIRE": "IVORY COAST",
+    "COSTA DE MARFIL": "IVORY COAST",
 }
 
 

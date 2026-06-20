@@ -1745,6 +1745,19 @@ function renderAll() {
   document.getElementById('live-count').textContent = A.filter(a=>a.live).length;
 }
 
+async function autoRefreshData() {
+  // Recarga partidos + cuotas frescas sin reiniciar la UI
+  const prevSel = sel ? sel.id : null;
+  await fetchLiveMatches();
+  // Restaurar selección si existía
+  if (prevSel) {
+    const found = A.find(x => x.id === prevSel);
+    if (found) { sel = found; renderAgents(); renderMasterBars(); }
+  }
+  const lb = document.getElementById('lat-badge');
+  if (lb) { lb.textContent = 'ACTUALIZADO'; setTimeout(() => { if(lb) lb.textContent='REAL'; }, 3000); }
+}
+
 async function liveRefreshSel() {
   if (!sel || !sel.live) return; // solo partidos en vivo seleccionados
   try {
@@ -1776,10 +1789,11 @@ function init() {
   renderAll();
   renderFeedInitial();
 
-  setInterval(updateClock,   1000);
-  setInterval(tickCountdowns,1000);
-  setInterval(simTick,       3200);
-  setInterval(liveRefreshSel, 60000); // re-analiza partido seleccionado cada 60s
+  setInterval(updateClock,    1000);
+  setInterval(tickCountdowns, 1000);
+  setInterval(simTick,        3200);
+  setInterval(liveRefreshSel, 60000);   // diagnóstico partido activo cada 60s
+  setInterval(autoRefreshData,300000);  // cuotas + partidos frescos cada 5 min
   updateClock();
 }
 
