@@ -112,6 +112,9 @@ app.include_router(live_router)
 
 # ─── ROOT ────────────────────────────────────────────────────────────────────
 
+app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
+
+
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     from fastapi.responses import Response
