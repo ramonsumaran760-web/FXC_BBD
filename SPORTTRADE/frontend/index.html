@@ -1441,6 +1441,30 @@ function renderAgents() {
       <span class="sig" style="background:rgba(139,92,246,.15);color:var(--p)">SUPERVISOR</span>
     </div>
   `;
+
+  // ── Texto narrativo: 5 líneas explicando la señal ─────────────────────────
+  const lineas = a.texto_analisis;
+  if (lineas && lineas.length >= 5) {
+    const iconos = ['◈','◇','◆','▸','★'];
+    const colores = ['var(--b)','var(--g)','var(--p)','var(--a)','var(--t)'];
+    document.getElementById('agents-panel').innerHTML += `
+      <div style="margin-top:10px;padding:10px 12px;background:rgba(15,21,29,.7);
+                  border:1px solid #243242;border-radius:6px;">
+        <div style="font-size:8px;font-weight:800;color:var(--tx3);text-transform:uppercase;
+                    letter-spacing:.08em;margin-bottom:8px">
+          <i class="ti ti-file-text" style="color:var(--p);margin-right:4px"></i>
+          Diagnóstico 9 Agentes — ${a.l} vs ${a.v}
+        </div>
+        ${lineas.map((l,i) => `
+          <div style="display:flex;gap:7px;margin-bottom:6px;align-items:flex-start">
+            <span style="color:${colores[i]};font-size:9px;font-weight:800;flex-shrink:0;
+                         margin-top:1px;width:10px">${iconos[i]}</span>
+            <span style="font-size:9px;color:var(--tx2);line-height:1.5">${l}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
 }
 
 function renderMasterBars() {
