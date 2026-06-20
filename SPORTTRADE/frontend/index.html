@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FXC_BBD — Sports Trading Desk</title>
-<link rel="stylesheet" href="https://unpkg.com/@tabler/icons-webfont@3.31.0/tabler-icons.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.31.0/dist/tabler-icons.min.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <style>
 /* ── LOGIN SCREEN ─────────────────────────────────────────── */
@@ -1284,7 +1284,7 @@ function simTick() {
       const ev_l = (a.pl/100) * a.bl - 1;
       const ev_e = (a.pe/100) * a.be - 1;
       const ev_v = (a.pv/100) * a.bv - 1;
-      a.ev = +( Math.max(ev_l, ev_e, ev_v) * 100 ).toFixed(1);
+      a.ev = +( Math.max(-30, Math.min(50, Math.max(ev_l, ev_e, ev_v) * 100)) ).toFixed(1);
     }
   });
 
@@ -1375,7 +1375,7 @@ function renderTop10() {
   const seenPairs = new Set();
   const sorted = [...A]
     .filter(a => !a.done)
-    .filter(a => Math.abs(a.ev || 0) <= 55)
+    .filter(a => Math.abs(a.ev || 0) <= 50)
     .filter(a => {
       const key = `${(a.l||'').toUpperCase()}|${(a.v||'').toUpperCase()}`;
       if (seenPairs.has(key)) return false;
@@ -2243,14 +2243,6 @@ async function openPizarra(espnId, liga, matchMin, home, away) {
   document.getElementById('piz-sub').textContent = liga || 'Fútbol Internacional';
   document.getElementById('piz-clock').textContent = matchMin ? `${matchMin}'` : '';
   _pizMatch = {espnId, liga, matchMin, home, away};
-
-  if (!espnId) {
-    document.getElementById('piz-loading').style.display = 'none';
-    document.getElementById('piz-error').style.display = 'block';
-    document.getElementById('piz-error-msg').textContent =
-      'Este partido no tiene ID ESPN — solo disponible para partidos con datos en vivo';
-    return;
-  }
 
   try {
     const url = `${SPORTS_API}/api/v1/predictions/jugadores/${encodeURIComponent(espnId||'0')}` +
