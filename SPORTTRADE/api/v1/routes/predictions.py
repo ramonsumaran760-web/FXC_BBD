@@ -1028,92 +1028,98 @@ async def analizar_partido_rapido(
     else:
         conf_txt = "confianza baja"
 
-    # LÍNEA 1 — VEREDICTO DIRECTO + MARCADOR PROYECTADO
+    # LÍNEA 1 — VEREDICTO DEPORTIVO DIRECTO
+    goles_h_str = f"{proj_h} gol{'es' if proj_h!=1 else ''}"
+    goles_a_str = f"{proj_a} gol{'es' if proj_a!=1 else ''}"
     if best_rec == "empate":
-        linea1 = (f"VEREDICTO: El MASTER AI proyecta EMPATE como resultado más probable "
-                  f"({pe_:.0f}% de probabilidad, {conf_txt} {conf:.0f}%). "
-                  f"Marcador proyectado según Monte Carlo y xG: {marcador_proj}. "
-                  f"{home} ({pl:.0f}%) y {away} ({pv:.0f}%) se anulan mutuamente según los datos actuales.")
+        linea1 = (f"El análisis apunta a un EMPATE como resultado más probable ({pe_:.0f}% de las simulaciones). "
+                  f"Ambos equipos se neutralizan: {home} y {away} llegan al partido con "
+                  f"{'fuerzas muy igualadas' if abs(elo_gap) < 50 else 'perfiles distintos pero equilibrados'}. "
+                  f"Marcador proyectado: {marcador_proj}. Confianza del modelo: {conf_txt} ({conf:.0f}%).")
     elif lead > 20:
-        linea1 = (f"VEREDICTO: El MASTER AI proyecta VICTORIA de {rec_name} "
-                  f"con {prob_rec:.0f}% de probabilidad y {conf_txt} ({conf:.0f}%). "
-                  f"Marcador más probable según Monte Carlo + xG: {marcador_proj}. "
-                  f"Ventaja de {lead:.0f}pp sobre {opp_name} — señal clara y consistente.")
+        linea1 = (f"El análisis da como FAVORITO CLARO a {rec_name} con un {prob_rec:.0f}% de probabilidad de victoria. "
+                  f"La simulación de 100.000 partidos arroja un marcador más probable de {marcador_proj} "
+                  f"({goles_h_str} locales, {goles_a_str} visitantes). "
+                  f"Confianza del modelo: {conf_txt} ({conf:.0f}%).")
     else:
-        linea1 = (f"VEREDICTO: El MASTER AI inclina el análisis hacia {rec_name} "
-                  f"({prob_rec:.0f}% vs {prob_opp:.0f}% del rival, {conf_txt} {conf:.0f}%). "
-                  f"Marcador proyectado Monte Carlo + xG: {marcador_proj}. "
-                  f"Partido equilibrado — diferencia de {lead:.0f}pp sin unanimidad total.")
+        linea1 = (f"Partido PAREJO pero el análisis inclina la balanza hacia {rec_name} "
+                  f"({prob_rec:.0f}% vs {prob_opp:.0f}% del rival). "
+                  f"Marcador proyectado en la simulación: {marcador_proj}. "
+                  f"La diferencia es ajustada — confianza {conf_txt} ({conf:.0f}%).")
 
-    # LÍNEA 2 — RAZÓN PRINCIPAL (la señal más fuerte)
+    # LÍNEA 2 — POR QUÉ ESE RESULTADO (lenguaje deportivo)
     if elo_gap > 80:
-        linea2 = (f"RAZÓN PRINCIPAL: Superioridad histórica de {rec_name} confirmada por Elo "
-                  f"({elo_rec:.0f} vs {elo_opp:.0f}, gap +{elo_gap:.0f}pts) y xG proyectado "
-                  f"de {xg_h_use:.2f} goles locales vs {xg_a_use:.2f} visitantes. "
-                  f"Ataque {atk_rec:.0f}/100 frente a defensa rival de {def_opp:.0f}/100.")
+        linea2 = (f"{rec_name} tiene mayor trayectoria y calidad histórica en torneos internacionales. "
+                  f"Su línea ofensiva es más peligrosa: genera más ocasiones de gol que su rival "
+                  f"y su defensa concede menos. En el torneo actual lleva {'mejor rendimiento' if ff_rec >= ff_opp else 'una campaña sólida'}.")
     elif ff_rec > ff_opp + 0.06:
-        linea2 = (f"RAZÓN PRINCIPAL: {rec_name} llega en mejor forma al torneo "
-                  f"(factor {ff_rec:.2f} vs {ff_opp:.2f} del rival). xG proyectado {xg_h_use:.2f}-{xg_a_use:.2f}. "
-                  f"El Agente Estadístico ({a0}%) y Forma ({a1}%) coinciden en la superioridad ofensiva.")
+        linea2 = (f"{rec_name} llega en mejor momento al partido: mejor racha de resultados en el torneo, "
+                  f"mayor solidez defensiva reciente y más efectividad de cara al gol. "
+                  f"El rival {opp_name} no ha mostrado el mismo nivel de regularidad en sus últimos encuentros.")
     elif xg_rec > xg_opp + 0.3:
-        linea2 = (f"RAZÓN PRINCIPAL: Dominio en xG esperado — {rec_name} genera {xg_rec:.2f} "
-                  f"vs {xg_opp:.2f} del rival. Ataque ({atk_rec:.0f}) supera la defensa contraria "
-                  f"({def_opp:.0f}). Elo {elo_rec:.0f} vs {elo_opp:.0f}.")
+        linea2 = (f"El dominio ofensivo de {rec_name} es la clave: genera más ocasiones claras de gol "
+                  f"y su delantera finaliza mejor que la defensa contraria permite. "
+                  f"El balance ataque-defensa favorece a {rec_name} en las zonas decisivas del campo.")
     else:
-        linea2 = (f"RAZÓN PRINCIPAL: Partido parejo. {rec_name} tiene leve ventaja en "
-                  f"impacto de plantel ({avg_imp:.0f}/100) y Elo ({elo_rec:.0f} vs {elo_opp:.0f}). "
-                  f"xG proyectado: {xg_h_use:.2f}-{xg_a_use:.2f}. La señal surge del conjunto de 9 agentes.")
+        linea2 = (f"Es un duelo muy equilibrado en casi todos los aspectos. {rec_name} tiene una leve ventaja "
+                  f"en calidad de plantel y en el historial de partidos de alta exigencia. "
+                  f"Un gol puede cambiar el partido — la táctica y las sustituciones serán decisivas.")
 
-    # LÍNEA 3 — ESTADO EN VIVO o contexto previo
+    # LÍNEA 3 — SITUACIÓN EN VIVO o PREVIA AL PARTIDO
     if live and match_min > 0:
         goles_tot = score_h + score_a
-        ritmo = "abierto y con goles" if goles_tot >= 2 else ("sin goles aún" if goles_tot == 0 else "con gol pero conservador")
         if score_h > score_a:
-            dinamica = f"{home} gana {score_h}-{score_a} y el modelo confirma la ventaja"
+            estado = f"{home} gana {score_h}-{score_a}"
+            comentario = "el modelo anticipó esta ventaja local" if best_rec == "local" else "resultado que sorprende al análisis previo"
         elif score_a > score_h:
-            dinamica = f"{away} gana {score_h}-{score_a}" + (" — resultado inesperado según el modelo" if best_rec == "local" else " — el modelo lo anticipó")
+            estado = f"{away} gana {score_h}-{score_a}"
+            comentario = "resultado que el modelo anticipó" if best_rec == "visitante" else "el visitante tomó ventaja de forma inesperada"
         else:
-            dinamica = f"empate {score_h}-{score_a} en curso"
-        linea3 = (f"EN VIVO (min. {match_min}'): {dinamica}. Partido {ritmo}. "
-                  f"Posesión estimada {pos_h:.0f}%-{pos_a:.0f}%. xG acumulado en curso. "
-                  f"El modelo se actualiza cada minuto con los datos del partido real.")
+            estado = f"igualdad {score_h}-{score_a}"
+            comentario = "el partido está completamente abierto"
+        ritmo = "con mucho movimiento ofensivo" if goles_tot >= 2 else ("conservador, sin goles" if goles_tot == 0 else "con un gol que define el ritmo")
+        linea3 = (f"EN VIVO — Minuto {match_min}': {estado} ({comentario}). "
+                  f"El partido transcurre {ritmo}. "
+                  f"El modelo se recalcula cada minuto con el estado real del encuentro.")
     else:
-        linea3 = (f"CONTEXTO PREVIO: {home} (FIFA #{home_ranking}) vs {away} (FIFA #{away_ranking}). "
-                  f"El Agente Estadístico proyecta {home_pj} PJ con {home_pg}V-{home_pe}E-{home_pp}D para {home}. "
-                  f"xG esperado del partido: {xg_h_use:.2f} goles locales / {xg_a_use:.2f} visitantes.")
+        record_home = f"{home_pg}V {home_pe}E {home_pp}D en {home_pj} partidos"
+        record_away = f"{away_pg}V {away_pe}E {away_pp}D en {away_pj} partidos"
+        linea3 = (f"Antes del partido — {home}: {record_home}. {away}: {record_away}. "
+                  f"{'El local llega con mejor registro' if home_pg/max(home_pj,1) > away_pg/max(away_pj,1) else 'El visitante llega con mejor registro en el torneo'}. "
+                  f"Ranking FIFA: {home} #{home_ranking} vs {away} #{away_ranking}.")
 
-    # LÍNEA 4 — CONSENSO Y DIVERGENCIAS
+    # LÍNEA 4 — CONSENSO DE LOS 9 AGENTES
     agentes_a_favor = sum(1 for x in [a0,a1,a2,a3,a4,a5,a6,a7] if x >= 55)
+    voces = ["estadístico","de forma reciente","de calidad de plantel","histórico","de árbitro","físico-ofensivo","de cuotas","de simulación"]
     if agents_avg >= 68:
-        linea4 = (f"CONSENSO: {agentes_a_favor}/8 agentes especializados apuntan a {rec_name} "
-                  f"(media {agents_avg:.0f}/100). Statistical, Forma, Elo, xG y Monte Carlo "
-                  f"convergen. Señal robusta. Divergencia menor en Árbitro y Mercado.")
+        linea4 = (f"{agentes_a_favor} de los 9 análisis apuntan al mismo resultado: {rec_name if best_rec != 'empate' else 'empate'}. "
+                  f"Hay acuerdo entre el análisis estadístico, el rendimiento reciente, "
+                  f"la calidad del plantel y las simulaciones del modelo. Señal fuerte y coherente.")
     elif agents_avg >= 52:
-        linea4 = (f"CONSENSO MODERADO: {agentes_a_favor}/8 agentes favorecen a {rec_name} "
-                  f"(media {agents_avg:.0f}/100). Hay divergencia en vectores de mercado y clima "
-                  f"que reduce la convicción. Recomendable stake conservador.")
+        linea4 = (f"{agentes_a_favor} de los 9 análisis favorecen a {rec_name if best_rec != 'empate' else 'empate'}. "
+                  f"Hay cierta discrepancia entre el análisis de cuotas del mercado y el rendimiento en campo, "
+                  f"lo que reduce la certeza. El partido puede ir en cualquier dirección.")
     else:
-        linea4 = (f"SEÑAL MIXTA: Solo {agentes_a_favor}/8 agentes coinciden (media {agents_avg:.0f}/100). "
-                  f"Alta incertidumbre estadística — el modelo reconoce que este partido "
-                  f"es difícil de predecir con los datos disponibles. Stake mínimo sugerido.")
+        linea4 = (f"Solo {agentes_a_favor} de los 9 análisis coinciden. Los datos no son concluyentes: "
+                  f"el rendimiento reciente, la calidad del plantel y las cuotas no apuntan en la misma dirección. "
+                  f"Este es un partido de alto riesgo para cualquier predicción.")
 
-    # LÍNEA 5 — DISCLAIMER + SEÑAL DE TRADING
-    riesgo_txt = "bajo" if kelly_pct < 2 else ("medio" if kelly_pct < 5 else "alto")
+    # LÍNEA 5 — CONCLUSIÓN Y ADVERTENCIA DEPORTIVA
     if ev_output > 8:
-        linea5 = (f"SEÑAL DE TRADING: Apostar a {rec_name if best_rec != 'empate' else 'Empate'} — "
-                  f"EV +{ev_output:.1f}% ({valor}), Kelly {kelly_pct:.1f}% del bankroll (riesgo {riesgo_txt}). "
-                  f"⚠ El modelo puede equivocarse: basado en datos históricos y estadísticos, "
-                  f"NO garantiza el resultado. Usa gestión de riesgo responsable.")
+        linea5 = (f"Conclusión: el modelo recomienda apostar por {rec_name if best_rec != 'empate' else 'el empate'} "
+                  f"con una ventaja estimada del {ev_output:.1f}% frente a las cuotas actuales. "
+                  f"⚠ El fútbol siempre puede sorprender — este análisis se basa en datos y estadísticas, "
+                  f"nunca es una certeza. Cualquier resultado es posible sobre el campo.")
     elif ev_output > 0:
-        linea5 = (f"SEÑAL DE TRADING: EV positivo +{ev_output:.1f}% ({valor}) — posición posible "
-                  f"con Kelly {kelly_pct:.1f}% (riesgo {riesgo_txt}). "
-                  f"⚠ El modelo puede equivocarse: confianza basada en datos, no en certeza. "
-                  f"El fútbol tiene varianza alta — gestiona el riesgo siempre.")
+        linea5 = (f"Conclusión: el análisis apoya a {rec_name if best_rec != 'empate' else 'el empate'} "
+                  f"con una pequeña ventaja sobre las cuotas del mercado ({ev_output:.1f}%). "
+                  f"⚠ El modelo puede equivocarse — el fútbol tiene una varianza muy alta "
+                  f"y un solo error defensivo puede cambiar el resultado final.")
     else:
-        linea5 = (f"SEÑAL DE TRADING: EV {ev_output:.1f}% — el mercado ya refleja correctamente "
-                  f"las probabilidades del modelo. Sin ventaja explotable en este momento. "
-                  f"⚠ El modelo puede equivocarse. Espera una oportunidad con mejor EV "
-                  f"antes de comprometer capital en este partido.")
+        linea5 = (f"Conclusión: las cuotas del mercado ya recogen bien las probabilidades del modelo. "
+                  f"No hay una ventaja clara para ningún resultado en este momento. "
+                  f"⚠ El modelo puede equivocarse — observa el desarrollo del partido antes de decidir. "
+                  f"Los datos orientan, pero el partido se juega en el campo.")
 
     texto_analisis = [linea1, linea2, linea3, linea4, linea5]
 

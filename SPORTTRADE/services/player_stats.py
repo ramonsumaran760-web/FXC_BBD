@@ -338,9 +338,31 @@ def _player_from_squad(jugador: dict, match_min: int, starter: bool) -> dict:
     }
 
 
+_GENERIC_LINEUP = [
+    {"nombre": "Portero",        "pos": "GK",  "impacto": 72, "dorsal": 1},
+    {"nombre": "Lateral Derecho","pos": "RB",  "impacto": 70, "dorsal": 2},
+    {"nombre": "Central Dcho",   "pos": "CB",  "impacto": 73, "dorsal": 4},
+    {"nombre": "Central Izqdo",  "pos": "CB",  "impacto": 73, "dorsal": 5},
+    {"nombre": "Lateral Izquierdo","pos":"LB", "impacto": 70, "dorsal": 3},
+    {"nombre": "Pivote",         "pos": "DM",  "impacto": 74, "dorsal": 6},
+    {"nombre": "Mediocampista",  "pos": "CM",  "impacto": 75, "dorsal": 8},
+    {"nombre": "Mediapunta",     "pos": "CAM", "impacto": 78, "dorsal": 10},
+    {"nombre": "Extremo Dcho",   "pos": "RW",  "impacto": 76, "dorsal": 7},
+    {"nombre": "Extremo Izqdo",  "pos": "LW",  "impacto": 76, "dorsal": 11},
+    {"nombre": "Delantero",      "pos": "ST",  "impacto": 80, "dorsal": 9},
+]
+
 def _build_squad_lineup(home: str, away: str, match_min: int, event_id: str) -> dict:
     home_sq = _find_squad(home)
     away_sq = _find_squad(away)
+
+    # Fallback genérico para equipos sin datos de plantel
+    if not home_sq:
+        home_sq = {"name": home, "jugadores": [dict(j, nombre=f"{j['nombre']} ({home[:3].upper()})") for j in _GENERIC_LINEUP],
+                   "entrenador": "", "estilo": ""}
+    if not away_sq:
+        away_sq = {"name": away, "jugadores": [dict(j, nombre=f"{j['nombre']} ({away[:3].upper()})") for j in _GENERIC_LINEUP],
+                   "entrenador": "", "estilo": ""}
 
     teams_out = []
     for squad, ha in [(home_sq, "home"), (away_sq, "away")]:
