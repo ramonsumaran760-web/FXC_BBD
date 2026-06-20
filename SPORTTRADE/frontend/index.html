@@ -2253,8 +2253,9 @@ async function openPizarra(espnId, liga, matchMin, home, away) {
   }
 
   try {
-    const url = `${SPORTS_API}/api/v1/predictions/jugadores/${espnId}` +
-                `?liga=${encodeURIComponent(liga)}&match_min=${matchMin||45}`;
+    const url = `${SPORTS_API}/api/v1/predictions/jugadores/${encodeURIComponent(espnId||'0')}` +
+                `?liga=${encodeURIComponent(liga)}&match_min=${matchMin||45}` +
+                `&home=${encodeURIComponent(home)}&away=${encodeURIComponent(away)}`;
     const r = await fetch(url, {headers: authHeaders()});
     const d = await r.json();
 
@@ -2269,6 +2270,15 @@ async function openPizarra(espnId, liga, matchMin, home, away) {
 
     _pizData = d;
     _pizSelPly = (d.teams[0]?.starters || [])[0] || null;
+
+    // Badge de fuente de datos
+    const src = d.source || 'espn';
+    const srcBadge = src === 'sofascore'
+      ? '<span style="background:rgba(250,204,21,.15);color:#facc15;border:1px solid rgba(250,204,21,.3);padding:2px 8px;border-radius:10px;font-size:8px;font-weight:800">⚡ SOFASCORE — Datos Reales</span>'
+      : '<span style="background:rgba(59,130,246,.1);color:#3b82f6;border:1px solid rgba(59,130,246,.2);padding:2px 8px;border-radius:10px;font-size:8px;font-weight:800">ESPN Boxscore</span>';
+    document.getElementById('piz-sub').innerHTML = `${liga} &nbsp;${srcBadge}` +
+      (src !== 'sofascore' ? ' &nbsp;<span style="color:#475569;font-size:7px">⚠ km = estimado por posición</span>' : '');
+
     pizTab('pizarra');
   } catch(e) {
     document.getElementById('piz-loading').style.display = 'none';
@@ -2391,8 +2401,9 @@ function renderPizarraTabla() {
         <table class="piz-tbl">
           <thead><tr>
             <th>#</th><th>Jugador</th><th>Pos</th><th>Min</th>
+            <th title="Rating SofaScore 0-10">Rating</th>
             <th>Toques</th><th>T.OK%</th><th>T.ERR</th>
-            <th>KM</th><th>G</th><th>A</th>
+            <th title="km estimado por posición">KM~</th><th>G</th><th>A</th>
             <th>Tiros</th><th>Faltas</th><th>🟨</th><th>🟥</th>
             <th>Balance</th><th>Radar</th>
           </tr></thead>
@@ -2411,6 +2422,9 @@ function renderPizarraTabla() {
                 </td>
                 <td><span class="pos-badge">${p.pos}</span></td>
                 <td style="font-family:monospace">${p.min}'</td>
+                <td style="font-family:monospace;font-weight:800;color:${
+                  (p.rating||0)>=7?'#10b981':(p.rating||0)>=5?'#f59e0b':(p.rating||0)>0?'#ef4444':'#475569'
+                }">${(p.rating||0)>0?(p.rating).toFixed(1):'—'}</td>
                 <td style="font-family:monospace">${p.toques}</td>
                 <td>
                   <div style="display:flex;align-items:center;gap:4px">
@@ -2509,17 +2523,28 @@ function renderPizarraBalance() {
 
   // Top performers de cada equipo
   const topPlayer = (team) => {
-    const best = [...(team.starters||[])].sort((a,b)=>b.balance-a.balance)[0];
+    const best = team.mvp
+      ? (team.starters||[]).find(p => p.name === team.mvp)
+      : [...(team.starters||[])].sort((a,b)=>b.balance-a.balance)[0];
     if (!best) return '';
+    const ratingHtml = (best.rating||0) > 0
+      ? `<span style="font-size:13px;font-weight:900;color:#facc15">${best.rating.toFixed(1)}</span>
+         <span style="font-size:7px;color:#64748b">/10 SofaScore</span>`
+      : '';
     return `
       <div style="padding:8px 10px;background:#0f151d;border:1px solid #1e2938;border-radius:6px;margin-top:8px">
         <div style="font-size:7px;color:#64748b;font-weight:700;text-transform:uppercase;margin-bottom:4px">
-          MVP ${team.team}
+          ⭐ MVP ${team.team}
         </div>
-        <div style="font-size:10px;font-weight:800;color:#f1f5f9">${best.name}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:10px;font-weight:800;color:#f1f5f9">${best.name}
+            <span style="font-size:8px;color:#64748b;font-weight:400"> · ${best.pos}</span>
+          </div>
+          <div style="text-align:right">${ratingHtml}</div>
+        </div>
         <div style="display:flex;gap:10px;margin-top:4px">
           <span style="font-size:8px;color:#10b981">${best.balance}/100 pts</span>
-          <span style="font-size:8px;color:#06b6d4">${best.km} km</span>
+          <span style="font-size:8px;color:#06b6d4">~${best.km} km</span>
           <span style="font-size:8px;color:#f59e0b">${best.precision}% prec.</span>
         </div>
       </div>`;
@@ -2608,11 +2633,12 @@ function renderPizarraRadar(player) {
         <!-- Stats grid -->
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
           ${[
+            ['⭐ Rating SofaScore',(player.rating||0)>0?player.rating.toFixed(1)+'/10':'N/D', (player.rating||0)>=7?'#10b981':(player.rating||0)>=5?'#f59e0b':'#64748b'],
             ['👆 Toques Totales', player.toques,       '#06b6d4'],
             ['✅ Toques OK',      player.toques_ok,     '#10b981'],
             ['❌ Toques ERR',     player.toques_err,    '#ef4444'],
             ['🎯 Precisión',      player.precision+'%', player.precision>=70?'#10b981':'#f59e0b'],
-            ['🏃 KM Recorridos',  player.km+' km',      '#8b5cf6'],
+            ['🏃 KM ~est.',       player.km+' km',      '#8b5cf6'],
             ['⚽ Goles',          player.goles,          '#f59e0b'],
             ['🅰 Asistencias',    player.asist,          '#3b82f6'],
             ['🎯 Tiros/Puerta',   `${player.tiros}/${player.tiros_ok}`, '#f59e0b'],

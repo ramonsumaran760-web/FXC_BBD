@@ -1113,15 +1113,19 @@ async def analizar_partido_rapido(
 @router.get("/jugadores/{event_id}")
 async def jugadores_partido(
     event_id: str,
-    liga: Optional[str] = None,
+    liga:      Optional[str] = None,
     match_min: int = 45,
+    home:      Optional[str] = None,
+    away:      Optional[str] = None,
 ):
     """
-    Estadísticas por jugador de un partido en tiempo real vía ESPN.
-    Métricas: toques acertados/errados, km estimados, asistencias, goles, balance.
+    Estadísticas por jugador de un partido en tiempo real.
+    Fuente primaria: SofaScore (ratings reales 0-10, pases, tackles, intercepciones).
+    Fallback:        ESPN boxscore.
+    Km recorridos:   estimados por posición (GPS no disponible en APIs gratuitas).
     """
     from services.player_stats import fetch_player_stats
-    return await fetch_player_stats(event_id, liga, match_min)
+    return await fetch_player_stats(event_id, liga, match_min, home, away)
 
 
 @router.get("/live", response_model=list[dict])

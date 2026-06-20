@@ -247,6 +247,8 @@ async def fetch_player_stats(
     event_id: str,
     liga: Optional[str] = None,
     match_min: int = 45,
+    home: Optional[str] = None,
+    away: Optional[str] = None,
 ) -> dict:
     """
     Obtiene y procesa estadísticas de jugadores de un partido ESPN.
@@ -255,12 +257,28 @@ async def fetch_player_stats(
         event_id:  ID del evento ESPN (campo odds_id del match en el frontend)
         liga:      Nombre de la liga para elegir el slug correcto
         match_min: Minuto actual del partido (para estimar km)
+        home:      Nombre del equipo local (para búsqueda en SofaScore)
+        away:      Nombre del equipo visitante (para búsqueda en SofaScore)
 
     Returns:
-        dict con teams[], match_min, event_id, clock, state
+        dict con teams[], match_min, event_id, clock, state, source
     """
+    # ── Fuente 1: SofaScore (datos reales — ratings, pases, tackles, etc.) ────
+    if home and away:
+        try:
+            from services.sofascore_fetcher import fetch_sofascore_players
+            sofa = await fetch_sofascore_players(home, away, match_min)
+            if sofa.get("teams"):
+                sofa["event_id"]  = event_id
+                sofa["match_min"] = match_min
+                return sofa
+            logger.info("SofaScore sin datos, probando ESPN: %s", sofa.get("error", ""))
+        except Exception as e:
+            logger.warning("SofaScore error: %s", e)
+
+    # ── Fuente 2: ESPN boxscore (fallback) ────────────────────────────────────
     if not event_id:
-        return {"error": "event_id requerido", "teams": []}
+        return {"error": "Sin event_id y SofaScore no encontró el partido", "teams": []}
 
     slugs: list[str] = []
     if liga and liga in _LIGA_SLUG:
@@ -273,13 +291,14 @@ async def fetch_player_stats(
         raw = await _get_summary(slug, event_id)
         if raw.get("boxscore", {}).get("players"):
             used_slug = slug
-            logger.info("Jugadores OK: slug=%s event=%s", slug, event_id)
+            logger.info("Jugadores ESPN OK: slug=%s event=%s", slug, event_id)
             break
 
     bp = raw.get("boxscore", {}).get("players", [])
     if not bp:
         return {
-            "error":    "Sin datos de jugadores en ESPN para este evento",
+            "error":    "Sin datos de jugadores en SofaScore ni ESPN para este partido. "
+                        "Intenta cuando el partido lleve al menos 10 minutos en curso.",
             "teams":    [],
             "event_id": event_id,
         }
@@ -291,8 +310,13 @@ async def fetch_player_stats(
 
     teams = _parse_players(bp, match_min)
 
+    # Marcar source para que el frontend sepa qué mostrar
+    for t in teams:
+        t["source"] = "espn"
+
     return {
         "event_id":  event_id,
+        "source":    "espn",
         "slug":      used_slug,
         "state":     state,
         "clock":     clock,
