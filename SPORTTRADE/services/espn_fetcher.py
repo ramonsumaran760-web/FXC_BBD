@@ -106,34 +106,41 @@ async def fetch_scoreboard(date: Optional[str] = None) -> list[dict]:
     3. Desduplicación global por ID de evento ESPN.
     4. Cada evento lleva `_league_name` con el nombre de su competición.
     """
-    now_utc = datetime.now(timezone.utc)
-    today   = date or now_utc.strftime("%Y%m%d")
-    ayer    = (now_utc - timedelta(days=1)).strftime("%Y%m%d")
+    now_utc  = datetime.now(timezone.utc)
+    today    = date or now_utc.strftime("%Y%m%d")
+    ayer     = (now_utc - timedelta(days=1)).strftime("%Y%m%d")
+    manana   = (now_utc + timedelta(days=1)).strftime("%Y%m%d")
 
     seen_ids:    set[str]   = set()
     all_events:  list[dict] = []
 
-    # ── Paso 1: Mundial — 3 estrategias de fecha por si ESPN tiene lag ────────
+    # ── Paso 1: Mundial — busca hoy + ayer + mañana en TODOS los slugs WC ────
+    # No cortar en el primer slug que devuelva datos: algunos partidos pueden
+    # estar en un slug distinto (fifa.world vs fifa.world.2026).
     wc_slugs = [(s, n) for s, n in _COMPETITIONS if "Mundial" in n]
-    wc_found = False
     for slug, league_name in wc_slugs:
-        if wc_found:
-            break
-        for params in [{}, {"dates": today, "limit": "50"}, {"dates": ayer, "limit": "50"}]:
-            p = {**params, "limit": "50"}
-            d = await _get(f"{ESPN_BASE}/{slug}/scoreboard", p)
-            new = 0
+        slug_events = 0
+        for date_param in [today, ayer, manana]:
+            d = await _get(f"{ESPN_BASE}/{slug}/scoreboard", {"dates": date_param, "limit": "100"})
             for ev in _extract_events(d):
                 eid = str(ev.get("id", ""))
                 if eid and eid not in seen_ids:
                     seen_ids.add(eid)
                     ev["_league_name"] = league_name
                     all_events.append(ev)
-                    new += 1
-            if new:
-                logger.info("ESPN WC: +%d eventos slug='%s'", new, slug)
-                wc_found = True
-                break  # slug encontrado — no probar más fechas para este slug
+                    slug_events += 1
+        # También intentar sin fecha (lista completa que ESPN da por defecto)
+        d = await _get(f"{ESPN_BASE}/{slug}/scoreboard", {"limit": "100"})
+        for ev in _extract_events(d):
+            eid = str(ev.get("id", ""))
+            if eid and eid not in seen_ids:
+                seen_ids.add(eid)
+                ev["_league_name"] = league_name
+                all_events.append(ev)
+                slug_events += 1
+        if slug_events:
+            logger.info("ESPN WC slug='%s': +%d eventos", slug, slug_events)
+    wc_found = len(all_events) > 0
 
     # ── Paso 2: Resto de competiciones — fetch en paralelo ────────────────────
     other_comps = [(s, n) for s, n in _COMPETITIONS if "Mundial" not in n]

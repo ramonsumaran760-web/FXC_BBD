@@ -814,7 +814,7 @@ function _mapEspnResponse(match, d) {
   };
 }
 
-// ── Enriquece cada partido con IA en background (sin bloquear el render) ────
+// ── Enriquece cada partido con IA en background (sin saturar Render) ─────────
 async function enrichMatchesWithAI() {
   const notice = document.getElementById('live-notice-text');
   const totalMatches = RAW.length;
@@ -864,6 +864,8 @@ async function enrichMatchesWithAI() {
     } catch(e) {
       RAW[i] = { ...RAW[i], _loading: false };
     }
+    // Pausa entre llamadas para no saturar Render (600ms entre partidos)
+    if (i < totalMatches - 1) await new Promise(r => setTimeout(r, 600));
   }
 
   const lv = RAW.filter(x=>x.live).length;
