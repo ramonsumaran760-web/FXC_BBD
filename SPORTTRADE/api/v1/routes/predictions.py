@@ -827,30 +827,22 @@ async def analizar_partido_rapido(
     Cada agente usa una dimensión distinta del partido; el resultado
     NO replica las cuotas del mercado — puede divergir significativamente.
     """
-    import hashlib, traceback as _tb
-    try:
-        from prompts.match_analysis import analyze_match_full
-        from finanzas import calcular_fraccion_kelly
-    except Exception as _ie:
-        logger.error("IMPORT ERROR en analizar-partido: %s\n%s", _ie, _tb.format_exc())
-        raise HTTPException(status_code=500, detail=f"IMPORT_ERROR: {_ie}")
+    import hashlib
+    from prompts.match_analysis import analyze_match_full
+    from finanzas import calcular_fraccion_kelly
 
     home_stats = {"pj": home_pj, "pg": home_pg, "pe": home_pe, "pp": home_pp,
                   "gf": home_gf, "gc": home_gc}
     away_stats = {"pj": away_pj, "pg": away_pg, "pe": away_pe, "pp": away_pp,
                   "gf": away_gf, "gc": away_gc}
 
-    try:
-        deep = analyze_match_full(
-            home_name=home, away_name=away,
-            home_stats=home_stats, away_stats=away_stats,
-            home_xg=xg_h, away_xg=xg_a,
-            home_possession=pos_h, away_possession=pos_a,
-            is_live=live, home_score=score_h, away_score=score_a,
-        )
-    except Exception as _ae:
-        logger.error("analyze_match_full ERROR %s vs %s: %s\n%s", home, away, _ae, _tb.format_exc())
-        raise HTTPException(status_code=500, detail=f"ANALYSIS_ERROR: {_ae}")
+    deep = analyze_match_full(
+        home_name=home, away_name=away,
+        home_stats=home_stats, away_stats=away_stats,
+        home_xg=xg_h, away_xg=xg_a,
+        home_possession=pos_h, away_possession=pos_a,
+        is_live=live, home_score=score_h, away_score=score_a,
+    )
 
     pl   = round(deep["prob_local"],    1)
     pe_  = round(deep["prob_empate"],   1)
@@ -1090,6 +1082,8 @@ async def analizar_partido_rapido(
                   f"El partido transcurre {ritmo}. "
                   f"El modelo se recalcula cada minuto con el estado real del encuentro.")
     else:
+        home_ranking = int(deep.get("ranking_local",  50))
+        away_ranking = int(deep.get("ranking_visita", 50))
         record_home = f"{home_pg}V {home_pe}E {home_pp}D en {home_pj} partidos"
         record_away = f"{away_pg}V {away_pe}E {away_pp}D en {away_pj} partidos"
         linea3 = (f"Antes del partido — {home}: {record_home}. {away}: {record_away}. "
