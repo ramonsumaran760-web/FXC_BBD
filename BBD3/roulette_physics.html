@@ -1,1186 +1,537 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Artemis Roulette - Professional Casino 3D</title>
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://esm.sh/three@r128",
-      "three/addons/": "https://esm.sh/three@r128/examples/jsm/"
-    }
-  }
-  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ruleta 3D</title>
   <style>
-    :root { --bg: #0a0a0a; --text: #f1eee4; --muted: #9a9b8d; --gold: #d4af37; }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body { width: 100%; height: 100vh; background: var(--bg); color: var(--text); font-family: Inter, system-ui, sans-serif; overflow: hidden; }
-    .container { position: relative; height: 100vh; }
-    .canvas-area { position: relative; background: radial-gradient(circle at 50% 35%, #1a0f08 0%, #080808 55%, #050505 100%); height: 100vh; }
-    canvas { display: block; width: 100%; height: 100%; }
-    .side {
-      position: absolute;
-      top: 16px;
-      right: 16px;
-      width: 300px;
-      max-height: calc(100vh - 230px);
-      overflow-y: auto;
-      border: 1px solid #503319;
-      background: rgba(10, 10, 10, .78);
-      backdrop-filter: blur(10px);
-      border-radius: 10px;
-      padding: 12px;
-      box-shadow: 0 12px 30px rgba(0, 0, 0, .38);
-      z-index: 5;
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: #090807;
     }
-    .panel-head { font-weight: 700; font-size: 13px; margin: 12px 0 8px 0; padding-bottom: 8px; border-bottom: 1px solid #303326; }
-    .control-group { margin: 10px 0; padding: 8px; background: #0d0e0b; border: 1px solid #303326; border-radius: 6px; }
-    .control-group label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
-    input[type="range"] { width: 100%; margin-bottom: 4px; cursor: pointer; }
-    button { width: 100%; height: 32px; border: 1px solid #303326; background: #1a1b15; color: var(--text); border-radius: 6px; cursor: pointer; font-weight: 600; margin-top: 6px; transition: all .15s; }
-    button:hover { border-color: var(--gold); background: #222318; }
-    button.primary { background: #24200f; border-color: rgba(212, 175, 55, .72); color: var(--gold); }
-    .toolbar { display: flex; gap: 6px; margin: 8px 0; }
-    .toolbar button { margin: 0; }
-    .metric { margin: 8px 0; padding: 8px; background: #0d0e0b; border: 1px solid #303326; border-radius: 6px; font-size: 12px; }
-    .metric-value { font-size: 16px; font-weight: 900; color: var(--gold); margin-top: 2px; }
-    .hud { position: absolute; top: 16px; left: 16px; background: rgba(10, 10, 10, .82); backdrop-filter: blur(10px); border: 1px solid rgba(255, 138, 53, .4); border-radius: 8px; padding: 12px; font-size: 12px; line-height: 1.5; min-width: 220px; z-index: 5; }
-    .hud-value { color: var(--gold); font-weight: 700; }
-
-    .runtime {
-      margin-top: 8px;
-      border-top: 1px solid #4e2f14;
-      padding-top: 6px;
-      font-size: 11px;
-      color: #f3d9a8;
-      max-width: 280px;
-      white-space: normal;
-      word-break: break-word;
-    }
-
-    .runtime.ok { color: #8de2b6; }
-    .runtime.err { color: #ff9d9d; }
-
-    .quick-controls {
-      position: absolute;
-      left: 16px;
-      bottom: 206px;
-      z-index: 5;
-      width: 250px;
-      border: 1px solid #503319;
-      border-radius: 8px;
-      background: rgba(10, 10, 10, .78);
-      backdrop-filter: blur(8px);
-      padding: 10px;
-    }
-
-    .quick-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 6px;
-      margin-bottom: 8px;
-    }
-
-    .quick-controls small {
-      display: block;
-      color: #c8b28f;
-      font-size: 10px;
-      margin-bottom: 4px;
-    }
-
-    .casino-overlay {
-      position: absolute;
-      left: 14px;
-      right: 14px;
-      bottom: 14px;
-      display: grid;
-      grid-template-columns: 360px minmax(0, 1fr);
-      gap: 12px;
-      z-index: 4;
-      pointer-events: none;
-    }
-
-    .overlay-panel {
-      pointer-events: auto;
-      border: 1px solid #ff7a1c66;
-      border-radius: 10px;
-      background: rgba(5, 5, 5, .86);
-      backdrop-filter: blur(9px);
-      box-shadow: 0 12px 34px rgba(0, 0, 0, .5), inset 0 0 0 1px rgba(255, 150, 60, .1);
-    }
-
-    .race-head {
-      padding: 7px 10px;
-      border-bottom: 1px solid #4e2f14;
-      color: #ffae66;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: .06em;
-    }
-
-    .racetrack {
+    #lienzo-envoltorio {
+      width: 100vw;
+      height: 100vh;
       position: relative;
-      margin: 10px;
-      height: 124px;
-      border: 2px solid #f4b662;
-      border-radius: 999px;
-      overflow: hidden;
-      background: #060606;
     }
-
-    .race-labels {
-      position: absolute;
-      left: 12px;
-      right: 12px;
-      top: 50%;
-      transform: translateY(-50%);
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      text-align: center;
-      color: #f2e2c0;
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      pointer-events: none;
+    #lienzo {
+      width: 100%;
+      height: 100%;
+      display: block;
     }
-
-    .race-ring {
-      position: absolute;
-      inset: 7px;
-      border: 1px dashed #f4b66255;
-      border-radius: 999px;
-    }
-
-    .race-chip {
-      position: absolute;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      border: 1px solid #efb967;
-      font-size: 9px;
-      line-height: 18px;
-      text-align: center;
-      font-weight: 700;
-      box-shadow: 0 0 8px rgba(0, 0, 0, .5);
-      transform: translate(-50%, -50%);
-      color: #f7f2de;
-      background: #111;
-    }
-
-    .race-chip.red { background: #7d1f1f; }
-    .race-chip.black { background: #0f0f10; }
-    .race-chip.green { background: #0f6346; }
-
-    .betboard {
-      padding: 10px;
-      display: grid;
-      gap: 8px;
-    }
-
-    .bet-grid {
-      border: 1px solid #6f431e;
-      border-radius: 8px;
-      overflow: hidden;
-      display: grid;
-      grid-template-columns: 54px repeat(12, minmax(24px, 1fr));
-      grid-auto-rows: 38px;
-      background: #0b0b0b;
-    }
-
-    .bet-cell {
-      border-right: 1px solid #5d3718;
-      border-bottom: 1px solid #5d3718;
-      display: grid;
-      place-items: center;
-      color: #ece5d2;
-      font-size: 15px;
-      font-weight: 700;
-      text-shadow: 0 1px 1px rgba(0, 0, 0, .4);
-    }
-
-    .bet-cell.red { color: #ff4d3d; }
-    .bet-cell.black { color: #f7f5ef; }
-    .bet-cell.green { color: #36d489; background: #0f3326; }
-    .bet-cell.title { color: #f2be79; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
-
-    .outside-grid {
-      border: 1px solid #6f431e;
-      border-radius: 8px;
-      overflow: hidden;
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      background: #0b0b0b;
-    }
-
-    .outside-cell {
-      min-height: 36px;
-      border-right: 1px solid #5d3718;
-      display: grid;
-      place-items: center;
-      color: #f2e1bf;
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-    }
-
-    .outside-cell:last-child { border-right: 0; }
-
-    .outside-cell.red { color: #ff5e4f; }
-    .outside-cell.black { color: #f8f8f8; }
-    @media (max-width: 1200px) {
-      .casino-overlay { grid-template-columns: 1fr; }
-      .side { width: 270px; }
-    }
-
-    @media (max-width: 860px) {
-      .side { display: none; }
-      .casino-overlay { left: 8px; right: 8px; bottom: 8px; }
-      .bet-grid { grid-template-columns: 44px repeat(12, minmax(18px, 1fr)); grid-auto-rows: 30px; }
-      .bet-cell { font-size: 12px; }
-    }
-
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #0d0e0b; }
-    ::-webkit-scrollbar-thumb { background: #44472f; border-radius: 3px; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="canvas-area">
-      <canvas id="canvas"></canvas>
-      <div class="hud">
-        <div>ESTADO: <span class="hud-value" id="hudState">Cargando...</span></div>
-        <div>BOLA: <span class="hud-value" id="hudBall">0 m/s</span></div>
-        <div>RUEDA: <span class="hud-value" id="hudWheel">0 RPM</span></div>
-        <div style="margin-top: 8px; border-top: 1px solid #303326; padding-top: 8px;">RESULTADO: <span class="hud-value" id="hudResult">--</span></div>
-        <div>REAL: <span class="hud-value" id="hudReal">--</span></div>
-        <div>CALC: <span class="hud-value" id="hudCalc">--</span> · Δ <span class="hud-value" id="hudDelta">--</span></div>
-        <div class="runtime ok" id="runtimeStatus">Tiempo real: activo</div>
-        <div class="runtime" id="runtimeError">Sin errores de runtime</div>
-      </div>
-
-      <div class="quick-controls">
-        <div class="quick-row">
-          <button id="launchBtnQuick" class="primary">▶ Lanzar</button>
-          <button id="resetBtnQuick">↻ Reset</button>
-          <button id="autoBtn">Auto ON</button>
-        </div>
-        <small>Velocidad / Angulo / RPM</small>
-        <input type="range" id="speedSliderQuick" min="5" max="15" step="0.5" value="8" />
-        <input type="range" id="angleSliderQuick" min="-45" max="45" step="5" value="0" />
-        <input type="range" id="rpmSliderQuick" min="0" max="12" step="0.5" value="4" />
-      </div>
-
-      <div class="casino-overlay">
-        <div class="overlay-panel">
-          <div class="race-head">Racetrack: Tier · Orphelins · Voisins · Zero</div>
-          <div class="racetrack" id="racetrack">
-            <div class="race-ring"></div>
-            <div class="race-labels">
-              <span>Tier</span>
-              <span>Orphelins</span>
-              <span>Voisins</span>
-              <span>Zero</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="overlay-panel betboard">
-          <div class="bet-grid" id="betGrid"></div>
-          <div class="outside-grid">
-            <div class="outside-cell">1-18</div>
-            <div class="outside-cell">Par</div>
-            <div class="outside-cell red">Rojo</div>
-            <div class="outside-cell black">Negro</div>
-            <div class="outside-cell">Impar</div>
-            <div class="outside-cell">19-36</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="side">
-      <div class="panel-head">🎰 CONTROL LANZAMIENTO</div>
-
-      <div class="control-group">
-        <label>Velocidad: <span id="speedVal">8.0</span> m/s</label>
-        <input type="range" id="speedSlider" min="5" max="15" step="0.5" value="8" />
-      </div>
-
-      <div class="control-group">
-        <label>Ángulo: <span id="angleVal">0</span>°</label>
-        <input type="range" id="angleSlider" min="-45" max="45" step="5" value="0" />
-      </div>
-
-      <div class="control-group">
-        <label>RPM Rueda: <span id="rpmVal">4.0</span></label>
-        <input type="range" id="rpmSlider" min="0" max="12" step="0.5" value="4" />
-      </div>
-
-      <div class="toolbar">
-        <button id="launchBtn" class="primary">▶ LANZAR</button>
-        <button id="resetBtn">↻ RESET</button>
-      </div>
-
-      <div class="panel-head" style="margin-top: 14px;">📊 RESULTADO</div>
-
-      <div class="metric">
-        <div style="color: var(--muted);">Última tirada</div>
-        <div class="metric-value" id="lastResult">--</div>
-      </div>
-
-      <div class="panel-head" style="margin-top: 14px;">📈 HISTORIAL</div>
-
-      <div id="historyList" style="font-size: 11px; color: #dcd4bc; max-height: 100px; overflow-y: auto; border: 1px solid #303326; border-radius: 4px; padding: 6px; background: #0a0b08; line-height: 1.6;">
-        <div style="color: var(--muted);">Sin tiradas</div>
-      </div>
-    </div>
+  <div id="lienzo-envoltorio">
+    <canvas id="lienzo"></canvas>
   </div>
 
-  <script type="module">
-    import * as THREE from 'three';
-    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script>
+/* ================= Motor 3D de la ruleta ================= */
+/* Expone window.Ruleta3D = { numeros, colorDe, girarHacia(numero, onFin) } */
 
-    console.log('✓ Three.js imported:', THREE.version);
+(function(){
 
-    const WHEEL = ["0","28","9","26","30","11","7","20","32","17","5","22","34","15","3","24","36","13","1","00","27","10","25","29","12","8","19","31","18","6","21","33","16","4","23","35","14","2"];
-    const BOARD_ROWS = [
-      [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36],
-      [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35],
-      [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34]
-    ];
-    const RED = new Set(["1","3","5","7","9","12","14","16","18","19","21","23","25","27","30","32","34","36"]);
-    const slotAngle = (Math.PI * 2) / WHEEL.length;
+const NUMEROS_ORDEN = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
+const ROJOS = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+/* colores mas saturados e intensos, con negro realmente negro */
+function colorDe(n){ if(n===0) return 0x0f7a3d; return ROJOS.has(n) ? 0xc4281a : 0x0d0d0d; }
 
-    let history = [];
-    let isSpinning = false;
-    let wheelRotation = 0;
-    let wheelAngularSpeed = 0;
-    let autoMode = true;
-    let autoTimer = null;
+const escena = new THREE.Scene();
+escena.fog = new THREE.Fog(0x0a0808, 16, 40);
 
-    const canvas = document.getElementById("canvas");
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0a0a0a);
-    scene.fog = new THREE.FogExp2(0x0a0a0a, 0.06);
+const canvas = document.getElementById('lienzo');
+const contenedor = document.getElementById('lienzo-envoltorio');
+const camara = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
 
-    const camera = new THREE.PerspectiveCamera(39, window.innerWidth / window.innerHeight, 0.1, 200);
-    camera.position.set(0.12, 2.78, 3.72);
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true});
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.92;
 
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.2;
-    renderer.outputColorSpace = THREE.SRGBColorSpace;
+function ajustarTamano(){
+  const w = contenedor.clientWidth, h = contenedor.clientHeight;
+  renderer.setSize(w,h,false);
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  camara.aspect = w/h;
+  camara.updateProjectionMatrix();
+}
+window.addEventListener('resize', ajustarTamano);
 
-    // Environment map generado por codigo, sin HDR externo.
-    const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    const envMap = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
-    scene.environment = envMap;
-    pmremGenerator.dispose();
-    if (!scene.environment) {
-      console.error('[ROULETTE] scene.environment es null - los metales se van a ver negros');
-    } else {
-      console.log('[ROULETTE] Environment OK, metales deberian reflejar correctamente');
+/* ---------- luces ---------- */
+escena.add(new THREE.HemisphereLight(0x9fb0c2, 0x1a140c, 0.4));
+const clave = new THREE.DirectionalLight(0xffd9a0, 1.85);
+clave.position.set(5, 12, 6);
+clave.castShadow = true;
+clave.shadow.mapSize.set(2048,2048);
+clave.shadow.camera.left = -9; clave.shadow.camera.right = 9;
+clave.shadow.camera.top = 9; clave.shadow.camera.bottom = -9;
+clave.shadow.camera.near = 1; clave.shadow.camera.far = 40;
+clave.shadow.bias = -0.0025;
+escena.add(clave);
+const relleno = new THREE.PointLight(0xdfe9ff, 0.7, 30);
+relleno.position.set(-7, 5, -4);
+escena.add(relleno);
+const borde = new THREE.SpotLight(0xfff3d6, 1.5, 30, Math.PI/5, 0.5);
+borde.position.set(0, 10, -9);
+escena.add(borde);
+/* luz cenital dedicada a las casillas/numeros: las ilumina de lleno para que
+   los colores (rojo, negro, verde) y los digitos se lean nitidos desde la camara */
+const focoNumeros = new THREE.SpotLight(0xfff7e6, 1.3, 22, Math.PI/3.4, 0.5, 1.4);
+focoNumeros.position.set(0, 9.5, 2.5);
+focoNumeros.castShadow = false;
+escena.add(focoNumeros);
+escena.add(focoNumeros.target);
+focoNumeros.target.position.set(0, 0, 0);
+/* relleno suave rasante para levantar el brillo de las paredes de las casillas */
+const rasante = new THREE.PointLight(0xffffff, 0.28, 14);
+rasante.position.set(0, 1.6, 6.5);
+escena.add(rasante);
+
+/* ---------- suelo ---------- */
+const sueloMat = new THREE.MeshStandardMaterial({color:0x0a0808, roughness:0.9, metalness:0.05});
+const suelo = new THREE.Mesh(new THREE.CircleGeometry(30,64), sueloMat);
+suelo.rotation.x = -Math.PI/2;
+suelo.position.y = -2.4;
+suelo.receiveShadow = true;
+escena.add(suelo);
+
+/* ================= grupo raiz ================= */
+const wheelAssembly = new THREE.Group();
+escena.add(wheelAssembly);
+
+/* ================= dimensiones ================= */
+const R_INT = 3.15, R_EXT = 4.35, R_MADERA = 6.55, GROSOR_MADERA = 1.75, ALTO_CASILLA = 0.62;
+const N = NUMEROS_ORDEN.length;
+const PASO = (Math.PI*2)/N;
+
+/* ================= materiales (cromo en vez de oro) ================= */
+const cromoMat = new THREE.MeshStandardMaterial({color:0xd3d7db, metalness:0.95, roughness:0.18});
+const cromoOscuroMat = new THREE.MeshStandardMaterial({color:0x8b9298, metalness:0.9, roughness:0.28});
+
+/* ---- textura de madera procedural (vetas), mucho mas natural que un color plano ---- */
+function generarTexturaMadera(tonoBase, tonoVeta, repeticionesU, repeticionesV){
+  const w = 512, h = 512;
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = tonoBase; ctx.fillRect(0,0,w,h);
+  // vetas onduladas horizontales, con variacion de grosor y opacidad
+  const nLineas = 46;
+  for(let i=0;i<nLineas;i++){
+    const yBase = (i/nLineas)*h + (Math.random()-0.5)*6;
+    ctx.strokeStyle = tonoVeta;
+    ctx.globalAlpha = 0.10 + Math.random()*0.22;
+    ctx.lineWidth = 0.6 + Math.random()*2.2;
+    ctx.beginPath();
+    const amp = 4 + Math.random()*10;
+    const freq = 0.008 + Math.random()*0.02;
+    const fase = Math.random()*Math.PI*2;
+    ctx.moveTo(0, yBase);
+    for(let x=0;x<=w;x+=8){
+      ctx.lineTo(x, yBase + Math.sin(x*freq+fase)*amp);
     }
+    ctx.stroke();
+  }
+  // vetas finas y nudos ocasionales para romper la uniformidad
+  ctx.globalAlpha = 1;
+  for(let i=0;i<5;i++){
+    const nx = Math.random()*w, ny = Math.random()*h;
+    const r = 6+Math.random()*10;
+    const grad = ctx.createRadialGradient(nx,ny,0,nx,ny,r*2.2);
+    grad.addColorStop(0, tonoVeta);
+    grad.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.globalAlpha = 0.25;
+    ctx.fillStyle = grad;
+    ctx.beginPath(); ctx.ellipse(nx,ny,r,r*1.6,Math.random()*Math.PI,0,Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  const tex = new THREE.CanvasTexture(c);
+  tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(repeticionesU, repeticionesV);
+  tex.anisotropy = 4;
+  return tex;
+}
+const texMaderaClara = generarTexturaMadera('#4a2c17', '#2c1608', 8, 1.4);
+const texMaderaOscura = generarTexturaMadera('#2a1409', '#150a04', 8, 1.4);
+const maderaMat = new THREE.MeshStandardMaterial({map:texMaderaClara, color:0xffffff, roughness:0.68, metalness:0.04});
+const maderaOscuraMat = new THREE.MeshStandardMaterial({map:texMaderaOscura, color:0xffffff, roughness:0.75, metalness:0.03});
 
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.08;
-    controls.minDistance = 3.25;
-    controls.maxDistance = 6.2;
-    controls.minPolarAngle = Math.PI * 0.30;
-    controls.maxPolarAngle = Math.PI * 0.46;
-    controls.target.set(0, 0.15, 0);
-    controls.autoRotate = false;
-    controls.autoRotateSpeed = 0.25;
+/* material dorado/laton para el turret central, como en una ruleta real */
+const oroMat = new THREE.MeshStandardMaterial({color:0xcda256, metalness:0.9, roughness:0.22});
+const oroOscuroMat = new THREE.MeshStandardMaterial({color:0x8a6a2f, metalness:0.85, roughness:0.3});
 
-    // Lighting
-    const keyLight = new THREE.DirectionalLight(0xffb46e, 2.15);
-    keyLight.position.set(6, 12, 6);
-    keyLight.castShadow = true;
-    keyLight.shadow.mapSize.set(2048, 2048);
-    keyLight.shadow.camera.left = -10;
-    keyLight.shadow.camera.right = 10;
-    keyLight.shadow.camera.top = 10;
-    keyLight.shadow.camera.bottom = -10;
-    keyLight.shadow.camera.far = 50;
-    keyLight.shadow.bias = -0.0008;
-    scene.add(keyLight);
-
-    const fillLight = new THREE.DirectionalLight(0xff9a57, 0.42);
-    fillLight.position.set(-8, 5, -4);
-    scene.add(fillLight);
-
-    const rimLight = new THREE.PointLight(0xff6f2a, 0.82, 20);
-    rimLight.position.set(0, 3.2, -5.5);
-    scene.add(rimLight);
-
-    const ambientLight = new THREE.AmbientLight(0x505050, 0.2);
-    scene.add(ambientLight);
-
-    // Materials
-    const matGold = new THREE.MeshPhysicalMaterial({
-      color: 0xd4af37,
-      metalness: 1.0,
-      roughness: 0.12,
-      clearcoat: 0.4,
-      clearcoatRoughness: 0.1,
-    });
-
-    const matChrome = new THREE.MeshPhysicalMaterial({
-      color: 0xe8ecf4,
-      metalness: 1.0,
-      roughness: 0.06,
-      clearcoat: 0.55,
-      clearcoatRoughness: 0.04,
-    });
-
-    const matDarkMetal = new THREE.MeshPhysicalMaterial({
-      color: 0x5c616a,
-      metalness: 0.95,
-      roughness: 0.18,
-      clearcoat: 0.35,
-      clearcoatRoughness: 0.08,
-    });
-
-    const matWood = new THREE.MeshPhysicalMaterial({
-      color: 0x4a2c1a,
-      metalness: 0.0,
-      roughness: 0.35,
-      clearcoat: 0.5,
-      clearcoatRoughness: 0.25,
-    });
-
-    const matRed = new THREE.MeshStandardMaterial({
-      color: 0xb22222,
-      metalness: 0.15,
-      roughness: 0.45,
-    });
-
-    const matBlack = new THREE.MeshStandardMaterial({
-      color: 0x0d0d0d,
-      metalness: 0.15,
-      roughness: 0.45,
-    });
-
-    const matGreen = new THREE.MeshStandardMaterial({
-      color: 0x0a5c2e,
-      metalness: 0.15,
-      roughness: 0.45,
-    });
-
-    const matBall = new THREE.MeshPhysicalMaterial({
-      color: 0xffffff,
-      metalness: 0.02,
-      roughness: 0.012,
-      transmission: 0.22,
-      ior: 1.46,
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.003,
-      envMapIntensity: 2.9,
-      specularIntensity: 1.0,
-      sheen: 0.45,
-      sheenRoughness: 0.06,
-      emissive: 0x090909,
-      emissiveIntensity: 0.04,
-    });
-
-    function createWoodTexture() {
-      const c = document.createElement("canvas");
-      c.width = 1024;
-      c.height = 1024;
-      const g = c.getContext("2d");
-
-      g.fillStyle = "#5e3720";
-      g.fillRect(0, 0, c.width, c.height);
-
-      for (let i = 0; i < 220; i++) {
-        const y = (i / 220) * c.height + (Math.random() - 0.5) * 14;
-        g.strokeStyle = `rgba(${110 + Math.random() * 70}, ${62 + Math.random() * 44}, ${28 + Math.random() * 24}, ${0.10 + Math.random() * 0.18})`;
-        g.lineWidth = 2 + Math.random() * 4;
-        g.beginPath();
-        g.moveTo(0, y);
-        g.bezierCurveTo(c.width * 0.25, y + Math.random() * 20, c.width * 0.75, y - Math.random() * 20, c.width, y + Math.random() * 10);
-        g.stroke();
-      }
-
-      const tex = new THREE.CanvasTexture(c);
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.wrapS = THREE.RepeatWrapping;
-      tex.wrapT = THREE.RepeatWrapping;
-      tex.repeat.set(2.2, 2.2);
-      tex.anisotropy = 8;
-      return tex;
+/* disco central de madera "burl" (nogal veteado), como en una mesa real */
+const hubMat = (function(){
+  const w=1024,h=1024;
+  const c=document.createElement('canvas'); c.width=w; c.height=h;
+  const ctx=c.getContext('2d');
+  const cx=w/2, cy=h/2, radio=w/2;
+  const base = ctx.createRadialGradient(cx,cy,0,cx,cy,radio);
+  base.addColorStop(0,'#6b4321');
+  base.addColorStop(0.45,'#4a2c15');
+  base.addColorStop(0.8,'#33200f');
+  base.addColorStop(1,'#20130a');
+  ctx.fillStyle = base; ctx.fillRect(0,0,w,h);
+  // vetas de burl: remolinos concentricos irregulares, no rayos rectos
+  for(let i=0;i<220;i++){
+    const ang = Math.random()*Math.PI*2;
+    const r0 = Math.random()*radio*0.95;
+    const largo = 20+Math.random()*90;
+    const curv = (Math.random()-0.5)*0.9;
+    ctx.strokeStyle = `rgba(20,10,4,${0.08+Math.random()*0.14})`;
+    ctx.lineWidth = 1+Math.random()*2.2;
+    ctx.beginPath();
+    let x = cx+Math.cos(ang)*r0, y = cy+Math.sin(ang)*r0;
+    ctx.moveTo(x,y);
+    let a = ang + Math.PI/2;
+    for(let s=0;s<6;s++){
+      a += curv*0.3;
+      x += Math.cos(a)*(largo/6);
+      y += Math.sin(a)*(largo/6);
+      ctx.lineTo(x,y);
     }
-
-    function createNumberRingTextTexture(size = 2048) {
-      const c = document.createElement("canvas");
-      c.width = size;
-      c.height = size;
-      const g = c.getContext("2d");
-      const center = size / 2;
-      const outerR = size * 0.48;
-      const innerR = size * 0.31;
-      const segAngle = (Math.PI * 2) / WHEEL.length;
-
-      const colors = {
-        red: "#ba2323",
-        black: "#111111",
-        green: "#0d6330",
-      };
-
-      WHEEL.forEach((num, i) => {
-        const startAngle = i * segAngle - Math.PI / 2;
-        const endAngle = startAngle + segAngle;
-        const fill = (num === "0" || num === "00") ? colors.green : (RED.has(num) ? colors.red : colors.black);
-
-        g.save();
-        g.beginPath();
-        g.moveTo(center + Math.cos(startAngle) * innerR, center + Math.sin(startAngle) * innerR);
-        g.arc(center, center, outerR, startAngle, endAngle);
-        g.arc(center, center, innerR, endAngle, startAngle, true);
-        g.closePath();
-        g.fillStyle = fill;
-        g.fill();
-
-        g.strokeStyle = "rgba(232,236,240,0.72)";
-        g.lineWidth = Math.max(2, size * 0.0022);
-        g.stroke();
-        g.restore();
-
-        const textAngle = startAngle + segAngle / 2;
-        const textR = innerR + (outerR - innerR) * 0.56;
-        g.save();
-        g.translate(
-          center + Math.cos(textAngle) * textR,
-          center + Math.sin(textAngle) * textR
-        );
-        g.rotate(textAngle + Math.PI / 2);
-        g.fillStyle = "#ffffff";
-        g.shadowColor = "rgba(0, 0, 0, 0.45)";
-        g.shadowBlur = 4;
-        g.shadowOffsetY = 1;
-        g.font = `bold ${size * 0.027}px Arial`;
-        g.textAlign = "center";
-        g.textBaseline = "middle";
-        g.fillText(num, 0, 0);
-        g.restore();
-      });
-
-      const texture = new THREE.CanvasTexture(c);
-      texture.colorSpace = THREE.SRGBColorSpace;
-      texture.anisotropy = 8;
-      return texture;
+    ctx.stroke();
+  }
+  // nudos de burl (manchas ovaladas oscuras concentricas)
+  for(let i=0;i<14;i++){
+    const nx = cx+(Math.random()-0.5)*radio*1.5, ny = cy+(Math.random()-0.5)*radio*1.5;
+    if(Math.hypot(nx-cx,ny-cy) > radio*0.92) continue;
+    const r = 8+Math.random()*22;
+    for(let ring=4; ring>=1; ring--){
+      ctx.strokeStyle = `rgba(15,8,3,${0.10+ring*0.03})`;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.ellipse(nx,ny,r*ring/4*1.3,r*ring/4,Math.random()*Math.PI,0,Math.PI*2);
+      ctx.stroke();
     }
+  }
+  // brillo de barniz suave en el centro
+  const brillo = ctx.createRadialGradient(cx-radio*0.15,cy-radio*0.2,0,cx,cy,radio*0.9);
+  brillo.addColorStop(0,'rgba(255,235,200,0.10)');
+  brillo.addColorStop(1,'rgba(255,235,200,0)');
+  ctx.fillStyle = brillo; ctx.fillRect(0,0,w,h);
+  const tex = new THREE.CanvasTexture(c);
+  return new THREE.MeshStandardMaterial({map:tex, roughness:0.32, metalness:0.05});
+})();
 
-    function createBallNormalTexture() {
-      const c = document.createElement("canvas");
-      c.width = 256;
-      c.height = 256;
-      const g = c.getContext("2d");
-      const img = g.createImageData(c.width, c.height);
-      for (let i = 0; i < img.data.length; i += 4) {
-        const n = 122 + Math.floor(Math.random() * 12);
-        img.data[i] = 128;
-        img.data[i + 1] = 128;
-        img.data[i + 2] = n;
-        img.data[i + 3] = 255;
-      }
-      g.putImageData(img, 0, 0);
-      const tex = new THREE.CanvasTexture(c);
-      tex.wrapS = THREE.RepeatWrapping;
-      tex.wrapT = THREE.RepeatWrapping;
-      tex.repeat.set(2, 2);
-      return tex;
+/* ---------- cuenco de madera (fijo) ---------- */
+const maderaGrupo = new THREE.Group();
+wheelAssembly.add(maderaGrupo);
+
+const paredMadera = new THREE.Mesh(
+  new THREE.CylinderGeometry(R_MADERA, R_MADERA*0.9, GROSOR_MADERA, 96, 1, true),
+  maderaMat
+);
+paredMadera.position.y = -GROSOR_MADERA*0.55;
+paredMadera.receiveShadow = true;
+maderaGrupo.add(paredMadera);
+
+const perfilBorde = [
+  new THREE.Vector2(R_EXT+0.45, -0.10),
+  new THREE.Vector2(R_EXT+1.7,  0.05),
+  new THREE.Vector2(R_MADERA*0.80, 0.18),
+  new THREE.Vector2(R_MADERA*0.955, 0.24),
+  new THREE.Vector2(R_MADERA, 0.14)
+];
+const caraFrontal = new THREE.Mesh(new THREE.LatheGeometry(perfilBorde, 96), maderaMat);
+caraFrontal.receiveShadow = true;
+maderaGrupo.add(caraFrontal);
+
+const caraTrasera = new THREE.Mesh(new THREE.CircleGeometry(R_MADERA, 96), maderaOscuraMat);
+caraTrasera.rotation.x = -Math.PI/2;
+caraTrasera.position.y = -GROSOR_MADERA*1.05;
+maderaGrupo.add(caraTrasera);
+
+/* bisel cromado grueso entre la madera y las casillas */
+const biselExterior = new THREE.Mesh(
+  new THREE.CylinderGeometry(R_EXT+0.45, R_EXT+0.12, 0.4, 96, 1, true),
+  cromoMat
+);
+biselExterior.position.y = -0.14;
+biselExterior.castShadow = true;
+maderaGrupo.add(biselExterior);
+
+const RADIO_PISTA = R_EXT + 0.5;
+const ALTURA_PISTA = ALTO_CASILLA + 0.42;
+const pista = new THREE.Mesh(new THREE.TorusGeometry(RADIO_PISTA, 0.09, 16, 96), cromoMat);
+pista.rotation.x = Math.PI/2;
+pista.position.y = ALTURA_PISTA;
+pista.castShadow = true;
+maderaGrupo.add(pista);
+
+const aroAlto = new THREE.Mesh(
+  new THREE.CylinderGeometry(R_EXT+0.035, R_EXT+0.035, 0.1, 96, 1, true),
+  cromoOscuroMat
+);
+aroAlto.position.y = ALTO_CASILLA + 0.05;
+aroAlto.castShadow = true;
+maderaGrupo.add(aroAlto);
+
+/* ---------- disco de casillas (gira) ---------- */
+const ruleta = new THREE.Group();
+wheelAssembly.add(ruleta);
+
+const piso = new THREE.Mesh(new THREE.CylinderGeometry(R_INT, R_INT, 0.32, 96), hubMat);
+piso.position.y = ALTO_CASILLA/2 + 0.16;
+piso.receiveShadow = true;
+ruleta.add(piso);
+
+const RADIO_ASENTADA = R_INT + (R_EXT-R_INT)*0.42;
+const canalAsiento = new THREE.Mesh(
+  new THREE.TorusGeometry(RADIO_ASENTADA, 0.10, 10, 96),
+  new THREE.MeshStandardMaterial({color:0x100a06, roughness:0.9, metalness:0})
+);
+canalAsiento.rotation.x = Math.PI/2;
+canalAsiento.position.y = ALTO_CASILLA/2 + 0.13;
+ruleta.add(canalAsiento);
+
+/* turret central dorado (laton) tipo "volcan" con brazos, como en una ruleta real */
+const volcanBase = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.95, 0.22, 32), oroMat);
+volcanBase.position.y = ALTO_CASILLA + 0.11;
+volcanBase.castShadow = true;
+ruleta.add(volcanBase);
+
+const nucleo = new THREE.Mesh(new THREE.SphereGeometry(0.4,32,32), oroMat);
+nucleo.position.y = ALTO_CASILLA + 0.24;
+nucleo.castShadow = true;
+ruleta.add(nucleo);
+
+const cono = new THREE.Mesh(new THREE.ConeGeometry(0.48,0.9,32), oroMat);
+cono.position.y = ALTO_CASILLA + 0.75;
+cono.castShadow = true;
+ruleta.add(cono);
+
+for(let i=0;i<4;i++){
+  const ang = i*(Math.PI/2) + Math.PI/4;
+  const largo = R_INT*0.76;
+  const brazo = new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.07,largo,12), oroMat);
+  brazo.position.set(Math.cos(ang)*largo/2, ALTO_CASILLA+0.24, Math.sin(ang)*largo/2);
+  brazo.rotation.z = Math.PI/2;
+  brazo.rotation.y = -ang;
+  brazo.castShadow = true;
+  ruleta.add(brazo);
+
+  const punta = new THREE.Mesh(new THREE.SphereGeometry(0.1,16,16), oroOscuroMat);
+  punta.position.set(Math.cos(ang)*largo, ALTO_CASILLA+0.24, Math.sin(ang)*largo);
+  punta.castShadow = true;
+  ruleta.add(punta);
+}
+
+function texturaNumero(num, colorFondoHex){
+  const c = document.createElement('canvas');
+  c.width = 128; c.height = 128;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#' + colorFondoHex.toString(16).padStart(6,'0');
+  ctx.fillRect(0,0,128,128);
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.font = 'bold 64px Georgia';
+  // contorno oscuro para que el numero se despegue del fondo con poca luz
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = 'rgba(0,0,0,0.55)';
+  ctx.strokeText(String(num), 64, 70);
+  // relleno blanco calido, mas claro que antes para maximo contraste
+  ctx.fillStyle = '#fff6e0';
+  ctx.fillText(String(num), 64, 70);
+  return new THREE.CanvasTexture(c);
+}
+
+for(let i=0;i<N;i++){
+  const num = NUMEROS_ORDEN[i];
+  const col = colorDe(num);
+  const a0 = i*PASO;
+
+  const pisoCasilla = new THREE.Mesh(
+    new THREE.RingGeometry(R_INT-0.05, R_EXT, 8, 1, a0, PASO*0.985),
+    new THREE.MeshStandardMaterial({color:col, roughness:0.4, metalness:0.1})
+  );
+  pisoCasilla.rotation.x = -Math.PI/2;
+  pisoCasilla.position.y = ALTO_CASILLA/2 + 0.16;
+  pisoCasilla.receiveShadow = true;
+  ruleta.add(pisoCasilla);
+
+  const paredMat = new THREE.MeshStandardMaterial({color:col, roughness:0.4, metalness:0.18});
+  const pared = new THREE.Mesh(
+    new THREE.CylinderGeometry(R_EXT, R_EXT, ALTO_CASILLA, 6, 1, true, a0, PASO*0.92),
+    paredMat
+  );
+  pared.castShadow = true;
+  pared.receiveShadow = true;
+  ruleta.add(pared);
+
+  const tex = texturaNumero(num, col);
+  const etiqueta = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.62, 0.62),
+    new THREE.MeshStandardMaterial({map:tex, emissiveMap:tex, emissive:0xffffff, emissiveIntensity:0.35, roughness:0.65})
+  );
+  const angMed = a0 + PASO*0.46;
+  const radioEtq = R_EXT - 0.55;
+  etiqueta.position.set(Math.cos(angMed)*radioEtq, ALTO_CASILLA/2+0.175, Math.sin(angMed)*radioEtq);
+  etiqueta.rotation.x = -Math.PI/2;
+  etiqueta.rotation.z = -angMed + Math.PI/2;
+  ruleta.add(etiqueta);
+
+  const separador = new THREE.Mesh(
+    new THREE.BoxGeometry(0.035, ALTO_CASILLA, R_EXT-R_INT+0.05),
+    cromoMat
+  );
+  separador.position.set(Math.cos(a0)*(R_INT+(R_EXT-R_INT)/2), ALTO_CASILLA/2, Math.sin(a0)*(R_INT+(R_EXT-R_INT)/2));
+  separador.rotation.y = -a0;
+  separador.castShadow = true;
+  ruleta.add(separador);
+}
+
+/* ================= bola ================= */
+const bola = new THREE.Mesh(
+  new THREE.SphereGeometry(0.24, 32, 32),
+  new THREE.MeshStandardMaterial({color:0xffffff, roughness:0.15, metalness:0.05})
+);
+bola.castShadow = true;
+wheelAssembly.add(bola);
+
+/* ================= camara fija, angulo tipo "mesa en vivo" ================= */
+const RADIO_CAM = 9.4, ALTURA_CAM = 7.6, ANGULO_CAM = 0.62;
+camara.position.set(Math.sin(ANGULO_CAM)*RADIO_CAM, ALTURA_CAM, Math.cos(ANGULO_CAM)*RADIO_CAM);
+camara.lookAt(0, ALTO_CASILLA*0.1, 0.2);
+
+/* ================= animacion ================= */
+const ALTURA_ASENTADA = ALTO_CASILLA + 0.31;
+
+function easeInOutSuave(x){ return x<0.5 ? 2*x*x : 1-Math.pow(-2*x+2,2)/2; }
+function lerp(a,b,t){ return a+(b-a)*t; }
+function bezierCuad(a,b,c,t){ const u=1-t; return u*u*a + 2*u*t*b + t*t*c; }
+function posicionFinalBola(numero){
+  const i = NUMEROS_ORDEN.indexOf(numero);
+  return i*PASO + PASO*0.46;
+}
+
+const K_FRICCION_RUEDA = 0.10;
+const K_FRICCION_BOLA  = 0.22;
+const VEL_BOLA_MIN = 1.15;
+const VEL_IDLE = 0.05;
+
+let estado = 'asentada';
+let velocidadOciosa = VEL_IDLE;
+let numeroObjetivo = 0;
+let anguloAsentado = posicionFinalBola(0);
+let anguloBolaMundo = 0;
+let tInicioFase = performance.now()/1000;
+let velRuedaGiroInicial = 0, velBolaGiroInicial = 0;
+let caidaOrigen = {radio:RADIO_PISTA, altura:ALTURA_PISTA};
+let segmentosRebote = [];
+let duracionCaidaTotal = 0;
+let callbackFin = null;
+
+bola.position.set(Math.cos(anguloAsentado)*RADIO_ASENTADA, ALTURA_ASENTADA, Math.sin(anguloAsentado)*RADIO_ASENTADA);
+
+function generarRebotes(anguloInicio, anguloFinalPrevisto){
+  const nSaltos = 5 + Math.floor(Math.random()*2);
+  const proporciones = [];
+  let sumaPeso = 0;
+  for(let i=0;i<nSaltos;i++){ const p = Math.pow(0.72, i); proporciones.push(p); sumaPeso += p; }
+  for(let i=0;i<nSaltos;i++) proporciones[i] /= sumaPeso;
+
+  const amplitudBase = (ALTURA_PISTA - ALTURA_ASENTADA);
+  let acumT = 0;
+  let radioPrev = caidaOrigen.radio, alturaPrev = caidaOrigen.altura, anguloPrev = anguloInicio;
+  const segmentos = [];
+  for(let i=0;i<nSaltos;i++){
+    const esUltimo = i === nSaltos-1;
+    const dur = proporciones[i];
+    const radioFin = esUltimo ? RADIO_ASENTADA : lerp(caidaOrigen.radio, RADIO_ASENTADA, (i+1)/nSaltos);
+    const avanceIdeal = lerp(0, anguloFinalPrevisto-anguloInicio, (i+1)/nSaltos);
+    const jitter = esUltimo ? 0 : (Math.random()-0.4)*0.10*(1-i/nSaltos);
+    const anguloFin = esUltimo ? anguloFinalPrevisto : anguloInicio + avanceIdeal + jitter;
+    const pico = esUltimo ? alturaPrev : ALTURA_ASENTADA + amplitudBase*Math.pow(0.42, i)*(0.85+Math.random()*0.3);
+    const alturaFin = ALTURA_ASENTADA;
+    segmentos.push({t0:acumT, t1:acumT+dur, r0:radioPrev, r1:radioFin, h0:alturaPrev, hPico:pico, h1:alturaFin, a0:anguloPrev, a1:anguloFin});
+    acumT += dur;
+    radioPrev = radioFin; alturaPrev = alturaFin; anguloPrev = anguloFin;
+  }
+  return segmentos;
+}
+
+function girarHacia(numero, onFin){
+  if(estado==='girando' || estado==='cayendo') return false;
+  estado = 'girando';
+  tInicioFase = performance.now()/1000;
+  velRuedaGiroInicial = 2.6 + Math.random()*0.5;
+  velBolaGiroInicial = -(7.0 + Math.random()*1.3);
+  anguloBolaMundo = anguloAsentado + ruleta.rotation.y;
+  numeroObjetivo = numero;
+  callbackFin = onFin || null;
+  return true;
+}
+
+let ultimoFrame = performance.now()/1000;
+function reloj(){
+  requestAnimationFrame(reloj);
+  const ahora = performance.now()/1000;
+  const dt = Math.min(0.05, ahora-ultimoFrame);
+  ultimoFrame = ahora;
+
+  if(estado === 'girando'){
+    const t = ahora - tInicioFase;
+    const velRuedaActual = velRuedaGiroInicial * Math.exp(-K_FRICCION_RUEDA*t);
+    const velBolaActual  = velBolaGiroInicial  * Math.exp(-K_FRICCION_BOLA*t);
+    ruleta.rotation.y += velRuedaActual*dt;
+    anguloBolaMundo += velBolaActual*dt;
+    bola.position.set(Math.cos(anguloBolaMundo)*RADIO_PISTA, ALTURA_PISTA, Math.sin(anguloBolaMundo)*RADIO_PISTA);
+
+    if(Math.abs(velBolaActual) < VEL_BOLA_MIN){
+      estado = 'cayendo';
+      tInicioFase = ahora;
+      anguloAsentado = posicionFinalBola(numeroObjetivo);
+      caidaOrigen = {radio:RADIO_PISTA, altura:ALTURA_PISTA};
+      velocidadOciosa = Math.max(velRuedaActual, VEL_IDLE);
+      duracionCaidaTotal = 2.6 + Math.random()*0.7;
+      const anguloFinalPrevisto = anguloAsentado + ruleta.rotation.y + velocidadOciosa*duracionCaidaTotal;
+      segmentosRebote = generarRebotes(anguloBolaMundo, anguloFinalPrevisto);
     }
+  } else if(estado === 'cayendo'){
+    ruleta.rotation.y += velocidadOciosa*dt;
+    const tFrac = (ahora - tInicioFase) / duracionCaidaTotal;
+    const tClamp = Math.min(1, tFrac);
+    let seg = segmentosRebote[segmentosRebote.length-1];
+    for(const s of segmentosRebote){ if(tClamp>=s.t0 && tClamp<=s.t1){ seg=s; break; } }
+    const dur = Math.max(1e-4, seg.t1-seg.t0);
+    const u = Math.min(1, Math.max(0, (tClamp-seg.t0)/dur));
+    const ue = easeInOutSuave(u);
+    const radio = lerp(seg.r0, seg.r1, ue);
+    const angulo = lerp(seg.a0, seg.a1, ue);
+    const altura = bezierCuad(seg.h0, seg.hPico, seg.h1, u);
+    bola.position.set(Math.cos(angulo)*radio, altura, Math.sin(angulo)*radio);
 
-    const woodTexture = createWoodTexture();
-    matWood.map = woodTexture;
-    matWood.color.set(0xffffff);
-    matWood.needsUpdate = true;
-
-    const ballNormal = createBallNormalTexture();
-    matBall.normalMap = ballNormal;
-    matBall.normalScale = new THREE.Vector2(0.25, 0.25);
-    matBall.needsUpdate = true;
-
-    // Geometries
-    const wheelGroup = new THREE.Group();
-    scene.add(wheelGroup);
-
-    const POCKET_INNER = 0.86;
-    const POCKET_OUTER = 1.58;
-    const POCKET_MID = (POCKET_INNER + POCKET_OUTER) / 2;
-
-    WHEEL.forEach((num, idx) => {
-      const start = idx * slotAngle - slotAngle / 2;
-      const end = idx * slotAngle + slotAngle / 2;
-      const mat = new THREE.MeshStandardMaterial({
-        color: (num === "0" || num === "00") ? 0x0f5b38 : (RED.has(num) ? 0xb03a3a : 0x232426),
-        roughness: 0.44,
-        metalness: 0.12,
-      });
-
-      const geom = new THREE.RingGeometry(POCKET_INNER, POCKET_OUTER, 20, 1, start, end - start);
-      geom.rotateX(-Math.PI / 2);
-      const mesh = new THREE.Mesh(geom, mat);
-      mesh.position.y = 0.035;
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      wheelGroup.add(mesh);
-
-      // Divisiones con relieve real entre casillas (pared + cresta superior).
-      const sepLen = POCKET_OUTER - POCKET_INNER + 0.01;
-      const sepGeom = new THREE.BoxGeometry(0.008, 0.074, sepLen);
-      const sepMesh = new THREE.Mesh(
-        sepGeom,
-        new THREE.MeshPhysicalMaterial({ color: 0xf0f2f6, roughness: 0.08, metalness: 1.0, clearcoat: 0.45 })
-      );
-      sepMesh.position.set(Math.cos(start) * POCKET_MID, 0.066, Math.sin(start) * POCKET_MID);
-      sepMesh.rotation.y = -start;
-      sepMesh.castShadow = true;
-      sepMesh.receiveShadow = true;
-      wheelGroup.add(sepMesh);
-
-      const sepCrest = new THREE.Mesh(
-        new THREE.BoxGeometry(0.004, 0.020, sepLen - 0.008),
-        new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.06, metalness: 1.0, clearcoat: 0.38 })
-      );
-      sepCrest.position.set(Math.cos(start) * POCKET_MID, 0.106, Math.sin(start) * POCKET_MID);
-      sepCrest.rotation.y = -start;
-      sepCrest.castShadow = true;
-      sepCrest.receiveShadow = true;
-      wheelGroup.add(sepCrest);
-
-      // Numero ahora va en corona transparente unica (sin etiquetas negras).
-    });
-
-    const numberTextRing = new THREE.Mesh(
-      new THREE.RingGeometry(POCKET_INNER + 0.015, POCKET_OUTER - 0.014, 256),
-      new THREE.MeshBasicMaterial({
-        map: createNumberRingTextTexture(),
-        transparent: true,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-        polygonOffset: true,
-        polygonOffsetFactor: -2,
-        polygonOffsetUnits: -2,
-      })
-    );
-    numberTextRing.rotation.x = -Math.PI / 2;
-    // Al ras de la corona de casillas (sin efecto de anillo flotando).
-    numberTextRing.position.y = 0.0365;
-    wheelGroup.add(numberTextRing);
-
-    // Spindle realista y delgado (cromado), sin bloque dorado tosco.
-    const spindleBase = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.30, 0.08, 64), matDarkMetal);
-    spindleBase.position.y = 0.08;
-    spindleBase.castShadow = true;
-    spindleBase.receiveShadow = true;
-    wheelGroup.add(spindleBase);
-
-    const spindleStem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.28, 48), matChrome);
-    spindleStem.position.y = 0.24;
-    spindleStem.castShadow = true;
-    spindleStem.receiveShadow = true;
-    wheelGroup.add(spindleStem);
-
-    const spindleTop = new THREE.Mesh(new THREE.SphereGeometry(0.09, 48, 24), matChrome);
-    spindleTop.position.y = 0.41;
-    spindleTop.castShadow = true;
-    spindleTop.receiveShadow = true;
-    wheelGroup.add(spindleTop);
-
-    const tableGeom = new THREE.CylinderGeometry(2.7, 3.0, 0.42, 128);
-    const tableMesh = new THREE.Mesh(tableGeom, matWood);
-    tableMesh.position.y = -0.33;
-    tableMesh.castShadow = true;
-    tableMesh.receiveShadow = true;
-    scene.add(tableMesh);
-
-    // Relieves circulares en madera (aro superior), como ruleta real.
-    const woodRelief1 = new THREE.Mesh(
-      new THREE.TorusGeometry(2.26, 0.030, 14, 160),
-      new THREE.MeshPhysicalMaterial({ color: 0x7a4a2b, roughness: 0.45, metalness: 0.0, clearcoat: 0.18 })
-    );
-    woodRelief1.rotation.x = Math.PI / 2;
-    woodRelief1.position.y = 0.11;
-    scene.add(woodRelief1);
-
-    const woodRelief2 = new THREE.Mesh(
-      new THREE.TorusGeometry(1.94, 0.024, 14, 160),
-      new THREE.MeshPhysicalMaterial({ color: 0x6a3e24, roughness: 0.5, metalness: 0.0, clearcoat: 0.14 })
-    );
-    woodRelief2.rotation.x = Math.PI / 2;
-    woodRelief2.position.y = 0.095;
-    scene.add(woodRelief2);
-
-    // Plato hondo (bowl) para que no se vea plano.
-    const bowlWallGeom = new THREE.CylinderGeometry(2.06, 1.46, 0.72, 128, 1, true);
-    const bowlWallTex = woodTexture.clone();
-    bowlWallTex.repeat.set(3.0, 1.2);
-    const bowlWallMesh = new THREE.Mesh(
-      bowlWallGeom,
-      new THREE.MeshPhysicalMaterial({
-        color: 0xffffff,
-        map: bowlWallTex,
-        roughness: 0.52,
-        metalness: 0.03,
-        clearcoat: 0.12,
-      })
-    );
-    bowlWallMesh.position.y = -0.16;
-    bowlWallMesh.castShadow = true;
-    bowlWallMesh.receiveShadow = true;
-    scene.add(bowlWallMesh);
-
-    const bowlFloorGeom = new THREE.CircleGeometry(1.46, 96);
-    const bowlFloorTex = woodTexture.clone();
-    bowlFloorTex.repeat.set(1.7, 1.7);
-    const bowlFloorMesh = new THREE.Mesh(
-      bowlFloorGeom,
-      new THREE.MeshStandardMaterial({ color: 0xffffff, map: bowlFloorTex, roughness: 0.60, metalness: 0.02 })
-    );
-    bowlFloorMesh.rotation.x = -Math.PI / 2;
-    bowlFloorMesh.position.y = -0.52;
-    bowlFloorMesh.receiveShadow = true;
-    scene.add(bowlFloorMesh);
-
-    // Carriles metalicos internos planos (al ras, sin sobresalir).
-    const trackGeom = new THREE.RingGeometry(2.0131, 2.0141, 220);
-    const trackMesh = new THREE.Mesh(
-      trackGeom,
-      new THREE.MeshPhysicalMaterial({ color: 0xd7dbe0, roughness: 0.22, metalness: 0.95, clearcoat: 0.3 })
-    );
-    trackMesh.rotation.x = -Math.PI / 2;
-    trackMesh.position.y = 0.0352;
-    trackMesh.castShadow = true;
-    trackMesh.receiveShadow = true;
-    scene.add(trackMesh);
-
-    // Guía interior del carril.
-    const innerGuideGeom = new THREE.RingGeometry(1.9034, 1.9044, 220);
-    const innerGuide = new THREE.Mesh(
-      innerGuideGeom,
-      new THREE.MeshPhysicalMaterial({ color: 0xd7dbe0, roughness: 0.24, metalness: 0.94, clearcoat: 0.26 })
-    );
-    innerGuide.rotation.x = -Math.PI / 2;
-    innerGuide.position.y = 0.0352;
-    innerGuide.castShadow = true;
-    innerGuide.receiveShadow = true;
-    scene.add(innerGuide);
-
-    const ballGeom = new THREE.SphereGeometry(0.052, 64, 32);
-    const ballMesh = new THREE.Mesh(ballGeom, matBall);
-    ballMesh.position.set(0, 2, 3);
-    ballMesh.castShadow = true;
-    ballMesh.receiveShadow = true;
-    scene.add(ballMesh);
-
-    // Sin domo: ruleta abierta como en mesa real.
-
-    // Physics
-    let ballVel = new THREE.Vector3();
-    let ballPos = new THREE.Vector3(0, 2, 3);
-    let ballRot = 0;
-    let ballAngle = 0;
-    let ballAngularSpeed = 0;
-    let spinStartTime = 0;
-    let bounceY = 0;
-    let bounceVy = 0;
-    let ballRadius = 2.01;
-    let ballRadialSpeed = 0;
-    let nextBounceAt = 0;
-    let settledPocketIndex = null;
-    const launchRingRadius = 2.01;
-    const settlePocketRadius = 1.02;
-
-    function placeBallOnPocket(idx) {
-      const angle = idx * slotAngle + wheelRotation;
-      ballPos.set(
-        Math.cos(angle) * settlePocketRadius,
-        0.07,
-        Math.sin(angle) * settlePocketRadius
-      );
-      ballMesh.position.copy(ballPos);
-      ballVel.set(0, 0, 0);
-      bounceY = 0;
-      bounceVy = 0;
+    if(tFrac>=1){
+      estado='asentada';
+      const fn = callbackFin; callbackFin = null;
+      if(fn) fn(numeroObjetivo);
     }
+  } else if(estado === 'asentada'){
+    ruleta.rotation.y += velocidadOciosa*dt;
+    const anguloMundo = anguloAsentado + ruleta.rotation.y;
+    bola.position.set(Math.cos(anguloMundo)*RADIO_ASENTADA, ALTURA_ASENTADA, Math.sin(anguloMundo)*RADIO_ASENTADA);
+  }
 
-    function launch(speed, angle, rpm) {
-      if (isSpinning) return;
-      if (spinTimeout) {
-        clearTimeout(spinTimeout);
-        spinTimeout = null;
-      }
-      isSpinning = true;
-      settledPocketIndex = null;
-      spinStartTime = performance.now();
-      const radAngle = (angle * Math.PI) / 180;
-      // Arranca dentro del anillo dorado (carril exterior real).
-      ballAngle = radAngle;
-      ballAngularSpeed = -(speed / launchRingRadius) * 2.35; // gira en sentido contrario al rotor
-      ballRadius = launchRingRadius;
-      ballRadialSpeed = -0.22 - Math.min(0.32, speed * 0.03);
-      ballPos.set(Math.cos(ballAngle) * launchRingRadius, 0.11, Math.sin(ballAngle) * launchRingRadius);
-      ballVel.set(Math.cos(ballAngle + Math.PI / 2) * speed, 0, Math.sin(ballAngle + Math.PI / 2) * speed);
-      ballRot = 0;
-      bounceY = 0;
-      bounceVy = 0;
-      nextBounceAt = 1.55;
-      wheelAngularSpeed = (rpm * Math.PI * 2) / 60;
-      document.getElementById("hudState").textContent = "Girando";
-    }
+  renderer.render(escena, camara);
+}
+ajustarTamano();
+reloj();
 
-    function finalizeSpin() {
-      if (spinTimeout) {
-        clearTimeout(spinTimeout);
-        spinTimeout = null;
-      }
-      const real = getRealResult();
-      const calc = getCalculatedResult();
-      const delta = slotDelta(real.idx, calc.idx);
-      const result = real.num;
+window.Ruleta3D = {
+  numeros: NUMEROS_ORDEN,
+  colorDe,
+  girarHacia,
+  estaLibre: () => estado==='asentada'
+};
 
-      // Al finalizar, la bola queda anclada al pocket ganador y sigue el giro de la rueda.
-      settledPocketIndex = real.idx;
-      if (wheelAngularSpeed < 0.16) {
-        wheelAngularSpeed = 0.16;
-      }
-      ballRadius = settlePocketRadius;
-      ballRadialSpeed = 0;
-      placeBallOnPocket(settledPocketIndex);
-
-      document.getElementById("hudResult").textContent = result;
-      document.getElementById("hudReal").textContent = real.num;
-      document.getElementById("hudCalc").textContent = calc.num;
-      document.getElementById("hudDelta").textContent = delta + " cas";
-      document.getElementById("lastResult").textContent = `${real.num} | calc ${calc.num} (Δ${delta})`;
-      addHistory(`${real.num} | calc ${calc.num} (Δ${delta})`);
-      document.getElementById("hudState").textContent = `Resultado: ${real.num} | calc ${calc.num}`;
-      isSpinning = false;
-      spinTimeout = null;
-    }
-
-    function reset() {
-      if (spinTimeout) {
-        clearTimeout(spinTimeout);
-        spinTimeout = null;
-      }
-      ballPos.set(0, 2, 3);
-      ballVel.set(0, 0, 0);
-      ballAngle = 0;
-      ballAngularSpeed = 0;
-      wheelRotation = 0;
-      wheelAngularSpeed = 0;
-      wheelGroup.rotation.y = 0;
-      settledPocketIndex = null;
-      bounceY = 0;
-      bounceVy = 0;
-      ballRadius = launchRingRadius;
-      ballRadialSpeed = 0;
-      nextBounceAt = 0;
-      isSpinning = false;
-      document.getElementById("hudState").textContent = "Listo";
-      document.getElementById("hudResult").textContent = "--";
-      document.getElementById("hudReal").textContent = "--";
-      document.getElementById("hudCalc").textContent = "--";
-      document.getElementById("hudDelta").textContent = "--";
-    }
-
-    function normalizeAngle(angle) {
-      const tau = Math.PI * 2;
-      return ((angle % tau) + tau) % tau;
-    }
-
-    function indexFromBallAndWheel(ballAngle, wheelAngle) {
-      const relativeAngle = normalizeAngle(ballAngle - wheelAngle);
-      return Math.round(relativeAngle / slotAngle) % WHEEL.length;
-    }
-
-    function getRealResult() {
-      const ballAngle = Math.atan2(ballMesh.position.z, ballMesh.position.x);
-      const idx = indexFromBallAndWheel(ballAngle, wheelRotation);
-      return { num: WHEEL[idx], idx };
-    }
-
-    function getCalculatedResult() {
-      const ballAngle = Math.atan2(ballMesh.position.z, ballMesh.position.x);
-      const relativeAngle = normalizeAngle(ballAngle - wheelRotation);
-      const residualSlots = (ballVel.length() * 7) + (Math.abs(wheelAngularSpeed) * 28);
-      const projectedAngle = normalizeAngle(relativeAngle + (residualSlots * slotAngle));
-      const idx = Math.round(projectedAngle / slotAngle) % WHEEL.length;
-      return { num: WHEEL[idx], idx };
-    }
-
-    function slotDelta(idxA, idxB) {
-      const d = Math.abs(idxA - idxB);
-      return Math.min(d, WHEEL.length - d);
-    }
-
-    function addHistory(num) {
-      history.unshift(num);
-      if (history.length > 10) history.pop();
-      const list = document.getElementById("historyList");
-      list.innerHTML = history.map(n => `<div>${n}</div>`).join("");
-    }
-
-    function reportRuntimeError(message) {
-      const errEl = document.getElementById("runtimeError");
-      const stateEl = document.getElementById("runtimeStatus");
-      errEl.textContent = message;
-      errEl.classList.add("err");
-      stateEl.textContent = "Tiempo real: error";
-      stateEl.classList.remove("ok");
-    }
-
-    function setAutoMode(enabled) {
-      autoMode = enabled;
-      const btn = document.getElementById("autoBtn");
-      btn.textContent = enabled ? "Auto ON" : "Auto OFF";
-      btn.style.borderColor = enabled ? "#6ad39d" : "#503319";
-      const stateEl = document.getElementById("runtimeStatus");
-      stateEl.textContent = enabled ? "Tiempo real: activo" : "Tiempo real: manual";
-      stateEl.classList.toggle("ok", enabled);
-
-      if (autoTimer) clearInterval(autoTimer);
-      if (enabled) {
-        autoTimer = setInterval(() => {
-          if (!isSpinning) {
-            const speed = 7 + Math.random() * 4;
-            const angle = -20 + Math.random() * 40;
-            const rpm = 3 + Math.random() * 4;
-            launch(speed, angle, rpm);
-          }
-        }, 1200);
-      }
-    }
-
-    function numClass(num) {
-      const txt = String(num);
-      if (txt === "0" || txt === "00") return "green";
-      return RED.has(txt) ? "red" : "black";
-    }
-
-    function renderBetGrid() {
-      const grid = document.getElementById("betGrid");
-      const cells = [];
-      cells.push('<div class="bet-cell green" style="grid-column: 1; grid-row: 1 / span 3;">0</div>');
-      for (let r = 0; r < BOARD_ROWS.length; r++) {
-        for (let c = 0; c < BOARD_ROWS[r].length; c++) {
-          const n = BOARD_ROWS[r][c];
-          cells.push(`<div class="bet-cell ${numClass(n)}" style="grid-column: ${c + 2}; grid-row: ${r + 1};">${n}</div>`);
-        }
-      }
-      grid.innerHTML = cells.join("");
-    }
-
-    function renderRacetrack() {
-      const track = document.getElementById("racetrack");
-      const ring = track.querySelector('.race-ring');
-      const labels = track.querySelector('.race-labels');
-      track.innerHTML = '';
-      if (ring) track.appendChild(ring);
-      if (labels) track.appendChild(labels);
-      const cx = track.clientWidth / 2;
-      const cy = track.clientHeight / 2;
-      const rx = track.clientWidth / 2 - 18;
-      const ry = track.clientHeight / 2 - 18;
-
-      WHEEL.forEach((n, i) => {
-        const t = (i / WHEEL.length) * Math.PI * 2;
-        const x = cx + Math.cos(t) * rx;
-        const y = cy + Math.sin(t) * ry;
-        const chip = document.createElement('div');
-        chip.className = `race-chip ${numClass(n)}`;
-        chip.style.left = `${x}px`;
-        chip.style.top = `${y}px`;
-        chip.textContent = n;
-        track.appendChild(chip);
-      });
-    }
-
-    function launchFromMainSliders() {
-      launch(
-        parseFloat(document.getElementById("speedSlider").value),
-        parseFloat(document.getElementById("angleSlider").value),
-        parseFloat(document.getElementById("rpmSlider").value)
-      );
-    }
-
-    document.getElementById("launchBtn").addEventListener("click", launchFromMainSliders);
-    document.getElementById("launchBtnQuick").addEventListener("click", () => {
-      launch(
-        parseFloat(document.getElementById("speedSliderQuick").value),
-        parseFloat(document.getElementById("angleSliderQuick").value),
-        parseFloat(document.getElementById("rpmSliderQuick").value)
-      );
-    });
-
-    document.getElementById("resetBtn").addEventListener("click", reset);
-    document.getElementById("resetBtnQuick").addEventListener("click", reset);
-    document.getElementById("autoBtn").addEventListener("click", () => setAutoMode(!autoMode));
-    document.getElementById("speedSlider").addEventListener("input", e => document.getElementById("speedVal").textContent = e.target.value);
-    document.getElementById("angleSlider").addEventListener("input", e => document.getElementById("angleVal").textContent = e.target.value);
-    document.getElementById("rpmSlider").addEventListener("input", e => document.getElementById("rpmVal").textContent = e.target.value);
-
-    document.getElementById("speedSliderQuick").addEventListener("input", e => {
-      document.getElementById("speedSlider").value = e.target.value;
-      document.getElementById("speedVal").textContent = e.target.value;
-    });
-    document.getElementById("angleSliderQuick").addEventListener("input", e => {
-      document.getElementById("angleSlider").value = e.target.value;
-      document.getElementById("angleVal").textContent = e.target.value;
-    });
-    document.getElementById("rpmSliderQuick").addEventListener("input", e => {
-      document.getElementById("rpmSlider").value = e.target.value;
-      document.getElementById("rpmVal").textContent = e.target.value;
-    });
-
-    window.addEventListener("error", (ev) => {
-      reportRuntimeError(`Error: ${ev.message || "desconocido"}`);
-    });
-    window.addEventListener("unhandledrejection", (ev) => {
-      reportRuntimeError(`Promise: ${String(ev.reason || "rechazada")}`);
-    });
-
-    window.addEventListener("resize", () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-
-    const clock = new THREE.Clock();
-    let spinTimeout = null;
-
-    function animate() {
-      requestAnimationFrame(animate);
-      const dt = clock.getDelta();
-
-      // Decaimiento realista del rotor.
-      wheelAngularSpeed *= Math.pow(0.9978, dt * 60);
-      wheelRotation += wheelAngularSpeed * dt;
-      wheelGroup.rotation.y = wheelRotation;
-
-      if (isSpinning) {
-        const elapsedSec = (performance.now() - spinStartTime) / 1000;
-        const hardStopReached = elapsedSec > 7.2;
-        const tDrop = Math.min(1, Math.max(0, (elapsedSec - 0.9) / 4.3));
-        const smoothDrop = tDrop * tDrop * (3 - 2 * tDrop);
-
-        // Fases con perdida de energia progresiva.
-        const drag = tDrop < 0.22 ? 0.28 : (tDrop < 0.70 ? 0.55 : 0.95);
-        ballAngularSpeed *= Math.exp(-drag * dt);
-        ballRadialSpeed *= Math.exp(-0.65 * dt);
-        if (!hardStopReached) {
-          ballRadius += ballRadialSpeed * dt;
-          if (ballRadius >= launchRingRadius) {
-            ballRadius = launchRingRadius;
-            ballRadialSpeed = -Math.abs(ballRadialSpeed) * (0.42 + Math.random() * 0.18);
-            const kick = (Math.random() - 0.5) * 0.52;
-            ballAngularSpeed += kick;
-            bounceVy = 0.018 + Math.random() * 0.028;
-          } else if (ballRadius <= settlePocketRadius) {
-            ballRadius = settlePocketRadius;
-            ballRadialSpeed = Math.abs(ballRadialSpeed) * 0.35;
-          }
-        }
-
-        // Rebotes visibles al tocar diamantes y bordes de pockets.
-        const impactWindow = !hardStopReached && smoothDrop > 0.28 && smoothDrop < 0.995;
-        if (impactWindow && elapsedSec >= nextBounceAt) {
-          const e = 0.035 + (1 - smoothDrop) * 0.09;
-          bounceVy = e * (0.75 + Math.random() * 0.55);
-          const kick = (Math.random() - 0.5) * (0.55 + (1 - smoothDrop) * 0.65);
-          ballAngularSpeed += kick;
-          nextBounceAt = elapsedSec + 0.12 + Math.random() * 0.22;
-          if (ballRadius > settlePocketRadius + 0.08) {
-            ballRadialSpeed = Math.min(ballRadialSpeed, 0) - (0.015 + Math.random() * 0.03);
-          }
-        }
-
-        if (hardStopReached) {
-          bounceVy = 0;
-          bounceY = 0;
-          ballAngularSpeed *= Math.pow(0.86, dt * 60);
-        } else {
-          bounceVy -= 2.35 * dt;
-        }
-        bounceY += bounceVy;
-        if (bounceY < 0) {
-          bounceY = 0;
-          if (Math.abs(bounceVy) > 0.008) {
-            bounceVy *= -0.33;
-          } else {
-            bounceVy = 0;
-          }
-        }
-
-        ballAngle += ballAngularSpeed * dt;
-
-        const targetRadius = ballRadius;
-        const yHigh = 0.13;
-        const yLow = 0.045;
-        const targetY = yHigh + (yLow - yHigh) * smoothDrop;
-        const jitter = smoothDrop > 0.68
-          ? Math.sin(performance.now() * 0.05 + ballAngle * 2.3) * (1 - smoothDrop) * 0.024
-          : 0;
-
-        ballPos.x = Math.cos(ballAngle) * targetRadius;
-        ballPos.z = Math.sin(ballAngle) * targetRadius;
-        ballPos.y = targetY + jitter + bounceY;
-
-        const linearSpeed = Math.max(0, Math.abs(ballAngularSpeed) * targetRadius);
-        ballVel.set(
-          -Math.sin(ballAngle) * linearSpeed,
-          bounceVy,
-          Math.cos(ballAngle) * linearSpeed
-        );
-
-        ballMesh.position.copy(ballPos);
-        ballRot += linearSpeed * 5.4 * dt;
-        ballMesh.rotation.x = ballRot;
-        ballMesh.rotation.z = ballRot * 0.42;
-
-        document.getElementById("hudBall").textContent = linearSpeed.toFixed(2) + " m/s";
-      } else if (settledPocketIndex !== null) {
-        placeBallOnPocket(settledPocketIndex);
-        document.getElementById("hudBall").textContent = "0.00 m/s";
-      }
-
-      document.getElementById("hudWheel").textContent = (wheelAngularSpeed * 9.55).toFixed(1) + " RPM";
-
-      const spinElapsedMs = isSpinning ? (performance.now() - spinStartTime) : 0;
-      const settleByPhysics = Math.abs(ballAngularSpeed - wheelAngularSpeed) < 0.12 && spinElapsedMs > 3600 && Math.abs(bounceVy) < 0.01;
-      const settleByTimeout = spinElapsedMs > 7200;
-
-      if (isSpinning && (settleByPhysics || settleByTimeout)) {
-        if (!spinTimeout) {
-          spinTimeout = setTimeout(() => {
-            finalizeSpin();
-          }, settleByPhysics ? 180 : 0);
-        }
-      }
-
-      controls.update();
-      renderer.render(scene, camera);
-    }
-
-    document.getElementById("hudState").textContent = "Listo";
-    renderBetGrid();
-    renderRacetrack();
-    window.addEventListener("resize", renderRacetrack);
-    setAutoMode(true);
-    setTimeout(() => { if (!isSpinning) launchFromMainSliders(); }, 350);
-    animate();
+})();
   </script>
 </body>
 </html>
