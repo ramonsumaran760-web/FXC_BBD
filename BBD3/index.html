@@ -3,11 +3,70 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>InvestIQ — Microinversión en Bolsa</title>
+  <title>Artemis Roulette Lab 3D</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #0b0f14; overflow: hidden; }
+    #root:empty::before { content: ""; }
+    .roulette-launcher {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      color: #dde4f0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background:
+        radial-gradient(circle at 50% 48%, rgba(214,182,96,.13), transparent 32%),
+        linear-gradient(145deg, #070806, #11120f 62%, #0b0f14);
+    }
+    .roulette-launcher-panel {
+      width: min(520px, 100%);
+      border: 1px solid #4e5438;
+      border-radius: 8px;
+      background: rgba(17,18,15,.92);
+      padding: 22px;
+      box-shadow: 0 18px 44px rgba(0,0,0,.45);
+    }
+    .roulette-launcher h1 {
+      font-size: 20px;
+      line-height: 1.2;
+      margin-bottom: 8px;
+      color: #f1eee4;
+    }
+    .roulette-launcher p {
+      font-size: 12px;
+      line-height: 1.5;
+      color: #9a9b8d;
+      margin-bottom: 16px;
+    }
+    .roulette-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .roulette-launcher button,
+    .roulette-launcher a {
+      height: 40px;
+      border: 1px solid #d6b660;
+      border-radius: 8px;
+      background: #24200f;
+      color: #d6b660;
+      font-weight: 800;
+      padding: 0 15px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      text-decoration: none;
+    }
+    .roulette-launcher a {
+      border-color: #4e5438;
+      background: #151813;
+      color: #bfc1b4;
+    }
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: #111820; }
     ::-webkit-scrollbar-thumb { background: #2a3545; border-radius: 2px; }
@@ -18,6 +77,35 @@
   </style>
 </head>
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <div class="roulette-launcher">
+      <div class="roulette-launcher-panel">
+        <h1>Artemis Roulette Lab 3D</h1>
+        <p>Ventana separada del modulo de futbol para cilindro americano 0/00, sectores fisicos, grupos G0-G4 y auditoria Artemis 1/2.</p>
+        <div class="roulette-actions">
+          <button id="openRouletteWindow" type="button">
+            <i class="fa-solid fa-up-right-from-square"></i>
+            Abrir ventana ruleta
+          </button>
+          <a id="openRouletteTab" href="./roulette3d.html">
+            <i class="fa-solid fa-circle-dot"></i>
+            Abrir aqui
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+    const rouletteUrl = window.location.protocol === "file:" ? "./roulette3d.html" : "/roulette3d.html";
+    document.getElementById("openRouletteTab").href = rouletteUrl;
+    document.getElementById("openRouletteWindow").addEventListener("click", () => {
+      const popup = window.open(
+        rouletteUrl,
+        "artemisRoulette3D",
+        "popup,width=1440,height=920,left=80,top=40,noopener"
+      );
+      if (!popup) window.location.href = rouletteUrl;
+    });
+  </script>
 </body>
 </html>

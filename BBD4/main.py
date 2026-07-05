@@ -9,6 +9,9 @@ from contextlib import asynccontextmanager
 import logging
 
 sys.path.insert(0, os.path.dirname(__file__))
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+WORKSPACE_DIR = os.path.dirname(BASE_DIR)
+ROULETTE_DIR = os.path.join(WORKSPACE_DIR, "BBD3")
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
@@ -410,6 +413,21 @@ async def health():
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     return Response(status_code=204)
+
+
+@app.get("/ruleta", include_in_schema=False)
+async def ruleta():
+    return FileResponse(os.path.join(ROULETTE_DIR, "index.html"))
+
+
+@app.get("/ruleta-3d", include_in_schema=False)
+async def ruleta_3d():
+    return FileResponse(os.path.join(ROULETTE_DIR, "roulette3d.html"))
+
+
+@app.get("/roulette3d.html", include_in_schema=False)
+async def ruleta_3d_file():
+    return FileResponse(os.path.join(ROULETTE_DIR, "roulette3d.html"))
 
 
 @app.get("/", tags=["root"])

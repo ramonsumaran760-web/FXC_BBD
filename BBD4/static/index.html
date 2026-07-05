@@ -1299,6 +1299,7 @@ function showPlatformChooser(usuario) {
       .pc-card:hover{transform:translateY(-3px);box-shadow:0 20px 60px rgba(0,0,0,.6)}
       .pc-card.inv:hover{border-color:rgba(59,130,246,.55)}
       .pc-card.fxc:hover{border-color:rgba(16,185,129,.55)}
+      .pc-card.roulette:hover{border-color:rgba(214,182,96,.6)}
       .pc-icon{width:54px;height:54px;border-radius:13px;display:grid;place-items:center;font-size:22px;flex-shrink:0}
       .pc-arrow{margin-left:auto;color:#475569;font-size:17px;transition:transform .2s}
       .pc-card:hover .pc-arrow{transform:translateX(5px);color:#94a3b8}
@@ -1341,6 +1342,18 @@ function showPlatformChooser(usuario) {
         <span class="pc-arrow">›</span>
       </div>
 
+      <div class="pc-card roulette" onclick="closePlatformChooser('roulette')">
+        <div class="pc-icon" style="background:linear-gradient(135deg,#6f5618,#d6b660);box-shadow:0 6px 20px rgba(214,182,96,.25)">
+          <span style="font-size:25px">◎</span>
+        </div>
+        <div>
+          <div style="font-size:16px;font-weight:800;color:#f1f5f9">Ruleta 3D</div>
+          <div style="font-size:10px;color:#d6b660;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-top:3px">Artemis Roulette Lab</div>
+          <div style="font-size:10px;color:#64748b;margin-top:4px">Ventana separada · Auditoria G0-G4</div>
+        </div>
+        <span class="pc-arrow">›</span>
+      </div>
+
     </div>
 
     <div style="font-size:10px;color:#334155">
@@ -1357,11 +1370,20 @@ function closePlatformChooser(plat) {
   if (plat === 'investiq') {
     // Entrar a InvestIQ con todo su audio y funcionalidad
     startApp();
+  } else if (plat === 'roulette') {
+    openRouletteWindow();
+    showPlatformChooser(null);
   } else {
     // FXC_BBD: abrir sports desk en esta misma pestaña
     // NO llamar startApp() → NO arranca audio de InvestIQ
     showFXCDesk();
   }
+}
+
+function openRouletteWindow() {
+  const url = window.location.protocol === 'file:' ? '../../BBD3/roulette3d.html' : '/roulette3d.html';
+  const popup = window.open(url, 'artemisRoulette3D', 'popup,width=1440,height=920,left=80,top=40,noopener');
+  if (!popup) window.location.href = url;
 }
 
 function showFXCDesk() {

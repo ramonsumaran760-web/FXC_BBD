@@ -4,10 +4,12 @@ InvestIQ — FastAPI Main Application
 """
 import os, sys, json, asyncio, time, random, threading
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Optional
 from contextlib import asynccontextmanager
 
 sys.path.insert(0, os.path.dirname(__file__))
+BASE_DIR = Path(__file__).resolve().parent
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -639,7 +641,19 @@ async def health():
 
 @app.get("/")
 async def root():
-    return {"app": "InvestIQ API", "docs": "/docs", "ws": "/ws"}
+    return {"app": "InvestIQ API", "docs": "/docs", "ws": "/ws", "ruleta": "/ruleta"}
+
+@app.get("/ruleta", include_in_schema=False)
+async def ruleta():
+    return FileResponse(BASE_DIR / "index.html")
+
+@app.get("/ruleta-3d", include_in_schema=False)
+async def ruleta_3d():
+    return FileResponse(BASE_DIR / "roulette3d.html")
+
+@app.get("/roulette3d.html", include_in_schema=False)
+async def ruleta_3d_file():
+    return FileResponse(BASE_DIR / "roulette3d.html")
 
 # ── Start background tasks ────────────────────────────────
 @app.on_event("startup")

@@ -1,0 +1,1558 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Artemis Roulette Lab 3D</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js"
+      }
+    }
+  </script>
+  <style>
+    :root {
+      --bg: #070806;
+      --panel: #11120f;
+      --panel-2: #171813;
+      --line: #303326;
+      --line-strong: #4e5438;
+      --text: #f1eee4;
+      --muted: #9a9b8d;
+      --green: #12b981;
+      --red: #d94a4a;
+      --gold: #d6b660;
+      --cyan: #55b7c7;
+      --purple: #9f72db;
+      --amber: #e6a94b;
+      --black-slot: #151515;
+      --shadow: rgba(0, 0, 0, .42);
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      min-height: 100%;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, "Segoe UI", system-ui, sans-serif;
+      letter-spacing: 0;
+      overflow: hidden;
+    }
+
+    button, input, textarea, select {
+      font: inherit;
+      letter-spacing: 0;
+    }
+
+    button {
+      border: 1px solid var(--line);
+      background: #1a1b15;
+      color: var(--text);
+      height: 36px;
+      min-width: 36px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform .15s ease, border-color .15s ease, background .15s ease;
+    }
+
+    button:hover {
+      border-color: var(--gold);
+      background: #222318;
+    }
+
+    button:active { transform: translateY(1px); }
+
+    textarea, select, input[type="range"] {
+      width: 100%;
+      color: var(--text);
+      background: #0d0e0b;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      outline: none;
+    }
+
+    textarea {
+      min-height: 92px;
+      resize: vertical;
+      padding: 10px 11px;
+      line-height: 1.45;
+      color: #ddd8c9;
+    }
+
+    select {
+      height: 36px;
+      padding: 0 10px;
+    }
+
+    input[type="range"] {
+      height: 6px;
+      accent-color: var(--gold);
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0d0e0b; }
+    ::-webkit-scrollbar-thumb { background: #44472f; border-radius: 8px; }
+
+    .app {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: 54px minmax(0, 1fr);
+      background:
+        linear-gradient(90deg, rgba(214, 182, 96, .04) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(214, 182, 96, .03) 1px, transparent 1px),
+        var(--bg);
+      background-size: 48px 48px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: minmax(240px, 1fr) auto;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(10, 11, 8, .92);
+      backdrop-filter: blur(14px);
+      z-index: 5;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      min-width: 0;
+      gap: 10px;
+      white-space: nowrap;
+    }
+
+    .brand-mark {
+      width: 34px;
+      height: 34px;
+      border: 1px solid rgba(214, 182, 96, .68);
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: var(--gold);
+      background: #18150d;
+      box-shadow: 0 0 22px rgba(214, 182, 96, .18);
+    }
+
+    .brand-title {
+      font-size: 14px;
+      font-weight: 800;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .brand-sub {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 1px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+
+    .tool-btn {
+      display: inline-grid;
+      place-items: center;
+      padding: 0 11px;
+    }
+
+    .primary {
+      background: #24200f;
+      border-color: rgba(214, 182, 96, .72);
+      color: var(--gold);
+    }
+
+    .workbench {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 392px;
+      min-height: 0;
+    }
+
+    .scene-zone {
+      position: relative;
+      min-width: 0;
+      min-height: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 50% 48%, rgba(214, 182, 96, .14), transparent 32%),
+        linear-gradient(145deg, #050604, #10110c 58%, #090a07);
+    }
+
+    #webgl {
+      position: absolute;
+      inset: 0;
+    }
+
+    #webgl canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .scene-fallback {
+      position: absolute;
+      inset: 0;
+      display: none;
+      place-items: center;
+      padding: 24px;
+      color: var(--muted);
+      background: #080907;
+      text-align: center;
+      line-height: 1.45;
+    }
+
+    .hud {
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(112px, 1fr));
+      gap: 8px;
+      max-width: min(760px, calc(100% - 28px));
+      pointer-events: none;
+    }
+
+    .metric {
+      min-height: 64px;
+      border: 1px solid rgba(214, 182, 96, .22);
+      border-radius: 8px;
+      background: rgba(10, 11, 8, .76);
+      box-shadow: 0 14px 30px var(--shadow);
+      padding: 9px 10px;
+      overflow: hidden;
+    }
+
+    .metric-label {
+      font-size: 10px;
+      color: var(--muted);
+      text-transform: uppercase;
+      font-weight: 800;
+    }
+
+    .metric-value {
+      margin-top: 5px;
+      font-size: 20px;
+      font-weight: 900;
+      line-height: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .metric small {
+      display: block;
+      margin-top: 5px;
+      color: #b9ad85;
+      font-size: 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .timeline {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      display: grid;
+      grid-template-columns: auto auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      border: 1px solid rgba(214, 182, 96, .26);
+      border-radius: 8px;
+      background: rgba(10, 11, 8, .82);
+      backdrop-filter: blur(12px);
+      padding: 10px;
+      box-shadow: 0 14px 34px var(--shadow);
+    }
+
+    .spin-pill {
+      min-width: 72px;
+      height: 36px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      font-weight: 900;
+      color: var(--gold);
+      background: #16150f;
+    }
+
+    .side {
+      min-height: 0;
+      overflow-y: auto;
+      border-left: 1px solid var(--line);
+      background: rgba(15, 16, 12, .96);
+      padding: 12px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 12px 26px var(--shadow);
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 12px;
+      border-bottom: 1px solid var(--line);
+      background: var(--panel-2);
+    }
+
+    .panel-title {
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: #e8dfc7;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      min-width: 0;
+    }
+
+    .panel-title i { color: var(--gold); }
+
+    .panel-body { padding: 12px; }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .mini {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #0d0e0b;
+      min-height: 68px;
+      padding: 9px;
+    }
+
+    .mini span {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+
+    .mini strong {
+      display: block;
+      margin-top: 7px;
+      font-size: 18px;
+      line-height: 1;
+      color: var(--text);
+    }
+
+    .sector-row {
+      display: grid;
+      grid-template-columns: 102px minmax(0, 1fr) 42px;
+      gap: 8px;
+      align-items: center;
+      min-height: 26px;
+      margin-bottom: 8px;
+      font-size: 11px;
+      color: #dbd4bd;
+    }
+
+    .bar {
+      height: 9px;
+      border-radius: 8px;
+      background: #0b0c09;
+      border: 1px solid #26281e;
+      overflow: hidden;
+    }
+
+    .bar > i {
+      display: block;
+      height: 100%;
+      width: 0;
+      background: var(--gold);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .chip {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      min-height: 28px;
+      padding: 6px 8px;
+      font-size: 11px;
+      color: #e8dfc7;
+      background: #10110d;
+    }
+
+    .chip b { color: var(--gold); }
+
+    .chart-box {
+      height: 178px;
+      position: relative;
+    }
+
+    .table-wrap {
+      max-height: 318px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      min-width: 620px;
+      font-size: 11px;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      background: #191a13;
+      color: var(--muted);
+      z-index: 1;
+    }
+
+    th, td {
+      padding: 9px 8px;
+      border-bottom: 1px solid #26281e;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    tbody tr:hover { background: #17180f; }
+
+    .num {
+      display: inline-grid;
+      place-items: center;
+      min-width: 30px;
+      height: 26px;
+      border-radius: 8px;
+      font-weight: 900;
+      border: 1px solid var(--line);
+      color: var(--text);
+      background: #191919;
+    }
+
+    .num.red { background: #401b1b; color: #ffb4a9; border-color: rgba(217, 74, 74, .42); }
+    .num.green { background: #123326; color: #93f2ca; border-color: rgba(18, 185, 129, .5); }
+    .num.black { background: #0c0d0c; color: #e7e4db; }
+
+    .tag {
+      display: inline-grid;
+      place-items: center;
+      min-height: 22px;
+      padding: 3px 7px;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      color: #dcd4bc;
+      background: #0e0f0b;
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .warn {
+      color: #d9c27b;
+      font-size: 11px;
+      line-height: 1.45;
+      border-left: 2px solid var(--gold);
+      padding-left: 10px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 112px;
+      gap: 8px;
+      align-items: center;
+      margin-top: 9px;
+    }
+
+    .status-line {
+      margin-top: 8px;
+      color: var(--muted);
+      font-size: 11px;
+      min-height: 17px;
+    }
+
+    @media (max-width: 1180px) {
+      .workbench { grid-template-columns: minmax(0, 1fr) 340px; }
+      .hud { grid-template-columns: repeat(2, minmax(112px, 1fr)); }
+    }
+
+    @media (max-width: 860px) {
+      html, body { overflow: auto; }
+      .app {
+        min-height: 100vh;
+        height: auto;
+        grid-template-rows: auto auto;
+      }
+      .topbar {
+        grid-template-columns: 1fr;
+        align-items: start;
+      }
+      .toolbar {
+        width: 100%;
+        overflow-x: auto;
+        padding-bottom: 2px;
+      }
+      .workbench {
+        grid-template-columns: 1fr;
+      }
+      .scene-zone {
+        height: 68vh;
+        min-height: 520px;
+      }
+      .side {
+        border-left: 0;
+        border-top: 1px solid var(--line);
+      }
+      .hud {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+      .timeline {
+        grid-template-columns: auto auto minmax(0, 1fr);
+      }
+      .spin-pill {
+        display: none;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .brand-sub { display: none; }
+      .scene-zone {
+        height: 620px;
+        min-height: 620px;
+      }
+      .hud {
+        grid-template-columns: 1fr 1fr;
+        left: 8px;
+        right: 8px;
+        top: 8px;
+        max-width: calc(100% - 16px);
+      }
+      .metric { min-height: 58px; padding: 8px; }
+      .metric-value { font-size: 17px; }
+      .timeline {
+        left: 8px;
+        right: 8px;
+        bottom: 8px;
+        grid-template-columns: auto auto minmax(0, 1fr);
+        gap: 7px;
+      }
+      .grid2 { grid-template-columns: 1fr; }
+      .sector-row { grid-template-columns: 92px minmax(0, 1fr) 34px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark"><i class="fa-solid fa-circle-nodes"></i></div>
+        <div>
+          <div class="brand-title">ARTEMIS ROULETTE LAB 3D</div>
+          <div class="brand-sub">Cilindro americano 0/00, sectores fisicos y auditoria Artemis 1/2</div>
+        </div>
+      </div>
+      <div class="toolbar" aria-label="Controles">
+        <button class="tool-btn primary" id="playBtn" title="Reproducir o pausar"><i class="fa-solid fa-play"></i></button>
+        <button class="tool-btn" id="prevBtn" title="Giro anterior"><i class="fa-solid fa-step-backward"></i></button>
+        <button class="tool-btn" id="nextBtn" title="Giro siguiente"><i class="fa-solid fa-step-forward"></i></button>
+        <button class="tool-btn" id="fitBtn" title="Centrar camara"><i class="fa-solid fa-expand"></i></button>
+        <button class="tool-btn" id="snapshotBtn" title="Exportar imagen"><i class="fa-solid fa-camera"></i></button>
+        <button class="tool-btn" id="windowBtn" title="Abrir en ventana nueva"><i class="fa-solid fa-up-right-from-square"></i></button>
+      </div>
+    </header>
+
+    <main class="workbench">
+      <section class="scene-zone" aria-label="Ruleta 3D">
+        <div id="webgl"></div>
+        <div class="scene-fallback" id="sceneFallback">
+          Three.js no cargo desde CDN. La logica de analisis sigue disponible; conecta internet o sirve el archivo con las dependencias locales.
+        </div>
+
+        <div class="hud">
+          <div class="metric">
+            <div class="metric-label">Giro actual</div>
+            <div class="metric-value" id="hudSpin">#1</div>
+            <small id="hudNumber">31</small>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Sector fisico</div>
+            <div class="metric-value" id="hudSector">Izquierdo</div>
+            <small id="hudPrev">previo: --</small>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Distancia radial</div>
+            <div class="metric-value" id="hudDistance">--</div>
+            <small id="hudDirection">cw / ccw</small>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Artemis desfase</div>
+            <div class="metric-value" id="hudPhase">--</div>
+            <small id="hudError">error vs real</small>
+          </div>
+        </div>
+
+        <div class="timeline">
+          <button class="tool-btn primary" id="playBtnBottom" title="Reproducir o pausar"><i class="fa-solid fa-play"></i></button>
+          <div class="spin-pill" id="spinPill">1 / 100</div>
+          <input id="spinRange" type="range" min="0" max="99" value="0" aria-label="Selector de giro" />
+          <select id="speedSelect" aria-label="Velocidad">
+            <option value="2100">0.5x</option>
+            <option value="1400" selected>1x</option>
+            <option value="850">1.6x</option>
+            <option value="520">2.7x</option>
+          </select>
+        </div>
+      </section>
+
+      <aside class="side" aria-label="Analisis">
+        <section class="panel">
+          <div class="panel-head">
+            <div class="panel-title"><i class="fa-solid fa-gauge-high"></i> Estado</div>
+            <span class="tag" id="sampleTag">100 giros</span>
+          </div>
+          <div class="panel-body">
+            <div class="grid2">
+              <div class="mini"><span>Cobertura G0-G4</span><strong id="coverageValue">0%</strong></div>
+              <div class="mini"><span>Saltos cortos</span><strong id="shortJumpValue">0</strong></div>
+              <div class="mini"><span>Repeticiones</span><strong id="repeatValue">0</strong></div>
+              <div class="mini"><span>Mu aparente</span><strong id="frictionValue">0.000</strong></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div class="panel-title"><i class="fa-solid fa-chart-pie"></i> Sectores</div>
+            <select id="sectorFilter" aria-label="Filtro por sector">
+              <option value="all">Todos</option>
+              <option value="Sector Cero">Sector Cero</option>
+              <option value="Sector Derecho">Sector Derecho</option>
+              <option value="Sector Doble Cero">Sector Doble Cero</option>
+              <option value="Sector Izquierdo">Sector Izquierdo</option>
+              <option value="groups">G0-G4</option>
+            </select>
+          </div>
+          <div class="panel-body">
+            <div id="sectorBars"></div>
+            <div class="chart-box"><canvas id="sectorChart"></canvas></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div class="panel-title"><i class="fa-solid fa-bullseye"></i> Grupos</div>
+            <span class="tag">G0-G4</span>
+          </div>
+          <div class="panel-body">
+            <div class="chips" id="groupChips"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div class="panel-title"><i class="fa-solid fa-wave-square"></i> Artemis</div>
+            <span class="tag" id="modelTag">A1/A2</span>
+          </div>
+          <div class="panel-body">
+            <div class="grid2">
+              <div class="mini"><span>A1 proyecta</span><strong id="a1Value">--</strong></div>
+              <div class="mini"><span>A2 proyecta</span><strong id="a2Value">--</strong></div>
+              <div class="mini"><span>V0 estimada</span><strong id="v0Value">--</strong></div>
+              <div class="mini"><span>Restitucion e</span><strong id="restValue">--</strong></div>
+            </div>
+            <div class="chart-box" style="height:150px;margin-top:10px;"><canvas id="distanceChart"></canvas></div>
+            <p class="warn">Los calculos son modelos de auditoria sobre la secuencia cargada. No prometen predecir resultados futuros ni sustituyen medicion fisica de una mesa real.</p>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div class="panel-title"><i class="fa-solid fa-database"></i> Secuencia</div>
+            <button class="tool-btn" id="resetBtn" title="Restaurar muestra"><i class="fa-solid fa-rotate-left"></i></button>
+          </div>
+          <div class="panel-body">
+            <textarea id="sequenceInput" spellcheck="false"></textarea>
+            <div class="form-row">
+              <button class="primary" id="loadSequenceBtn">Cargar secuencia</button>
+              <select id="tableMode" aria-label="Modo de tabla">
+                <option value="audit">Auditoria</option>
+                <option value="spins">Giros</option>
+              </select>
+            </div>
+            <div class="status-line" id="sequenceStatus"></div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-head">
+            <div class="panel-title"><i class="fa-solid fa-table-list"></i> Historial</div>
+            <span class="tag" id="rowsTag">0 filas</span>
+          </div>
+          <div class="panel-body">
+            <div class="table-wrap">
+              <table>
+                <thead id="tableHead"></thead>
+                <tbody id="tableBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script type="module">
+    const CDN_THREE = "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js";
+    const CDN_ORBIT = "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/controls/OrbitControls.js";
+
+    const DEFAULT_NUMBERS = [
+      "31", "34", "20", "28", "16", "30", "00", "8", "8", "2", "8", "30",
+      "31", "12", "12", "3", "2", "22", "36", "14", "10", "27", "32", "11",
+      "26", "10", "18", "21", "18", "24", "8", "11", "16", "28", "8", "8",
+      "20", "1", "29", "30", "6", "9", "36", "25", "17", "22", "25", "4",
+      "25", "32", "32", "18", "0", "13", "00", "13", "36", "29", "35", "20",
+      "36", "3", "8", "19", "32", "24", "5", "22", "6", "23", "9", "17",
+      "20", "14", "8", "6", "33", "35", "34", "32", "19", "36", "17", "33",
+      "26", "2", "7", "23", "17", "35", "14", "17", "23", "17", "20", "14",
+      "29", "18", "24", "6"
+    ];
+
+    const WHEEL = [
+      "0", "28", "9", "26", "30", "11", "7", "20", "32", "17", "5", "22",
+      "34", "15", "3", "24", "36", "13", "1", "00", "27", "10", "25", "29",
+      "12", "8", "19", "31", "18", "6", "21", "33", "16", "4", "23", "35",
+      "14", "2"
+    ];
+
+    const GROUPS = {
+      "29": "G1", "33": "G1",
+      "10": "G2", "30": "G2", "36": "G2",
+      "11": "G3", "19": "G3", "25": "G3",
+      "18": "G4", "20": "G4", "22": "G4", "28": "G4",
+      "0": "G0", "00": "G0"
+    };
+
+    const GROUP_LABELS = {
+      G0: "0, 00",
+      G1: "29, 33",
+      G2: "10, 30, 36",
+      G3: "11, 19, 25",
+      G4: "18, 20, 22, 28"
+    };
+
+    const SECTORS = {
+      "35": "Sector Cero", "14": "Sector Cero", "2": "Sector Cero", "0": "Sector Cero",
+      "28": "Sector Cero", "9": "Sector Cero", "26": "Sector Cero", "30": "Sector Cero", "11": "Sector Cero",
+      "7": "Sector Derecho", "20": "Sector Derecho", "32": "Sector Derecho", "17": "Sector Derecho",
+      "5": "Sector Derecho", "22": "Sector Derecho", "34": "Sector Derecho", "15": "Sector Derecho",
+      "3": "Sector Derecho", "24": "Sector Derecho",
+      "36": "Sector Doble Cero", "13": "Sector Doble Cero", "1": "Sector Doble Cero", "00": "Sector Doble Cero",
+      "27": "Sector Doble Cero", "10": "Sector Doble Cero", "25": "Sector Doble Cero", "29": "Sector Doble Cero",
+      "12": "Sector Doble Cero",
+      "8": "Sector Izquierdo", "19": "Sector Izquierdo", "31": "Sector Izquierdo", "18": "Sector Izquierdo",
+      "6": "Sector Izquierdo", "21": "Sector Izquierdo", "33": "Sector Izquierdo", "16": "Sector Izquierdo",
+      "4": "Sector Izquierdo", "23": "Sector Izquierdo"
+    };
+
+    const RED_NUMBERS = new Set(["1","3","5","7","9","12","14","16","18","19","21","23","25","27","30","32","34","36"]);
+    const SECTOR_ORDER = ["Sector Cero", "Sector Derecho", "Sector Doble Cero", "Sector Izquierdo"];
+    const SECTOR_COLORS = {
+      "Sector Cero": "#12b981",
+      "Sector Derecho": "#55b7c7",
+      "Sector Doble Cero": "#9f72db",
+      "Sector Izquierdo": "#e6a94b"
+    };
+    const GROUP_COLORS = { G0: "#12b981", G1: "#55b7c7", G2: "#6bd0ff", G3: "#d6b660", G4: "#9f72db" };
+
+    const indexByNumber = Object.fromEntries(WHEEL.map((num, idx) => [num, idx]));
+    const slotAngle = (Math.PI * 2) / WHEEL.length;
+
+    const els = {
+      webgl: document.getElementById("webgl"),
+      fallback: document.getElementById("sceneFallback"),
+      playBtn: document.getElementById("playBtn"),
+      playBtnBottom: document.getElementById("playBtnBottom"),
+      prevBtn: document.getElementById("prevBtn"),
+      nextBtn: document.getElementById("nextBtn"),
+      fitBtn: document.getElementById("fitBtn"),
+      snapshotBtn: document.getElementById("snapshotBtn"),
+      windowBtn: document.getElementById("windowBtn"),
+      spinRange: document.getElementById("spinRange"),
+      speedSelect: document.getElementById("speedSelect"),
+      spinPill: document.getElementById("spinPill"),
+      hudSpin: document.getElementById("hudSpin"),
+      hudNumber: document.getElementById("hudNumber"),
+      hudSector: document.getElementById("hudSector"),
+      hudPrev: document.getElementById("hudPrev"),
+      hudDistance: document.getElementById("hudDistance"),
+      hudDirection: document.getElementById("hudDirection"),
+      hudPhase: document.getElementById("hudPhase"),
+      hudError: document.getElementById("hudError"),
+      coverageValue: document.getElementById("coverageValue"),
+      shortJumpValue: document.getElementById("shortJumpValue"),
+      repeatValue: document.getElementById("repeatValue"),
+      frictionValue: document.getElementById("frictionValue"),
+      sampleTag: document.getElementById("sampleTag"),
+      sectorBars: document.getElementById("sectorBars"),
+      sectorFilter: document.getElementById("sectorFilter"),
+      groupChips: document.getElementById("groupChips"),
+      modelTag: document.getElementById("modelTag"),
+      a1Value: document.getElementById("a1Value"),
+      a2Value: document.getElementById("a2Value"),
+      v0Value: document.getElementById("v0Value"),
+      restValue: document.getElementById("restValue"),
+      sequenceInput: document.getElementById("sequenceInput"),
+      loadSequenceBtn: document.getElementById("loadSequenceBtn"),
+      resetBtn: document.getElementById("resetBtn"),
+      sequenceStatus: document.getElementById("sequenceStatus"),
+      tableMode: document.getElementById("tableMode"),
+      tableHead: document.getElementById("tableHead"),
+      tableBody: document.getElementById("tableBody"),
+      rowsTag: document.getElementById("rowsTag")
+    };
+
+    let sequence = [...DEFAULT_NUMBERS];
+    let analysis = buildAnalysis(sequence);
+    let current = 0;
+    let playing = false;
+    let playTimer = null;
+    let sectorChart = null;
+    let distanceChart = null;
+    let threeApi = null;
+
+    function normalizeNumber(value) {
+      const clean = String(value).trim().toUpperCase();
+      if (clean === "OO") return "00";
+      return clean;
+    }
+
+    function parseSequence(raw) {
+      return raw
+        .split(/[\s,;|]+/g)
+        .map(normalizeNumber)
+        .filter(Boolean);
+    }
+
+    function clockwiseDistance(from, to) {
+      return (to - from + WHEEL.length) % WHEEL.length;
+    }
+
+    function counterDistance(from, to) {
+      return (from - to + WHEEL.length) % WHEEL.length;
+    }
+
+    function signedShortestDistance(from, to) {
+      const cw = clockwiseDistance(from, to);
+      const ccw = counterDistance(from, to);
+      return cw <= ccw ? cw : -ccw;
+    }
+
+    function slotClass(num) {
+      if (num === "0" || num === "00") return "green";
+      return RED_NUMBERS.has(num) ? "red" : "black";
+    }
+
+    function slotBadge(num) {
+      return `<span class="num ${slotClass(num)}">${num}</span>`;
+    }
+
+    function estimateTransition(prev, num, spinIndex) {
+      const prevIdx = indexByNumber[prev];
+      const currIdx = indexByNumber[num];
+      const cw = clockwiseDistance(prevIdx, currIdx);
+      const ccw = counterDistance(prevIdx, currIdx);
+      const signed = signedShortestDistance(prevIdx, currIdx);
+      const min = Math.min(cw, ccw);
+      const tFlight = 12 + (min / 19) * 6;
+      const revolutions = 6.1 + (cw / WHEEL.length) * 2.4 + ((spinIndex % 9) * 0.035);
+      const radius = 0.34;
+      const phi = 12 * Math.PI / 180;
+      const g = 9.80665;
+      const theta = revolutions * Math.PI * 2 + Math.abs(signed) * slotAngle;
+      const v0 = radius * theta / tFlight;
+      const vDrop = Math.sqrt(g * radius * Math.sin(phi));
+      const decelLinear = (v0 - vDrop) / tFlight;
+      const aeroLoss = Math.max(0, v0 * v0 * 0.018);
+      const friction = Math.max(0.012, Math.min(0.18, Math.abs(decelLinear) / g + min * 0.0027));
+      const restitution = Math.max(0.18, Math.min(0.86, 0.74 - min * 0.018 + (GROUPS[num] ? 0.035 : 0)));
+      const gyro = ((spinIndex % 5) - 2) * (min > 8 ? 1 : 0);
+      const a1Step = Math.round(cw * 0.72 + 3 * Math.sign(signed || 1));
+      const a1Idx = (prevIdx + a1Step + WHEEL.length) % WHEEL.length;
+      const collisionShift = Math.round((signed * (1 - restitution) * 0.82) + gyro);
+      const a2Idx = (a1Idx + collisionShift + WHEEL.length) % WHEEL.length;
+      const a1 = WHEEL[a1Idx];
+      const a2 = WHEEL[a2Idx];
+      const a2Error = Math.min(clockwiseDistance(a2Idx, currIdx), counterDistance(a2Idx, currIdx));
+      const phaseShift = Math.min(clockwiseDistance(a1Idx, a2Idx), counterDistance(a1Idx, a2Idx));
+
+      return {
+        spin: spinIndex + 1,
+        prev,
+        num,
+        prevSector: SECTORS[prev],
+        sector: SECTORS[num],
+        group: GROUPS[num] || "",
+        cw,
+        ccw,
+        min,
+        signed,
+        direction: cw <= ccw ? "horario" : "antihorario",
+        tFlight,
+        v0,
+        vDrop,
+        friction,
+        restitution,
+        a1,
+        a2,
+        a2Error,
+        phaseShift,
+        shortJump: min <= 4,
+        repeat: prev === num
+      };
+    }
+
+    function buildAnalysis(nums) {
+      const valid = nums.filter(num => indexByNumber[num] !== undefined);
+      const invalid = nums.filter(num => indexByNumber[num] === undefined);
+      const sectorCounts = Object.fromEntries(SECTOR_ORDER.map(k => [k, 0]));
+      const groupCounts = { G0: 0, G1: 0, G2: 0, G3: 0, G4: 0 };
+
+      valid.forEach(num => {
+        sectorCounts[SECTORS[num]] += 1;
+        if (GROUPS[num]) groupCounts[GROUPS[num]] += 1;
+      });
+
+      const transitions = [];
+      for (let i = 1; i < valid.length; i += 1) {
+        transitions.push(estimateTransition(valid[i - 1], valid[i], i));
+      }
+
+      const strategicHits = Object.values(groupCounts).reduce((a, b) => a + b, 0);
+      const coverage = valid.length ? strategicHits / valid.length : 0;
+      const shortJumps = transitions.filter(t => t.shortJump).length;
+      const repeats = transitions.filter(t => t.repeat).length;
+      const avgFriction = transitions.length
+        ? transitions.reduce((sum, t) => sum + t.friction, 0) / transitions.length
+        : 0;
+
+      return { valid, invalid, sectorCounts, groupCounts, transitions, coverage, shortJumps, repeats, avgFriction };
+    }
+
+    function filteredTransitions() {
+      const filter = els.sectorFilter.value;
+      if (filter === "all") return analysis.transitions;
+      if (filter === "groups") return analysis.transitions.filter(t => t.group);
+      return analysis.transitions.filter(t => t.sector === filter);
+    }
+
+    function formatNum(value, digits = 2) {
+      return Number.isFinite(value) ? value.toFixed(digits) : "--";
+    }
+
+    function setPlayIcon() {
+      const icon = playing ? "fa-pause" : "fa-play";
+      els.playBtn.innerHTML = `<i class="fa-solid ${icon}"></i>`;
+      els.playBtnBottom.innerHTML = `<i class="fa-solid ${icon}"></i>`;
+    }
+
+    function stopPlayback() {
+      playing = false;
+      if (playTimer) window.clearInterval(playTimer);
+      playTimer = null;
+      setPlayIcon();
+    }
+
+    function startPlayback() {
+      stopPlayback();
+      playing = true;
+      setPlayIcon();
+      playTimer = window.setInterval(() => {
+        setCurrent((current + 1) % analysis.valid.length, true);
+      }, Number(els.speedSelect.value));
+    }
+
+    function togglePlayback() {
+      if (playing) stopPlayback();
+      else startPlayback();
+    }
+
+    function setCurrent(idx, animate = true) {
+      if (!analysis.valid.length) return;
+      current = Math.max(0, Math.min(idx, analysis.valid.length - 1));
+      els.spinRange.max = Math.max(0, analysis.valid.length - 1);
+      els.spinRange.value = String(current);
+      renderCurrent();
+      if (threeApi) threeApi.focusSpin(current, animate);
+    }
+
+    function currentTransition() {
+      if (current === 0) return null;
+      return analysis.transitions[current - 1] || null;
+    }
+
+    function renderCurrent() {
+      const num = analysis.valid[current] || "--";
+      const t = currentTransition();
+      const sector = SECTORS[num] || "--";
+      const group = GROUPS[num] || "";
+      els.hudSpin.textContent = `#${current + 1}`;
+      els.hudNumber.textContent = `${num}${group ? " / " + group : ""}`;
+      els.hudSector.textContent = sector.replace("Sector ", "");
+      els.hudPrev.textContent = t ? `previo: ${t.prev} / ${t.prevSector.replace("Sector ", "")}` : "previo: --";
+      els.hudDistance.textContent = t ? `${t.min} casillas` : "--";
+      els.hudDirection.textContent = t ? `${t.direction} (${t.cw}/${t.ccw})` : "cw / ccw";
+      els.hudPhase.textContent = t ? `${t.phaseShift} casillas` : "--";
+      els.hudError.textContent = t ? `A2 error ${t.a2Error}` : "error vs real";
+      els.spinPill.textContent = `${current + 1} / ${analysis.valid.length}`;
+      els.a1Value.textContent = t ? t.a1 : "--";
+      els.a2Value.textContent = t ? t.a2 : "--";
+      els.v0Value.textContent = t ? `${formatNum(t.v0, 2)} m/s` : "--";
+      els.restValue.textContent = t ? formatNum(t.restitution, 2) : "--";
+      els.modelTag.textContent = t ? `A1 ${t.a1} / A2 ${t.a2}` : "A1/A2";
+    }
+
+    function renderSummary() {
+      els.sampleTag.textContent = `${analysis.valid.length} giros`;
+      els.coverageValue.textContent = `${Math.round(analysis.coverage * 100)}%`;
+      els.shortJumpValue.textContent = String(analysis.shortJumps);
+      els.repeatValue.textContent = String(analysis.repeats);
+      els.frictionValue.textContent = formatNum(analysis.avgFriction, 3);
+
+      const total = Math.max(analysis.valid.length, 1);
+      els.sectorBars.innerHTML = SECTOR_ORDER.map(sector => {
+        const count = analysis.sectorCounts[sector] || 0;
+        const pct = Math.round((count / total) * 100);
+        return `
+          <div class="sector-row">
+            <span>${sector.replace("Sector ", "")}</span>
+            <span class="bar"><i style="width:${pct}%;background:${SECTOR_COLORS[sector]}"></i></span>
+            <strong>${pct}%</strong>
+          </div>
+        `;
+      }).join("");
+
+      els.groupChips.innerHTML = Object.keys(GROUP_LABELS).map(group => {
+        const count = analysis.groupCounts[group] || 0;
+        return `<span class="chip" style="border-color:${GROUP_COLORS[group]}55"><b>${group}</b> ${count} <small>${GROUP_LABELS[group]}</small></span>`;
+      }).join("");
+
+      const status = analysis.invalid.length
+        ? `Ignorados por no existir en rueda americana: ${analysis.invalid.join(", ")}`
+        : "Secuencia valida sobre rueda americana de 38 casillas.";
+      els.sequenceStatus.textContent = status;
+    }
+
+    function renderCharts() {
+      if (!window.Chart) return;
+      const sectorCtx = document.getElementById("sectorChart");
+      const distanceCtx = document.getElementById("distanceChart");
+      const sectorData = SECTOR_ORDER.map(k => analysis.sectorCounts[k] || 0);
+      const sectorColors = SECTOR_ORDER.map(k => SECTOR_COLORS[k]);
+      const distanceBuckets = [0, 0, 0, 0, 0];
+      analysis.transitions.forEach(t => {
+        if (t.min <= 2) distanceBuckets[0] += 1;
+        else if (t.min <= 4) distanceBuckets[1] += 1;
+        else if (t.min <= 8) distanceBuckets[2] += 1;
+        else if (t.min <= 13) distanceBuckets[3] += 1;
+        else distanceBuckets[4] += 1;
+      });
+
+      if (sectorChart) sectorChart.destroy();
+      if (distanceChart) distanceChart.destroy();
+
+      sectorChart = new Chart(sectorCtx, {
+        type: "doughnut",
+        data: {
+          labels: SECTOR_ORDER.map(s => s.replace("Sector ", "")),
+          datasets: [{ data: sectorData, backgroundColor: sectorColors, borderColor: "#11120f", borderWidth: 2 }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          cutout: "62%",
+          plugins: { legend: { display: false }, tooltip: { enabled: true } }
+        }
+      });
+
+      distanceChart = new Chart(distanceCtx, {
+        type: "bar",
+        data: {
+          labels: ["0-2", "3-4", "5-8", "9-13", "14-19"],
+          datasets: [{ data: distanceBuckets, backgroundColor: "#d6b660", borderRadius: 6 }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { ticks: { color: "#9a9b8d" }, grid: { color: "#25271d" } },
+            y: { ticks: { color: "#9a9b8d", precision: 0 }, grid: { color: "#25271d" } }
+          },
+          plugins: { legend: { display: false } }
+        }
+      });
+    }
+
+    function renderTable() {
+      const mode = els.tableMode.value;
+      const filter = els.sectorFilter.value;
+      if (mode === "spins") {
+        const rows = analysis.valid
+          .map((num, idx) => ({ num, idx, sector: SECTORS[num], group: GROUPS[num] || "" }))
+          .filter(row => filter === "all" || (filter === "groups" ? row.group : row.sector === filter));
+        els.tableHead.innerHTML = `<tr><th>Giro</th><th>Numero</th><th>Sector</th><th>Grupo</th></tr>`;
+        els.tableBody.innerHTML = rows.map(row => `
+          <tr>
+            <td>#${row.idx + 1}</td>
+            <td>${slotBadge(row.num)}</td>
+            <td>${row.sector}</td>
+            <td>${row.group ? `<span class="tag">${row.group}</span>` : "--"}</td>
+          </tr>
+        `).join("");
+        els.rowsTag.textContent = `${rows.length} filas`;
+        return;
+      }
+
+      const rows = filteredTransitions();
+      els.tableHead.innerHTML = `<tr><th>Giro</th><th>Transicion</th><th>Sector</th><th>Dist.</th><th>A1</th><th>A2</th><th>Error</th></tr>`;
+      els.tableBody.innerHTML = rows.map(row => `
+        <tr>
+          <td>#${row.spin}</td>
+          <td>${slotBadge(row.prev)} &rarr; ${slotBadge(row.num)}</td>
+          <td>${row.sector.replace("Sector ", "")}${row.group ? ` / ${row.group}` : ""}</td>
+          <td>${row.min} ${row.direction}</td>
+          <td>${row.a1}</td>
+          <td>${row.a2}</td>
+          <td>${row.a2Error}</td>
+        </tr>
+      `).join("");
+      els.rowsTag.textContent = `${rows.length} filas`;
+    }
+
+    function renderAll() {
+      renderSummary();
+      renderCurrent();
+      renderCharts();
+      renderTable();
+    }
+
+    function loadSequence(raw) {
+      const parsed = parseSequence(raw);
+      const valid = parsed.filter(num => indexByNumber[num] !== undefined);
+      if (!valid.length) {
+        els.sequenceStatus.textContent = "No hay numeros validos para la rueda americana.";
+        return;
+      }
+      sequence = parsed;
+      analysis = buildAnalysis(sequence);
+      els.spinRange.max = Math.max(0, analysis.valid.length - 1);
+      current = 0;
+      if (threeApi) threeApi.rebuildHistory(analysis.valid);
+      renderAll();
+      setCurrent(0, false);
+    }
+
+    function exportSnapshot() {
+      if (!threeApi) return;
+      const url = threeApi.snapshot();
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `artemis-roulette-spin-${current + 1}.png`;
+      a.click();
+    }
+
+    function openDetachedWindow() {
+      window.open(window.location.href, "artemisRoulette3D", "popup,width=1440,height=920,left=80,top=40,noopener");
+    }
+
+    function installEvents() {
+      els.playBtn.addEventListener("click", togglePlayback);
+      els.playBtnBottom.addEventListener("click", togglePlayback);
+      els.prevBtn.addEventListener("click", () => setCurrent(current - 1));
+      els.nextBtn.addEventListener("click", () => setCurrent(current + 1));
+      els.fitBtn.addEventListener("click", () => threeApi && threeApi.fitCamera());
+      els.snapshotBtn.addEventListener("click", exportSnapshot);
+      els.windowBtn.addEventListener("click", openDetachedWindow);
+      els.spinRange.addEventListener("input", event => setCurrent(Number(event.target.value)));
+      els.speedSelect.addEventListener("change", () => { if (playing) startPlayback(); });
+      els.sectorFilter.addEventListener("change", renderTable);
+      els.tableMode.addEventListener("change", renderTable);
+      els.loadSequenceBtn.addEventListener("click", () => loadSequence(els.sequenceInput.value));
+      els.resetBtn.addEventListener("click", () => {
+        els.sequenceInput.value = DEFAULT_NUMBERS.join(", ");
+        loadSequence(els.sequenceInput.value);
+      });
+      window.addEventListener("keydown", event => {
+        if (event.target && ["TEXTAREA", "INPUT", "SELECT"].includes(event.target.tagName)) return;
+        if (event.code === "Space") { event.preventDefault(); togglePlayback(); }
+        if (event.code === "ArrowRight") setCurrent(current + 1);
+        if (event.code === "ArrowLeft") setCurrent(current - 1);
+      });
+    }
+
+    function makeTextTexture(THREE, text, fg, bg) {
+      const canvas = document.createElement("canvas");
+      canvas.width = 192;
+      canvas.height = 96;
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "rgba(214,182,96,.55)";
+      ctx.lineWidth = 5;
+      ctx.strokeRect(4, 4, canvas.width - 8, canvas.height - 8);
+      ctx.fillStyle = fg;
+      ctx.font = "900 48px Segoe UI, Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, canvas.width / 2, canvas.height / 2 + 2);
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.anisotropy = 8;
+      return texture;
+    }
+
+    function makeWedgeShape(THREE, inner, outer, start, end) {
+      const geom = new THREE.RingGeometry(inner, outer, 10, 1, start, end - start);
+      geom.name = "pocketWedge";
+      geom.rotateX(-Math.PI / 2);
+      return geom;
+    }
+
+    async function initThree() {
+      try {
+        const THREE = await import(CDN_THREE);
+        const { OrbitControls } = await import(CDN_ORBIT);
+        if (new URLSearchParams(window.location.search).has("debugGeometry")) {
+          const originalCompute = THREE.BufferGeometry.prototype.computeBoundingSphere;
+          THREE.BufferGeometry.prototype.computeBoundingSphere = function debugBoundingSphere() {
+            const pos = this.attributes && this.attributes.position;
+            if (pos && pos.array) {
+              for (let i = 0; i < pos.array.length; i += 1) {
+                if (!Number.isFinite(pos.array[i])) {
+                  console.error(
+                    "debug-geometry",
+                    this.type || "BufferGeometry",
+                    this.name || "",
+                    "index",
+                    i,
+                    "value",
+                    pos.array[i],
+                    "sample",
+                    Array.from(pos.array.slice(0, 12)).join(","),
+                    new Error().stack
+                  );
+                  break;
+                }
+              }
+            }
+            return originalCompute.call(this);
+          };
+        }
+        threeApi = createRouletteScene(THREE, OrbitControls);
+        threeApi.rebuildHistory(analysis.valid);
+        threeApi.focusSpin(0, false);
+        renderCurrent();
+      } catch (err) {
+        console.error(err);
+        els.fallback.style.display = "grid";
+      }
+    }
+
+    function createRouletteScene(THREE, OrbitControls) {
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      renderer.outputColorSpace = THREE.SRGBColorSpace;
+      renderer.shadowMap.enabled = true;
+      els.webgl.innerHTML = "";
+      els.webgl.appendChild(renderer.domElement);
+
+      const scene = new THREE.Scene();
+      scene.fog = new THREE.FogExp2(0x070806, 0.055);
+      const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 120);
+      camera.position.set(0, 3.15, 4.85);
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.075;
+      controls.minDistance = 3.1;
+      controls.maxDistance = 8;
+      controls.maxPolarAngle = Math.PI * 0.48;
+      controls.target.set(0, 0.05, 0);
+
+      const ambient = new THREE.HemisphereLight(0xfff4d0, 0x11130d, 1.7);
+      scene.add(ambient);
+      const key = new THREE.DirectionalLight(0xffe0a0, 2.8);
+      key.position.set(2.7, 5.2, 3.1);
+      key.castShadow = true;
+      scene.add(key);
+      const rim = new THREE.PointLight(0x55b7c7, 3.2, 6.5);
+      rim.position.set(-2.4, 1.2, -1.8);
+      scene.add(rim);
+
+      const tableMat = new THREE.MeshStandardMaterial({ color: 0x09100b, roughness: .78, metalness: .12 });
+      const tableGeom = new THREE.CylinderGeometry(2.28, 2.52, .12, 128);
+      tableGeom.name = "tableBase";
+      const table = new THREE.Mesh(tableGeom, tableMat);
+      table.position.y = -0.095;
+      table.receiveShadow = true;
+      scene.add(table);
+
+      const rotor = new THREE.Group();
+      rotor.rotation.y = Math.PI / 2;
+      scene.add(rotor);
+
+      const pocketMats = {
+        red: new THREE.MeshStandardMaterial({ color: 0x611f1f, roughness: .42, metalness: .18 }),
+        black: new THREE.MeshStandardMaterial({ color: 0x111111, roughness: .5, metalness: .2 }),
+        green: new THREE.MeshStandardMaterial({ color: 0x0f5b38, roughness: .43, metalness: .18 })
+      };
+      const metalMat = new THREE.MeshStandardMaterial({ color: 0xb99a4b, roughness: .25, metalness: .72 });
+      const railMat = new THREE.MeshStandardMaterial({ color: 0x5a1414, roughness: .34, metalness: .45 });
+      const darkMat = new THREE.MeshStandardMaterial({ color: 0x0b0c0a, roughness: .55, metalness: .18 });
+
+      WHEEL.forEach((num, idx) => {
+        const start = idx * slotAngle - slotAngle / 2;
+        const end = idx * slotAngle + slotAngle / 2;
+        const klass = slotClass(num);
+        const wedge = new THREE.Mesh(makeWedgeShape(THREE, .72, 1.42, start, end), pocketMats[klass]);
+        wedge.position.y = 0.005;
+        wedge.receiveShadow = true;
+        rotor.add(wedge);
+
+        const separatorGeom = new THREE.BoxGeometry(.018, .055, .72);
+        separatorGeom.name = "pocketSeparator";
+        const separator = new THREE.Mesh(separatorGeom, metalMat);
+        const boundary = start;
+        separator.position.set(Math.cos(boundary) * 1.07, .047, Math.sin(boundary) * 1.07);
+        separator.rotation.y = -boundary;
+        separator.castShadow = true;
+        rotor.add(separator);
+
+        const mid = idx * slotAngle;
+        const fg = klass === "green" ? "#bfffe5" : (klass === "red" ? "#ffd6d0" : "#f0eee5");
+        const bg = klass === "green" ? "#0f5b38" : (klass === "red" ? "#611f1f" : "#111111");
+        const texture = makeTextTexture(THREE, num, fg, bg);
+        const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true }));
+        label.position.set(Math.cos(mid) * 1.18, .082, Math.sin(mid) * 1.18);
+        label.scale.set(.19, .095, 1);
+        rotor.add(label);
+      });
+
+      const innerConeGeom = new THREE.CylinderGeometry(.18, .68, .42, 96);
+      innerConeGeom.name = "innerCone";
+      const innerCone = new THREE.Mesh(innerConeGeom, new THREE.MeshStandardMaterial({ color: 0xd2b15a, roughness: .3, metalness: .68 }));
+      innerCone.position.y = .13;
+      innerCone.castShadow = true;
+      rotor.add(innerCone);
+
+      const centerCapGeom = new THREE.SphereGeometry(.22, 48, 24);
+      centerCapGeom.name = "centerCap";
+      const centerCap = new THREE.Mesh(centerCapGeom, new THREE.MeshStandardMaterial({ color: 0xf1d888, roughness: .18, metalness: .78 }));
+      centerCap.scale.y = .42;
+      centerCap.position.y = .38;
+      centerCap.castShadow = true;
+      rotor.add(centerCap);
+
+      const outerRailGeom = new THREE.TorusGeometry(1.62, .055, 16, 160);
+      outerRailGeom.name = "outerRail";
+      const outerRail = new THREE.Mesh(outerRailGeom, railMat);
+      outerRail.rotation.x = Math.PI / 2;
+      outerRail.position.y = .135;
+      outerRail.castShadow = true;
+      scene.add(outerRail);
+
+      const upperTrackGeom = new THREE.TorusGeometry(1.86, .042, 16, 160);
+      upperTrackGeom.name = "upperTrack";
+      const upperTrack = new THREE.Mesh(upperTrackGeom, darkMat);
+      upperTrack.rotation.x = Math.PI / 2;
+      upperTrack.position.y = .19;
+      scene.add(upperTrack);
+
+      const diamondGroup = new THREE.Group();
+      for (let i = 0; i < 8; i += 1) {
+        const angle = i * Math.PI / 4 + Math.PI / 8;
+        const diamondGeom = new THREE.OctahedronGeometry(.055, 0);
+        diamondGeom.name = "diamondDeflector";
+        const diamond = new THREE.Mesh(diamondGeom, metalMat);
+        diamond.position.set(Math.cos(angle) * 1.51, .19, Math.sin(angle) * 1.51);
+        diamond.rotation.set(.8, angle, .4);
+        diamond.castShadow = true;
+        diamondGroup.add(diamond);
+      }
+      scene.add(diamondGroup);
+
+      const activeMarkerGeom = new THREE.TorusGeometry(.105, .012, 10, 30);
+      activeMarkerGeom.name = "activeMarker";
+      const activeMarker = new THREE.Mesh(
+        activeMarkerGeom,
+        new THREE.MeshStandardMaterial({ color: 0xd6b660, emissive: 0x5a4318, roughness: .2, metalness: .35 })
+      );
+      activeMarker.rotation.x = Math.PI / 2;
+      activeMarker.position.y = .116;
+      scene.add(activeMarker);
+
+      const ballGeom = new THREE.SphereGeometry(.052, 32, 18);
+      ballGeom.name = "ball";
+      const ball = new THREE.Mesh(
+        ballGeom,
+        new THREE.MeshStandardMaterial({ color: 0xf7f6ed, roughness: .18, metalness: .2, emissive: 0x221f16 })
+      );
+      ball.castShadow = true;
+      scene.add(ball);
+
+      const trailMat = new THREE.LineBasicMaterial({ color: 0xd6b660, transparent: true, opacity: .36 });
+      const trailGeom = new THREE.BufferGeometry().setFromPoints(new Array(64).fill(0).map(() => new THREE.Vector3()));
+      trailGeom.name = "ballTrail";
+      const trail = new THREE.Line(trailGeom, trailMat);
+      scene.add(trail);
+
+      let history = [...analysis.valid];
+      let transition = null;
+      let lastTime = performance.now();
+      const trailPoints = [];
+      const debugGeometry = new URLSearchParams(window.location.search).has("debugGeometry");
+
+      function angleForNumber(num) {
+        const idx = indexByNumber[num] || 0;
+        return idx * slotAngle + rotor.rotation.y;
+      }
+
+      function setBallAt(num) {
+        const angle = angleForNumber(num);
+        const radius = 1.08;
+        ball.position.set(Math.cos(angle) * radius, .14, Math.sin(angle) * radius);
+        activeMarker.position.set(Math.cos(angle) * 1.08, .12, Math.sin(angle) * 1.08);
+      }
+
+      function focusSpin(idx, animate = true) {
+        const num = history[idx] || history[0] || "0";
+        const prev = history[Math.max(0, idx - 1)] || num;
+        const fromAngle = angleForNumber(prev);
+        const toAngle = angleForNumber(num);
+        const direction = idx > 0 ? signedShortestDistance(indexByNumber[prev], indexByNumber[num]) : 0;
+        const extra = (Math.sign(direction || 1) || 1) * Math.PI * 2 * (animate ? 1.25 : 0);
+        transition = {
+          started: performance.now(),
+          duration: animate ? 1150 : 1,
+          fromAngle,
+          toAngle: toAngle + extra,
+          finalAngle: toAngle,
+          num
+        };
+      }
+
+      function rebuildHistory(nextHistory) {
+        history = [...nextHistory];
+        trailPoints.length = 0;
+      }
+
+      function updateSize() {
+        const rect = els.webgl.getBoundingClientRect();
+        const width = Math.max(1, Math.floor(rect.width));
+        const height = Math.max(1, Math.floor(rect.height));
+        renderer.setSize(width, height, false);
+        camera.aspect = width / height;
+        camera.updateProjectionMatrix();
+      }
+
+      function fitCamera() {
+        camera.position.set(0, 3.15, 4.85);
+        controls.target.set(0, 0.05, 0);
+        controls.update();
+      }
+
+      function snapshot() {
+        renderer.render(scene, camera);
+        return renderer.domElement.toDataURL("image/png");
+      }
+
+      function updateTrail() {
+        if (debugGeometry && (!Number.isFinite(ball.position.x) || !Number.isFinite(ball.position.y) || !Number.isFinite(ball.position.z))) {
+          console.error("debug-ball-position", JSON.stringify({
+            x: ball.position.x,
+            y: ball.position.y,
+            z: ball.position.z,
+            current,
+            num: analysis.valid[current],
+            rotorY: rotor.rotation.y,
+            transition
+          }));
+        }
+        trailPoints.unshift(ball.position.clone());
+        if (trailPoints.length > 64) trailPoints.pop();
+        const points = [...trailPoints];
+        while (points.length < 64) points.push(ball.position.clone());
+        trail.geometry.setFromPoints(points);
+      }
+
+      function animate(now) {
+        const dt = Math.min(40, now - lastTime) / 1000;
+        lastTime = now;
+        rotor.rotation.y += dt * .23;
+        diamondGroup.rotation.y -= dt * .08;
+
+        if (transition) {
+          const p = Math.min(1, (now - transition.started) / transition.duration);
+          const eased = 1 - Math.pow(1 - p, 3);
+          const angle = transition.fromAngle + (transition.toAngle - transition.fromAngle) * eased;
+          const settle = p < .72 ? p / .72 : 1;
+          const radius = 1.78 + (1.08 - 1.78) * Math.pow(settle, 1.6);
+          const height = .25 + (.13 - .25) * settle + Math.sin(p * Math.PI * 6) * (1 - p) * .045;
+          ball.position.set(Math.cos(angle) * radius, height, Math.sin(angle) * radius);
+          if (p >= 1) {
+            transition = null;
+            setBallAt(analysis.valid[current] || "0");
+          }
+        } else {
+          setBallAt(analysis.valid[current] || "0");
+        }
+
+        const markerAngle = angleForNumber(analysis.valid[current] || "0");
+        activeMarker.position.set(Math.cos(markerAngle) * 1.08, .12, Math.sin(markerAngle) * 1.08);
+        updateTrail();
+        controls.update();
+        renderer.render(scene, camera);
+        requestAnimationFrame(animate);
+      }
+
+      const resizeObserver = new ResizeObserver(updateSize);
+      resizeObserver.observe(els.webgl);
+      updateSize();
+      fitCamera();
+      requestAnimationFrame(animate);
+
+      return { focusSpin, rebuildHistory, fitCamera, snapshot };
+    }
+
+    els.sequenceInput.value = DEFAULT_NUMBERS.join(", ");
+    installEvents();
+    renderAll();
+    window.addEventListener("load", renderCharts, { once: true });
+    initThree();
+  </script>
+</body>
+</html>
