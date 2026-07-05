@@ -434,6 +434,22 @@
       clearcoatRoughness: 0.1,
     });
 
+    const matChrome = new THREE.MeshPhysicalMaterial({
+      color: 0xe8ecf4,
+      metalness: 1.0,
+      roughness: 0.06,
+      clearcoat: 0.55,
+      clearcoatRoughness: 0.04,
+    });
+
+    const matDarkMetal = new THREE.MeshPhysicalMaterial({
+      color: 0x5c616a,
+      metalness: 0.95,
+      roughness: 0.18,
+      clearcoat: 0.35,
+      clearcoatRoughness: 0.08,
+    });
+
     const matWood = new THREE.MeshPhysicalMaterial({
       color: 0x4a2c1a,
       metalness: 0.0,
@@ -462,18 +478,18 @@
 
     const matBall = new THREE.MeshPhysicalMaterial({
       color: 0xffffff,
-      metalness: 0.08,
-      roughness: 0.003,
-      transmission: 0.35,
+      metalness: 0.02,
+      roughness: 0.012,
+      transmission: 0.22,
       ior: 1.46,
       clearcoat: 1.0,
-      clearcoatRoughness: 0.001,
-      envMapIntensity: 3.2,
+      clearcoatRoughness: 0.003,
+      envMapIntensity: 2.9,
       specularIntensity: 1.0,
-      sheen: 0.8,
-      sheenRoughness: 0.04,
-      emissive: 0x111111,
-      emissiveIntensity: 0.08,
+      sheen: 0.45,
+      sheenRoughness: 0.06,
+      emissive: 0x090909,
+      emissiveIntensity: 0.04,
     });
 
     function createWoodTexture() {
@@ -526,10 +542,36 @@
       return tex;
     }
 
+    function createBallNormalTexture() {
+      const c = document.createElement("canvas");
+      c.width = 256;
+      c.height = 256;
+      const g = c.getContext("2d");
+      const img = g.createImageData(c.width, c.height);
+      for (let i = 0; i < img.data.length; i += 4) {
+        const n = 122 + Math.floor(Math.random() * 12);
+        img.data[i] = 128;
+        img.data[i + 1] = 128;
+        img.data[i + 2] = n;
+        img.data[i + 3] = 255;
+      }
+      g.putImageData(img, 0, 0);
+      const tex = new THREE.CanvasTexture(c);
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(2, 2);
+      return tex;
+    }
+
     const woodTexture = createWoodTexture();
     matWood.map = woodTexture;
     matWood.color.set(0xffffff);
     matWood.needsUpdate = true;
+
+    const ballNormal = createBallNormalTexture();
+    matBall.normalMap = ballNormal;
+    matBall.normalScale = new THREE.Vector2(0.25, 0.25);
+    matBall.needsUpdate = true;
 
     // Geometries
     const wheelGroup = new THREE.Group();
@@ -538,6 +580,7 @@
     const POCKET_INNER = 0.86;
     const POCKET_OUTER = 1.58;
     const POCKET_MID = (POCKET_INNER + POCKET_OUTER) / 2;
+    const NUMBER_RADIUS = (POCKET_INNER + POCKET_OUTER) / 2 + 0.02;
 
     WHEEL.forEach((num, idx) => {
       const start = idx * slotAngle - slotAngle / 2;
@@ -552,42 +595,78 @@
       mesh.receiveShadow = true;
       wheelGroup.add(mesh);
 
-      // Separadores visibles entre casillas.
-      const sepGeom = new THREE.BoxGeometry(0.018, 0.07, POCKET_OUTER - POCKET_INNER + 0.02);
-      const sepMesh = new THREE.Mesh(sepGeom, matGold);
-      sepMesh.position.set(Math.cos(start) * POCKET_MID, 0.055, Math.sin(start) * POCKET_MID);
+      // Divisiones con relieve real entre casillas (pared + cresta superior).
+      const sepLen = POCKET_OUTER - POCKET_INNER + 0.01;
+      const sepGeom = new THREE.BoxGeometry(0.012, 0.066, sepLen);
+      const sepMesh = new THREE.Mesh(sepGeom, matChrome);
+      sepMesh.position.set(Math.cos(start) * POCKET_MID, 0.062, Math.sin(start) * POCKET_MID);
       sepMesh.rotation.y = -start;
       sepMesh.castShadow = true;
       sepMesh.receiveShadow = true;
       wheelGroup.add(sepMesh);
 
-      // Numero de ruleta real (texto sobre el anillo, sin ficha circular falsa).
+      const sepCrest = new THREE.Mesh(
+        new THREE.BoxGeometry(0.005, 0.016, sepLen - 0.01),
+        new THREE.MeshPhysicalMaterial({ color: 0xe6e8eb, roughness: 0.16, metalness: 0.95, clearcoat: 0.3 })
+      );
+      sepCrest.position.set(Math.cos(start) * POCKET_MID, 0.102, Math.sin(start) * POCKET_MID);
+      sepCrest.rotation.y = -start;
+      sepCrest.castShadow = true;
+      sepCrest.receiveShadow = true;
+      wheelGroup.add(sepCrest);
+
+      // Numero de ruleta con relieve (placa + texto en cara superior).
       const mid = (start + end) / 2;
       const fg = (num === "0" || num === "00") ? "#aaf5d3" : (RED.has(num) ? "#ffd6d0" : "#f5f5f5");
       const tex = createPocketNumberTexture(num, fg);
+      const plaque = new THREE.Mesh(
+        new THREE.BoxGeometry(0.132, 0.007, 0.064),
+        new THREE.MeshPhysicalMaterial({ color: 0x111214, roughness: 0.36, metalness: 0.22, clearcoat: 0.18 })
+      );
+      plaque.rotation.x = -Math.PI / 2;
+      plaque.rotation.z = -mid + Math.PI / 2;
+      plaque.position.set(Math.cos(mid) * NUMBER_RADIUS, 0.089, Math.sin(mid) * NUMBER_RADIUS);
+      plaque.castShadow = true;
+      plaque.receiveShadow = true;
+      wheelGroup.add(plaque);
+
       const label = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.24, 0.13),
+        new THREE.PlaneGeometry(0.128, 0.058),
         new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false })
       );
       label.rotation.x = -Math.PI / 2;
       label.rotation.z = -mid + Math.PI / 2;
-      label.position.set(Math.cos(mid) * (POCKET_OUTER - 0.06), 0.108, Math.sin(mid) * (POCKET_OUTER - 0.06));
+      label.position.set(Math.cos(mid) * NUMBER_RADIUS, 0.095, Math.sin(mid) * NUMBER_RADIUS);
       wheelGroup.add(label);
+
+      const shadowLabel = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.128, 0.058),
+        new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.26, color: 0x000000, side: THREE.DoubleSide, depthWrite: false })
+      );
+      shadowLabel.rotation.x = -Math.PI / 2;
+      shadowLabel.rotation.z = -mid + Math.PI / 2;
+      shadowLabel.position.set(Math.cos(mid) * (NUMBER_RADIUS + 0.0005), 0.092, Math.sin(mid) * (NUMBER_RADIUS + 0.0005));
+      wheelGroup.add(shadowLabel);
     });
 
-    const centerGeom = new THREE.SphereGeometry(0.24, 64, 32);
-    const centerMesh = new THREE.Mesh(centerGeom, matGold);
-    centerMesh.position.y = 0.42;
-    centerMesh.castShadow = true;
-    centerMesh.receiveShadow = true;
-    wheelGroup.add(centerMesh);
+    // Spindle realista y delgado (cromado), sin bloque dorado tosco.
+    const spindleBase = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.30, 0.08, 64), matDarkMetal);
+    spindleBase.position.y = 0.08;
+    spindleBase.castShadow = true;
+    spindleBase.receiveShadow = true;
+    wheelGroup.add(spindleBase);
 
-    const coneGeom = new THREE.CylinderGeometry(0.2, 0.7, 0.45, 48);
-    const coneMesh = new THREE.Mesh(coneGeom, matGold);
-    coneMesh.position.y = 0.15;
-    coneMesh.castShadow = true;
-    coneMesh.receiveShadow = true;
-    wheelGroup.add(coneMesh);
+    const spindleStem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.28, 48), matChrome);
+    spindleStem.position.y = 0.24;
+    spindleStem.castShadow = true;
+    spindleStem.receiveShadow = true;
+    wheelGroup.add(spindleStem);
+
+    const spindleTop = new THREE.Mesh(new THREE.SphereGeometry(0.09, 48, 24), matChrome);
+    spindleTop.position.y = 0.41;
+    spindleTop.castShadow = true;
+    spindleTop.receiveShadow = true;
+    wheelGroup.add(spindleTop);
 
     const tableGeom = new THREE.CylinderGeometry(2.7, 3.0, 0.42, 128);
     const tableMesh = new THREE.Mesh(tableGeom, matWood);
@@ -595,6 +674,23 @@
     tableMesh.castShadow = true;
     tableMesh.receiveShadow = true;
     scene.add(tableMesh);
+
+    // Relieves circulares en madera (aro superior), como ruleta real.
+    const woodRelief1 = new THREE.Mesh(
+      new THREE.TorusGeometry(2.26, 0.030, 14, 160),
+      new THREE.MeshPhysicalMaterial({ color: 0x7a4a2b, roughness: 0.45, metalness: 0.0, clearcoat: 0.18 })
+    );
+    woodRelief1.rotation.x = Math.PI / 2;
+    woodRelief1.position.y = 0.11;
+    scene.add(woodRelief1);
+
+    const woodRelief2 = new THREE.Mesh(
+      new THREE.TorusGeometry(1.94, 0.024, 14, 160),
+      new THREE.MeshPhysicalMaterial({ color: 0x6a3e24, roughness: 0.5, metalness: 0.0, clearcoat: 0.14 })
+    );
+    woodRelief2.rotation.x = Math.PI / 2;
+    woodRelief2.position.y = 0.095;
+    scene.add(woodRelief2);
 
     // Plato hondo (bowl) para que no se vea plano.
     const bowlWallGeom = new THREE.CylinderGeometry(2.06, 1.46, 0.72, 128, 1, true);
@@ -627,15 +723,25 @@
     bowlFloorMesh.receiveShadow = true;
     scene.add(bowlFloorMesh);
 
-    const rimGeom = new THREE.TorusGeometry(2.58, 0.065, 16, 140);
-    const rimMesh = new THREE.Mesh(rimGeom, matGold);
-    rimMesh.rotation.x = Math.PI / 2;
-    rimMesh.position.y = 0.08;
-    rimMesh.castShadow = true;
-    rimMesh.receiveShadow = true;
-    scene.add(rimMesh);
+    // Carril realista de la bola: aro metalico fino (no aro dorado grueso).
+    const trackGeom = new THREE.TorusGeometry(2.02, 0.010, 10, 220);
+    const trackMesh = new THREE.Mesh(trackGeom, matChrome);
+    trackMesh.rotation.x = Math.PI / 2;
+    trackMesh.position.y = 0.19;
+    trackMesh.castShadow = true;
+    trackMesh.receiveShadow = true;
+    scene.add(trackMesh);
 
-    const ballGeom = new THREE.SphereGeometry(0.062, 64, 32);
+    // Guía interior del carril.
+    const innerGuideGeom = new THREE.TorusGeometry(1.90, 0.008, 10, 220);
+    const innerGuide = new THREE.Mesh(innerGuideGeom, matChrome);
+    innerGuide.rotation.x = Math.PI / 2;
+    innerGuide.position.y = 0.168;
+    innerGuide.castShadow = true;
+    innerGuide.receiveShadow = true;
+    scene.add(innerGuide);
+
+    const ballGeom = new THREE.SphereGeometry(0.052, 64, 32);
     const ballMesh = new THREE.Mesh(ballGeom, matBall);
     ballMesh.position.set(0, 2, 3);
     ballMesh.castShadow = true;
@@ -648,12 +754,14 @@
     let ballVel = new THREE.Vector3();
     let ballPos = new THREE.Vector3(0, 2, 3);
     let ballRot = 0;
+    let ballAngle = 0;
+    let ballAngularSpeed = 0;
     let spinStartTime = 0;
     let bounceY = 0;
     let bounceVy = 0;
     let nextBounceAt = 0;
     let settledPocketIndex = null;
-    const launchRingRadius = 2.50;
+    const launchRingRadius = 2.01;
     const settlePocketRadius = 1.02;
 
     function placeBallOnPocket(idx) {
@@ -676,12 +784,14 @@
       spinStartTime = performance.now();
       const radAngle = (angle * Math.PI) / 180;
       // Arranca dentro del anillo dorado (carril exterior real).
-      ballPos.set(Math.cos(radAngle) * launchRingRadius, 1.42, Math.sin(radAngle) * launchRingRadius);
-      ballVel.set(Math.cos(radAngle + Math.PI / 2) * speed, 0, Math.sin(radAngle + Math.PI / 2) * speed);
+      ballAngle = radAngle;
+      ballAngularSpeed = -(speed / launchRingRadius) * 2.35; // gira en sentido contrario al rotor
+      ballPos.set(Math.cos(ballAngle) * launchRingRadius, 1.42, Math.sin(ballAngle) * launchRingRadius);
+      ballVel.set(Math.cos(ballAngle + Math.PI / 2) * speed, 0, Math.sin(ballAngle + Math.PI / 2) * speed);
       ballRot = 0;
       bounceY = 0;
       bounceVy = 0;
-      nextBounceAt = 1.7;
+      nextBounceAt = 1.55;
       wheelAngularSpeed = (rpm * Math.PI * 2) / 60;
       document.getElementById("hudState").textContent = "Girando";
     }
@@ -713,6 +823,8 @@
     function reset() {
       ballPos.set(0, 2, 3);
       ballVel.set(0, 0, 0);
+      ballAngle = 0;
+      ballAngularSpeed = 0;
       wheelRotation = 0;
       wheelAngularSpeed = 0;
       wheelGroup.rotation.y = 0;
@@ -897,69 +1009,67 @@
       requestAnimationFrame(animate);
       const dt = clock.getDelta();
 
-      wheelAngularSpeed *= 0.998;
+      // Decaimiento realista del rotor.
+      wheelAngularSpeed *= Math.pow(0.9978, dt * 60);
       wheelRotation += wheelAngularSpeed * dt;
       wheelGroup.rotation.y = wheelRotation;
 
       if (isSpinning) {
         const elapsedSec = (performance.now() - spinStartTime) / 1000;
-        const radiusNow = Math.max(0.12, new THREE.Vector2(ballPos.x, ballPos.z).length());
-        const airPhase = Math.min(1, elapsedSec / 1.0);
-        const fallProgress = Math.min(1, Math.max(0, (elapsedSec - 1.0) / 4.2));
+        const tDrop = Math.min(1, Math.max(0, (elapsedSec - 0.9) / 4.3));
+        const smoothDrop = tDrop * tDrop * (3 - 2 * tDrop);
 
-        // Radio y altura objetivo: de pista exterior a bolsillos internos.
-        const targetRadius = launchRingRadius - (launchRingRadius - settlePocketRadius) * fallProgress;
-        const yAir = 1.58 - 0.82 * airPhase;
-        const yBowl = 0.76 - 1.02 * fallProgress;
-        const targetY = elapsedSec < 1.0 ? yAir : yBowl;
+        // Fases con perdida de energia progresiva.
+        const drag = tDrop < 0.22 ? 0.28 : (tDrop < 0.70 ? 0.55 : 0.95);
+        ballAngularSpeed *= Math.exp(-drag * dt);
 
-        const tangentialSpeed = Math.max(0.05, ballVel.length());
-        let angle = Math.atan2(ballPos.z, ballPos.x);
-        angle += (tangentialSpeed / radiusNow) * dt;
-
-        const jitter = fallProgress > 0.72
-          ? Math.sin(performance.now() * 0.03) * (1 - fallProgress) * 0.02
-          : 0;
-
-        // Rebotes amortiguados al entrar en zona de pockets/deflectores.
-        if (fallProgress > 0.58 && elapsedSec >= nextBounceAt && fallProgress < 0.98) {
-          const impactEnergy = Math.max(0.02, (1 - fallProgress) * 0.12);
-          bounceVy = impactEnergy * (0.75 + Math.random() * 0.55);
-          nextBounceAt = elapsedSec + 0.16 + Math.random() * 0.10;
-
-          // Pequeno desvio tangencial para simular rebote lateral entre separadores.
-          const kick = (Math.random() - 0.5) * 0.24;
-          const cosA = Math.cos(kick);
-          const sinA = Math.sin(kick);
-          const vx = ballVel.x * cosA - ballVel.z * sinA;
-          const vz = ballVel.x * sinA + ballVel.z * cosA;
-          ballVel.x = vx;
-          ballVel.z = vz;
+        // Rebotes al tocar diamantes y borde de pockets.
+        if (smoothDrop > 0.55 && elapsedSec >= nextBounceAt && smoothDrop < 0.995) {
+          const e = Math.max(0.012, (1 - smoothDrop) * 0.11);
+          bounceVy = e * (0.9 + Math.random() * 0.6);
+          const kick = (Math.random() - 0.5) * 0.9;
+          ballAngularSpeed += kick;
+          nextBounceAt = elapsedSec + 0.13 + Math.random() * 0.12;
         }
 
-        bounceVy -= 1.75 * dt;
+        bounceVy -= 2.35 * dt;
         bounceY += bounceVy;
         if (bounceY < 0) {
           bounceY = 0;
-          if (Math.abs(bounceVy) > 0.01) {
-            bounceVy *= -0.36;
+          if (Math.abs(bounceVy) > 0.008) {
+            bounceVy *= -0.33;
           } else {
             bounceVy = 0;
           }
         }
 
-        ballPos.x = Math.cos(angle) * targetRadius;
-        ballPos.z = Math.sin(angle) * targetRadius;
+        ballAngle += ballAngularSpeed * dt;
+
+        const targetRadius = launchRingRadius - (launchRingRadius - settlePocketRadius) * smoothDrop;
+        const yHigh = 1.42;
+        const yLow = 0.12;
+        const targetY = yHigh + (yLow - yHigh) * smoothDrop;
+        const jitter = smoothDrop > 0.76
+          ? Math.sin(performance.now() * 0.045) * (1 - smoothDrop) * 0.018
+          : 0;
+
+        ballPos.x = Math.cos(ballAngle) * targetRadius;
+        ballPos.z = Math.sin(ballAngle) * targetRadius;
         ballPos.y = targetY + jitter + bounceY;
 
-        // Frenado progresivo realista.
-        ballVel.multiplyScalar(Math.pow(0.92, dt * 2));
+        const linearSpeed = Math.max(0, Math.abs(ballAngularSpeed) * targetRadius);
+        ballVel.set(
+          -Math.sin(ballAngle) * linearSpeed,
+          bounceVy,
+          Math.cos(ballAngle) * linearSpeed
+        );
 
         ballMesh.position.copy(ballPos);
-        ballRot += ballVel.length() * 0.5;
+        ballRot += linearSpeed * 5.4 * dt;
         ballMesh.rotation.x = ballRot;
+        ballMesh.rotation.z = ballRot * 0.42;
 
-        document.getElementById("hudBall").textContent = ballVel.length().toFixed(2) + " m/s";
+        document.getElementById("hudBall").textContent = linearSpeed.toFixed(2) + " m/s";
       } else if (settledPocketIndex !== null) {
         placeBallOnPocket(settledPocketIndex);
         document.getElementById("hudBall").textContent = "0.00 m/s";
@@ -968,8 +1078,8 @@
       document.getElementById("hudWheel").textContent = (wheelAngularSpeed * 9.55).toFixed(1) + " RPM";
 
       const spinElapsedMs = isSpinning ? (performance.now() - spinStartTime) : 0;
-      const settleByPhysics = ballVel.length() < 0.12 && wheelAngularSpeed < 0.05;
-      const settleByTimeout = spinElapsedMs > 7000;
+      const settleByPhysics = Math.abs(ballAngularSpeed - wheelAngularSpeed) < 0.22 && spinElapsedMs > 4200;
+      const settleByTimeout = spinElapsedMs > 9800;
 
       if (isSpinning && (settleByPhysics || settleByTimeout)) {
         if (!spinTimeout) {
