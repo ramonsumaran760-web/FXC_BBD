@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Artemis Roulette - Professional Casino 3D</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <script src="https://unpkg.com/three@r128/build/three.min.js"></script>
-  <script src="https://unpkg.com/three@r128/examples/js/controls/OrbitControls.js"></script>
+  <script src="/static/three.min.js"></script>
+  <script src="/static/OrbitControls.js"></script>
   <style>
     :root { --bg: #0a0a0a; --text: #f1eee4; --muted: #9a9b8d; --gold: #d4af37; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -84,16 +84,28 @@
   </div>
 
   <script>
-    function waitForThree(callback, timeout = 5000) {
+    function waitForThree(callback, timeout = 10000) {
       const start = Date.now();
       function check() {
-        if (typeof THREE !== 'undefined' && typeof THREE.OrbitControls !== 'undefined') {
+        if (typeof THREE !== 'undefined' && THREE.OrbitControls !== undefined) {
+          console.log('✓ Three.js loaded successfully');
           callback();
         } else if (Date.now() - start < timeout) {
           requestAnimationFrame(check);
         } else {
           console.error('THREE.js failed to load within', timeout, 'ms');
-          document.body.innerHTML = '<h1>Error: Three.js library failed to load</h1><p>Please refresh the page.</p>';
+          document.body.innerHTML = `
+            <div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #0a0a0a; color: #f1eee4; font-family: monospace; text-align: center;">
+              <div>
+                <h1 style="font-size: 32px; margin-bottom: 20px; color: #d4af37;">⚠ Error de carga</h1>
+                <p style="font-size: 18px; margin-bottom: 10px;">Three.js no se pudo cargar</p>
+                <p style="font-size: 14px; color: #9a9b8d; margin-bottom: 20px;">Servidor: ${window.location.host}</p>
+                <button onclick="location.reload()" style="padding: 12px 24px; font-size: 16px; background: #24200f; border: 1px solid #d4af37; color: #d4af37; cursor: pointer; border-radius: 4px;">
+                  🔄 Reintentar
+                </button>
+              </div>
+            </div>
+          `;
         }
       }
       check();
