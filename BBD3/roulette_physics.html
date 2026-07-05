@@ -3,12 +3,306 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Artemis Roulette - Physics Engine 3D</title>
+  <title>Artemis Roulette - Professional 3D</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.165.0/examples/js/controls/OrbitControls.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@r128/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    :root { --bg: #070806; --text: #f1eee4; --muted: #9a9b8d; --gold: #d6b660; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100vh; background: var(--bg); color: var(--text); font-family: Inter, system-ui, sans-serif; overflow: hidden; }
+    .container { display: grid; grid-template-columns: 1fr 350px; height: 100vh; }
+    .canvas-area { position: relative; background: radial-gradient(circle at 50% 40%, rgba(18, 185, 129, .05), transparent 50%); }
+    canvas { display: block; width: 100%; height: 100%; }
+    .side { overflow-y: auto; border-left: 1px solid #303326; background: rgba(15, 16, 12, .96); padding: 14px; }
+    .panel-head { font-weight: 700; font-size: 13px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #303326; }
+    .control-group { margin: 10px 0; padding: 8px; background: #0d0e0b; border: 1px solid #303326; border-radius: 6px; }
+    .control-group label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+    input[type="range"] { width: 100%; margin-bottom: 4px; }
+    button { width: 100%; height: 32px; border: 1px solid #303326; background: #1a1b15; color: var(--text); border-radius: 6px; cursor: pointer; font-weight: 600; margin-top: 6px; transition: all .15s; }
+    button:hover { border-color: var(--gold); background: #222318; }
+    button.primary { background: #24200f; border-color: rgba(214, 182, 96, .72); color: var(--gold); }
+    .toolbar { display: flex; gap: 6px; margin: 8px 0; }
+    .toolbar button { margin: 0; }
+    .metric { margin: 8px 0; padding: 8px; background: #0d0e0b; border: 1px solid #303326; border-radius: 6px; font-size: 12px; }
+    .metric-value { font-size: 16px; font-weight: 900; color: var(--gold); margin-top: 2px; }
+    .hud { position: absolute; top: 16px; left: 16px; background: rgba(10, 11, 8, .85); backdrop-filter: blur(12px); border: 1px solid rgba(214, 182, 96, .26); border-radius: 8px; padding: 12px; font-size: 12px; line-height: 1.5; min-width: 200px; }
+    .hud-value { color: var(--gold); font-weight: 700; }
+    .status { margin: 8px 0; padding: 8px; border-radius: 4px; font-size: 11px; background: #0d0e0b; border-left: 3px solid var(--muted); }
+    .status.success { border-left-color: #12b981; color: #12b981; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0d0e0b; }
+    ::-webkit-scrollbar-thumb { background: #44472f; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="canvas-area">
+      <canvas id="canvas"></canvas>
+      <div class="hud">
+        <div>Estado: <span class="hud-value" id="hudState">Listo</span></div>
+        <div>Bola: <span class="hud-value" id="hudBall">0 m/s</span></div>
+        <div>Rueda: <span class="hud-value" id="hudWheel">0 RPM</span></div>
+        <div style="margin-top: 8px; border-top: 1px solid #303326; padding-top: 8px;">Resultado: <span class="hud-value" id="hudResult">--</span></div>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="panel-head">🎰 LANZAMIENTO</div>
+
+      <div class="control-group">
+        <label>Velocidad: <span id="speedVal">8.0</span> m/s</label>
+        <input type="range" id="speedSlider" min="5" max="15" step="0.5" value="8" />
+      </div>
+
+      <div class="control-group">
+        <label>Ángulo: <span id="angleVal">0</span>°</label>
+        <input type="range" id="angleSlider" min="-45" max="45" step="5" value="0" />
+      </div>
+
+      <div class="control-group">
+        <label>RPM Rueda: <span id="rpmVal">3.0</span></label>
+        <input type="range" id="rpmSlider" min="0" max="10" step="0.5" value="3" />
+      </div>
+
+      <div class="toolbar">
+        <button id="launchBtn" class="primary"><i class="fa-solid fa-play"></i> LANZAR</button>
+        <button id="resetBtn"><i class="fa-solid fa-redo"></i> RESET</button>
+      </div>
+
+      <div class="status" id="status"></div>
+
+      <div class="panel-head" style="margin-top: 16px;">📊 RESULTADO</div>
+
+      <div class="metric">
+        <div style="color: var(--muted);">Última tirada</div>
+        <div class="metric-value" id="lastResult">--</div>
+      </div>
+
+      <div class="panel-head" style="margin-top: 16px;">📈 HISTORIAL</div>
+
+      <div id="historyList" style="font-size: 11px; color: #dcd4bc; max-height: 100px; overflow-y: auto; border: 1px solid #303326; border-radius: 4px; padding: 6px; background: #0a0b08;">
+        <div style="color: var(--muted);">Sin tiradas</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const WHEEL = ["0","28","9","26","30","11","7","20","32","17","5","22","34","15","3","24","36","13","1","00","27","10","25","29","12","8","19","31","18","6","21","33","16","4","23","35","14","2"];
+    const RED = new Set(["1","3","5","7","9","12","14","16","18","19","21","23","25","27","30","32","34","36"]);
+    const slotAngle = (Math.PI * 2) / WHEEL.length;
+
+    let history = [];
+    let isSpinning = false;
+    let wheelRotation = 0;
+    let wheelAngularSpeed = 0;
+
+    // THREE.JS
+    const canvas = document.getElementById("canvas");
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0908);
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 150);
+    camera.position.set(0, 3.8, 5.2);
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.minDistance = 4.2;
+    controls.maxDistance = 9.5;
+    controls.target.set(0, 0.08, 0);
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.5;
+
+    // LIGHTING
+    const ambient = new THREE.HemisphereLight(0xfffacd, 0x1a1a2e, 2.2);
+    scene.add(ambient);
+    const key = new THREE.DirectionalLight(0xffffff, 3.5);
+    key.position.set(4.5, 6.8, 3.2);
+    key.castShadow = true;
+    scene.add(key);
+    const rim = new THREE.PointLight(0xff6b35, 4.5, 12);
+    rim.position.set(-3.5, 2.5, -2.2);
+    scene.add(rim);
+
+    // WHEEL GROUP
+    const wheelGroup = new THREE.Group();
+    scene.add(wheelGroup);
+
+    WHEEL.forEach((num, idx) => {
+      const start = idx * slotAngle - slotAngle / 2;
+      const end = idx * slotAngle + slotAngle / 2;
+      const color = RED.has(num) ? 0x8b2e2e : (num === "0" || num === "00" ? 0x0d6b3f : 0x1a1a1a);
+      const geom = new THREE.RingGeometry(0.72, 1.42, 10, 1, start, end - start);
+      geom.rotateX(-Math.PI / 2);
+      const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.15 });
+      const mesh = new THREE.Mesh(geom, mat);
+      mesh.position.y = 0.008;
+      mesh.castShadow = true;
+      wheelGroup.add(mesh);
+    });
+
+    // CENTER
+    const centerGeom = new THREE.SphereGeometry(0.22, 48, 24);
+    const centerMat = new THREE.MeshStandardMaterial({ color: 0xf1d888, roughness: 0.18, metalness: 0.78 });
+    const center = new THREE.Mesh(centerGeom, centerMat);
+    center.position.y = 0.38;
+    center.castShadow = true;
+    wheelGroup.add(center);
+
+    // BALL
+    const ballGeom = new THREE.SphereGeometry(0.058, 48, 32);
+    const ballMat = new THREE.MeshStandardMaterial({ color: 0xf0e68c, roughness: 0.12, metalness: 0.35 });
+    const ballMesh = new THREE.Mesh(ballGeom, ballMat);
+    ballMesh.castShadow = true;
+    ballMesh.position.set(0, 2, 3);
+    scene.add(ballMesh);
+
+    // TABLE
+    const tableGeom = new THREE.CylinderGeometry(2.5, 2.8, 0.14, 128);
+    const tableMat = new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 0.8, metalness: 0.05 });
+    const table = new THREE.Mesh(tableGeom, tableMat);
+    table.position.y = -0.12;
+    table.receiveShadow = true;
+    scene.add(table);
+
+    // DEFLECTORS
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const pinGeom = new THREE.SphereGeometry(0.08, 16, 16);
+      const pinMat = new THREE.MeshStandardMaterial({ color: 0xc4a747, roughness: 0.18, metalness: 0.85 });
+      const pin = new THREE.Mesh(pinGeom, pinMat);
+      pin.position.set(Math.cos(angle) * 3.2, 0.15, Math.sin(angle) * 3.2);
+      pin.castShadow = true;
+      scene.add(pin);
+    }
+
+    // SIMULATION
+    let ballVel = new THREE.Vector3();
+    let ballPos = new THREE.Vector3(0, 2, 3);
+    let ballTrajectory = null;
+
+    function launch(speed, angle, rpm) {
+      if (isSpinning) return;
+      isSpinning = true;
+      const rad = (angle * Math.PI) / 180;
+      ballVel.set(Math.sin(rad) * speed, 0, -Math.cos(rad) * speed);
+      ballPos.set(0, 1.2, 2.8);
+      ballTrajectory = { startTime: Date.now(), startPos: ballPos.clone(), startVel: ballVel.clone() };
+      wheelAngularSpeed = (rpm * Math.PI * 2) / 60;
+      updateStatus("Spinning...");
+    }
+
+    function reset() {
+      ballPos.set(0, 2, 3);
+      ballVel.set(0, 0, 0);
+      wheelRotation = 0;
+      wheelAngularSpeed = 0;
+      wheelGroup.rotation.z = 0;
+      isSpinning = false;
+      updateStatus("Listo");
+    }
+
+    function getResult() {
+      const angle = Math.atan2(ballMesh.position.z, ballMesh.position.x);
+      const norm = ((angle + Math.PI) % (Math.PI * 2)) / slotAngle;
+      return WHEEL[Math.round(norm) % WHEEL.length];
+    }
+
+    function updateStatus(msg) {
+      document.getElementById("status").textContent = msg;
+      document.getElementById("status").className = msg === "Listo" ? "status success" : "status";
+    }
+
+    function addHistory(num) {
+      history.unshift(num);
+      if (history.length > 10) history.pop();
+      const list = document.getElementById("historyList");
+      list.innerHTML = history.map(n => `<div>${n}</div>`).join("");
+    }
+
+    // ANIMATION
+    const clock = new THREE.Clock();
+    let spinTimeout = null;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+
+      // Wheel rotation
+      wheelAngularSpeed *= 0.999;
+      wheelRotation += wheelAngularSpeed * dt;
+      wheelGroup.rotation.z = wheelRotation;
+
+      // Ball physics (simple trajectory)
+      if (isSpinning && ballTrajectory) {
+        const elapsed = (Date.now() - ballTrajectory.startTime) / 1000;
+        ballVel.y -= 9.82 * dt;
+        ballPos.addScaledVector(ballVel, dt);
+        
+        // Friction
+        ballVel.multiplyScalar(Math.pow(0.99, dt));
+
+        // Boundary check (hit table)
+        const distFromCenter = new THREE.Vector2(ballPos.x, ballPos.z).length();
+        if (distFromCenter > 2.3 || ballPos.y < 0.1) {
+          ballPos.y = 0.14;
+          ballVel.y *= -0.3;
+          ballVel.multiplyScalar(0.7);
+        }
+
+        ballMesh.position.copy(ballPos);
+        document.getElementById("hudBall").textContent = ballVel.length().toFixed(2) + " m/s";
+      }
+
+      document.getElementById("hudWheel").textContent = (wheelAngularSpeed * 9.55).toFixed(1) + " RPM";
+
+      // End spin detection
+      if (isSpinning && ballVel.length() < 0.08 && wheelAngularSpeed < 0.05) {
+        if (!spinTimeout) {
+          spinTimeout = setTimeout(() => {
+            const result = getResult();
+            document.getElementById("hudResult").textContent = result;
+            document.getElementById("lastResult").textContent = result;
+            addHistory(result);
+            updateStatus(`¡${result}!`);
+            isSpinning = false;
+            spinTimeout = null;
+          }, 300);
+        }
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    // EVENTS
+    document.getElementById("launchBtn").addEventListener("click", () => {
+      launch(
+        parseFloat(document.getElementById("speedSlider").value),
+        parseFloat(document.getElementById("angleSlider").value),
+        parseFloat(document.getElementById("rpmSlider").value)
+      );
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", reset);
+    document.getElementById("speedSlider").addEventListener("input", e => document.getElementById("speedVal").textContent = e.target.value);
+    document.getElementById("angleSlider").addEventListener("input", e => document.getElementById("angleVal").textContent = e.target.value);
+    document.getElementById("rpmSlider").addEventListener("input", e => document.getElementById("rpmVal").textContent = e.target.value);
+
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    updateStatus("Listo");
+    animate();
+  </script>
+</body>
+</html>
   <style>
     :root {
       --bg: #070806;
