@@ -520,21 +520,25 @@
       return tex;
     }
 
-    function createPocketNumberTexture(text, fgColor) {
+    function createPocketTileTexture(text, bgColor, fgColor) {
       const c = document.createElement("canvas");
-      c.width = 360;
-      c.height = 180;
+      c.width = 512;
+      c.height = 512;
       const g = c.getContext("2d");
 
-      g.clearRect(0, 0, c.width, c.height);
-      g.shadowColor = "rgba(0,0,0,0.78)";
-      g.shadowBlur = 7;
+      // Fondo de la casilla.
+      g.fillStyle = bgColor;
+      g.fillRect(0, 0, c.width, c.height);
+
+      // Numero integrado en la casilla (sin etiqueta/placa).
+      g.shadowColor = "rgba(0,0,0,0.75)";
+      g.shadowBlur = 8;
       g.shadowOffsetY = 2;
       g.fillStyle = fgColor;
-      g.font = "bold 124px Arial";
+      g.font = "bold 240px Arial";
       g.textAlign = "center";
       g.textBaseline = "middle";
-      g.fillText(text, c.width / 2, c.height / 2 + 2);
+      g.fillText(text, c.width / 2, c.height / 2 + 10);
 
       const tex = new THREE.CanvasTexture(c);
       tex.colorSpace = THREE.SRGBColorSpace;
@@ -580,12 +584,20 @@
     const POCKET_INNER = 0.86;
     const POCKET_OUTER = 1.58;
     const POCKET_MID = (POCKET_INNER + POCKET_OUTER) / 2;
-    const NUMBER_RADIUS = (POCKET_INNER + POCKET_OUTER) / 2 + 0.02;
 
     WHEEL.forEach((num, idx) => {
       const start = idx * slotAngle - slotAngle / 2;
       const end = idx * slotAngle + slotAngle / 2;
-      const mat = RED.has(num) ? matRed : (num === "0" || num === "00" ? matGreen : matBlack);
+      const isGreen = num === "0" || num === "00";
+      const isRed = RED.has(num);
+      const tileBg = isGreen ? "#0f5b38" : (isRed ? "#b03a3a" : "#232426");
+      const tileFg = isGreen ? "#d3ffe7" : (isRed ? "#ffe2dd" : "#f6f6f6");
+      const tileTex = createPocketTileTexture(num, tileBg, tileFg);
+      const mat = new THREE.MeshStandardMaterial({
+        map: tileTex,
+        roughness: 0.44,
+        metalness: 0.12,
+      });
 
       const geom = new THREE.RingGeometry(POCKET_INNER, POCKET_OUTER, 20, 1, start, end - start);
       geom.rotateX(-Math.PI / 2);
@@ -615,18 +627,7 @@
       sepCrest.receiveShadow = true;
       wheelGroup.add(sepCrest);
 
-      // Numero integrado en la casilla (sin etiqueta negra).
-      const mid = (start + end) / 2;
-      const fg = (num === "0" || num === "00") ? "#aaf5d3" : (RED.has(num) ? "#ffd6d0" : "#f5f5f5");
-      const tex = createPocketNumberTexture(num, fg);
-      const label = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.124, 0.054),
-        new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false })
-      );
-      label.rotation.x = -Math.PI / 2;
-      label.rotation.z = -mid + Math.PI / 2;
-      label.position.set(Math.cos(mid) * NUMBER_RADIUS, 0.078, Math.sin(mid) * NUMBER_RADIUS);
-      wheelGroup.add(label);
+      // Numero ahora va en la textura de la casilla.
     });
 
     // Spindle realista y delgado (cromado), sin bloque dorado tosco.
@@ -703,20 +704,20 @@
     bowlFloorMesh.receiveShadow = true;
     scene.add(bowlFloorMesh);
 
-    // Carril realista de la bola: aro metalico fino (no aro dorado grueso).
-    const trackGeom = new THREE.TorusGeometry(2.02, 0.010, 10, 220);
+    // Carril realista de la bola: aro metalico fino y al ras.
+    const trackGeom = new THREE.TorusGeometry(2.02, 0.0024, 10, 220);
     const trackMesh = new THREE.Mesh(trackGeom, matChrome);
     trackMesh.rotation.x = Math.PI / 2;
-    trackMesh.position.y = 0.19;
+    trackMesh.position.y = 0.035;
     trackMesh.castShadow = true;
     trackMesh.receiveShadow = true;
     scene.add(trackMesh);
 
     // Guía interior del carril.
-    const innerGuideGeom = new THREE.TorusGeometry(1.90, 0.008, 10, 220);
+    const innerGuideGeom = new THREE.TorusGeometry(1.90, 0.0021, 10, 220);
     const innerGuide = new THREE.Mesh(innerGuideGeom, matChrome);
     innerGuide.rotation.x = Math.PI / 2;
-    innerGuide.position.y = 0.168;
+    innerGuide.position.y = 0.035;
     innerGuide.castShadow = true;
     innerGuide.receiveShadow = true;
     scene.add(innerGuide);
