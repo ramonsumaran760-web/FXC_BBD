@@ -615,38 +615,18 @@
       sepCrest.receiveShadow = true;
       wheelGroup.add(sepCrest);
 
-      // Numero de ruleta con relieve (placa + texto en cara superior).
+      // Numero integrado en la casilla (sin etiqueta negra).
       const mid = (start + end) / 2;
       const fg = (num === "0" || num === "00") ? "#aaf5d3" : (RED.has(num) ? "#ffd6d0" : "#f5f5f5");
       const tex = createPocketNumberTexture(num, fg);
-      const plaque = new THREE.Mesh(
-        new THREE.BoxGeometry(0.132, 0.007, 0.064),
-        new THREE.MeshPhysicalMaterial({ color: 0x111214, roughness: 0.36, metalness: 0.22, clearcoat: 0.18 })
-      );
-      plaque.rotation.x = -Math.PI / 2;
-      plaque.rotation.z = -mid + Math.PI / 2;
-      plaque.position.set(Math.cos(mid) * NUMBER_RADIUS, 0.089, Math.sin(mid) * NUMBER_RADIUS);
-      plaque.castShadow = true;
-      plaque.receiveShadow = true;
-      wheelGroup.add(plaque);
-
       const label = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.128, 0.058),
+        new THREE.PlaneGeometry(0.124, 0.054),
         new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false })
       );
       label.rotation.x = -Math.PI / 2;
       label.rotation.z = -mid + Math.PI / 2;
-      label.position.set(Math.cos(mid) * NUMBER_RADIUS, 0.095, Math.sin(mid) * NUMBER_RADIUS);
+      label.position.set(Math.cos(mid) * NUMBER_RADIUS, 0.078, Math.sin(mid) * NUMBER_RADIUS);
       wheelGroup.add(label);
-
-      const shadowLabel = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.128, 0.058),
-        new THREE.MeshBasicMaterial({ map: tex, transparent: true, opacity: 0.26, color: 0x000000, side: THREE.DoubleSide, depthWrite: false })
-      );
-      shadowLabel.rotation.x = -Math.PI / 2;
-      shadowLabel.rotation.z = -mid + Math.PI / 2;
-      shadowLabel.position.set(Math.cos(mid) * (NUMBER_RADIUS + 0.0005), 0.092, Math.sin(mid) * (NUMBER_RADIUS + 0.0005));
-      wheelGroup.add(shadowLabel);
     });
 
     // Spindle realista y delgado (cromado), sin bloque dorado tosco.
