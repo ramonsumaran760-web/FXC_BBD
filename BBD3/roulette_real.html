@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Artemis Roulette - Real Wheel</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+  <style>
+    :root {
+      --bg: #070806;
+      --panel: #11120f;
+      --text: #f1eee4;
+      --muted: #9a9b8d;
+      --gold: #d6b660;
+      --red: #d94a4a;
+      --green: #12b981;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100vh;
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, "Segoe UI", system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      height: 100vh;
+      gap: 0;
+    }
+
+    .canvas-area {
+      position: relative;
+      overflow: hidden;
+      background: radial-gradient(circle at 50% 40%, rgba(18, 185, 129, .05), transparent 50%);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+
+    .side {
+      overflow-y: auto;
+      border-left: 1px solid #303326;
+      background: rgba(15, 16, 12, .96);
+      padding: 16px;
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #303326;
+    }
+
+    .panel-title {
+      font-weight: 700;
+      font-size: 13px;
+      color: var(--text);
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 3px 7px;
+      border-radius: 6px;
+      border: 1px solid #303326;
+      font-size: 10px;
+      color: #dcd4bc;
+      background: #0e0f0b;
+    }
+
+    .metric {
+      margin: 12px 0;
+      padding: 8px;
+      border-radius: 6px;
+      background: #0d0e0b;
+      border: 1px solid #303326;
+    }
+
+    .metric-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 3px;
+    }
+
+    .metric-value {
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--gold);
+    }
+
+    .chart-box {
+      height: 160px;
+      margin-top: 12px;
+      border-radius: 6px;
+      border: 1px solid #303326;
+      overflow: hidden;
+    }
+
+    button {
+      border: 1px solid #303326;
+      background: #1a1b15;
+      color: var(--text);
+      height: 36px;
+      padding: 0 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-top: 8px;
+      width: 100%;
+      transition: all .15s ease;
+    }
+
+    button:hover {
+      border-color: var(--gold);
+      background: #222318;
+    }
+
+    .toolbar {
+      display: flex;
+      gap: 8px;
+      margin: 12px 0;
+    }
+
+    .toolbar button {
+      flex: 1;
+      margin: 0;
+      height: 32px;
+      font-size: 11px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      margin: 8px 0;
+    }
+
+    select {
+      width: 100%;
+      height: 32px;
+      padding: 0 8px;
+      border: 1px solid #303326;
+      background: #0d0e0b;
+      color: var(--text);
+      border-radius: 6px;
+      margin: 8px 0;
+    }
+
+    .table-wrap {
+      max-height: 300px;
+      overflow: auto;
+      border: 1px solid #303326;
+      border-radius: 6px;
+      margin-top: 12px;
+    }
+
+    table {
+      width: 100%;
+      font-size: 11px;
+      border-collapse: collapse;
+    }
+
+    th {
+      background: #191a13;
+      color: var(--muted);
+      padding: 8px;
+      text-align: left;
+      border-bottom: 1px solid #303326;
+      position: sticky;
+      top: 0;
+    }
+
+    td {
+      padding: 8px;
+      border-bottom: 1px solid #303326;
+    }
+
+    tbody tr:hover {
+      background: #17180f;
+    }
+
+    .num {
+      display: inline-block;
+      min-width: 24px;
+      text-align: center;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 10px;
+      border: 1px solid #303326;
+    }
+
+    .num.red { background: #401b1b; color: #ffb4a9; }
+    .num.black { background: #0c0d0c; color: #e7e4db; }
+    .num.green { background: #0f5b38; color: #93f2ca; }
+
+    .hud {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(10, 11, 8, .85);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(214, 182, 96, .26);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 12px;
+      line-height: 1.6;
+      min-width: 200px;
+    }
+
+    .hud-label {
+      color: var(--muted);
+    }
+
+    .hud-value {
+      color: var(--gold);
+      font-weight: 700;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #0d0e0b;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #44472f;
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="canvas-area">
+      <canvas id="canvas"></canvas>
+      <div class="hud" id="hud">
+        <div><span class="hud-label">Giro:</span> <span class="hud-value" id="hudSpin">#1</span></div>
+        <div><span class="hud-label">Número:</span> <span class="hud-value" id="hudNumber">--</span></div>
+        <div><span class="hud-label">Previo:</span> <span class="hud-label" id="hudPrev">--</span></div>
+        <div><span class="hud-label">Distancia:</span> <span class="hud-label" id="hudDistance">--</span></div>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="panel-head">
+        <div class="panel-title"><i class="fa-solid fa-chart-pie"></i> Análisis</div>
+        <span class="tag" id="sampleTag">0 giros</span>
+      </div>
+
+      <div class="metric">
+        <div class="metric-label">Cobertura Estratégica</div>
+        <div class="metric-value" id="coverageValue">0%</div>
+      </div>
+
+      <div class="metric">
+        <div class="metric-label">Saltos Cortos</div>
+        <div class="metric-value" id="shortJumpValue">0</div>
+      </div>
+
+      <div class="metric">
+        <div class="metric-label">Repeticiones</div>
+        <div class="metric-value" id="repeatValue">0</div>
+      </div>
+
+      <div class="chart-box">
+        <canvas id="sectorChart"></canvas>
+      </div>
+
+      <div class="panel-head" style="margin-top: 16px;">
+        <div class="panel-title"><i class="fa-solid fa-list"></i> Controles</div>
+      </div>
+
+      <div class="toolbar">
+        <button id="playBtn"><i class="fa-solid fa-play"></i></button>
+        <button id="prevBtn"><i class="fa-solid fa-chevron-left"></i></button>
+        <button id="nextBtn"><i class="fa-solid fa-chevron-right"></i></button>
+      </div>
+
+      <input type="range" id="spinRange" min="0" max="100" value="0" />
+
+      <select id="speedSelect">
+        <option value="200">Rápido</option>
+        <option value="500" selected>Normal</option>
+        <option value="1000">Lento</option>
+      </select>
+
+      <div class="panel-head" style="margin-top: 16px;">
+        <div class="panel-title"><i class="fa-solid fa-table-list"></i> Historial</div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead id="tableHead"></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    const WHEEL = [
+      "0", "28", "9", "26", "30", "11", "7", "20", "32", "17", "5", "22",
+      "34", "15", "3", "24", "36", "13", "1", "00", "27", "10", "25", "29",
+      "12", "8", "19", "31", "18", "6", "21", "33", "16", "4", "23", "35",
+      "14", "2"
+    ];
+
+    const DEFAULT_NUMBERS = [
+      "31", "34", "20", "28", "16", "30", "00", "8", "8", "2", "8", "30",
+      "31", "12", "12", "3", "2", "22", "36", "14", "10", "27", "32", "11"
+    ];
+
+    const RED_NUMBERS = new Set(["1","3","5","7","9","12","14","16","18","19","21","23","25","27","30","32","34","36"]);
+
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    let sequence = [...DEFAULT_NUMBERS];
+    let current = 0;
+    let playing = false;
+    let playTimer = null;
+    let transition = null;
+    let lastTime = performance.now();
+    let wheelRotation = 0;
+
+    const indexByNumber = Object.fromEntries(WHEEL.map((num, idx) => [num, idx]));
+
+    function slotClass(num) {
+      if (num === "0" || num === "00") return "green";
+      return RED_NUMBERS.has(num) ? "red" : "black";
+    }
+
+    function buildAnalysis(nums) {
+      const valid = nums.filter(num => indexByNumber[num] !== undefined);
+      const invalid = nums.filter(num => indexByNumber[num] === undefined);
+
+      const transitions = [];
+      for (let i = 1; i < valid.length; i += 1) {
+        const prev = valid[i - 1];
+        const num = valid[i];
+        const prevIdx = indexByNumber[prev];
+        const currIdx = indexByNumber[num];
+        const cw = (currIdx - prevIdx + WHEEL.length) % WHEEL.length;
+        const ccw = (prevIdx - currIdx + WHEEL.length) % WHEEL.length;
+        const min = Math.min(cw, ccw);
+
+        transitions.push({
+          prev, num, cw, ccw, min,
+          shortJump: min <= 4,
+          repeat: prev === num
+        });
+      }
+
+      const shortJumps = transitions.filter(t => t.shortJump).length;
+      const repeats = transitions.filter(t => t.repeat).length;
+      const coverage = valid.length ? (shortJumps + repeats) / valid.length : 0;
+
+      return { valid, invalid, transitions, shortJumps, repeats, coverage };
+    }
+
+    let analysis = buildAnalysis(sequence);
+
+    function drawWheel() {
+      const w = canvas.width;
+      const h = canvas.height;
+      const centerX = w / 2;
+      const centerY = h / 2;
+      const radius = Math.min(w, h) / 2.4;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Fondo
+      ctx.fillStyle = "#070806";
+      ctx.fillRect(0, 0, w, h);
+
+      // Rueda: dibujar cada número
+      const slotAngle = (Math.PI * 2) / WHEEL.length;
+
+      WHEEL.forEach((num, idx) => {
+        const startAngle = idx * slotAngle + wheelRotation;
+        const endAngle = (idx + 1) * slotAngle + wheelRotation;
+        const midAngle = (startAngle + endAngle) / 2;
+
+        // Wedge
+        const color = slotClass(num) === "red" ? "#611f1f" : (slotClass(num) === "green" ? "#0f5b38" : "#111111");
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        ctx.lineTo(centerX, centerY);
+        ctx.fill();
+
+        // Borde
+        ctx.strokeStyle = "rgba(214, 182, 96, 0.3)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, startAngle, endAngle);
+        ctx.lineTo(centerX, centerY);
+        ctx.stroke();
+
+        // Número
+        const labelRadius = radius * 0.65;
+        const labelX = centerX + Math.cos(midAngle) * labelRadius;
+        const labelY = centerY + Math.sin(midAngle) * labelRadius;
+
+        ctx.save();
+        ctx.translate(labelX, labelY);
+        ctx.rotate(midAngle + Math.PI / 2);
+
+        ctx.fillStyle = slotClass(num) === "green" ? "#bfffe5" : (slotClass(num) === "red" ? "#ffd6d0" : "#f0eee5");
+        ctx.font = "bold 24px Arial";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(num, 0, 0);
+
+        ctx.restore();
+      });
+
+      // Centro
+      ctx.fillStyle = "#d2b15a";
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius * 0.15, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Marcador en la parte superior
+      ctx.fillStyle = "#d6b660";
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY - radius - 20);
+      ctx.lineTo(centerX - 15, centerY - radius + 5);
+      ctx.lineTo(centerX + 15, centerY - radius + 5);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawBall() {
+      if (!transition) return;
+
+      const w = canvas.width;
+      const h = canvas.height;
+      const centerX = w / 2;
+      const centerY = h / 2;
+      const radius = Math.min(w, h) / 2.4;
+
+      const p = Math.min(1, (performance.now() - transition.started) / transition.duration);
+
+      let eased;
+      if (p < 0.3) {
+        eased = (p / 0.3) * 0.3 * 1.5;
+      } else if (p < 0.7) {
+        eased = 0.3 + (p - 0.3) / 0.4 * 0.6;
+      } else {
+        const decel = (p - 0.7) / 0.3;
+        eased = 0.9 + Math.pow(decel, 0.5) * 0.1;
+      }
+
+      const angle = transition.fromAngle + (transition.toAngle - transition.fromAngle) * eased;
+
+      const settleStart = 0.5;
+      let settle = p < settleStart ? 0 : (p - settleStart) / (1 - settleStart);
+      settle = 1 - Math.pow(1 - settle, 2);
+
+      const ballRadius = radius * 0.65 * (1 - settle * 0.3);
+      const ballX = centerX + Math.cos(angle) * ballRadius;
+      const ballY = centerY + Math.sin(angle) * ballRadius;
+
+      const apogee = Math.sin(p * Math.PI * 0.8) * (1 - p) * 30;
+
+      ctx.fillStyle = "#f7f6ed";
+      ctx.beginPath();
+      ctx.arc(ballX, ballY - apogee, 12, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = "#d6b660";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+
+    function animate(now) {
+      const dt = Math.min(40, now - lastTime) / 1000;
+      lastTime = now;
+
+      wheelRotation += dt * 0.15;
+
+      if (transition) {
+        const p = Math.min(1, (now - transition.started) / transition.duration);
+        if (p >= 1) {
+          transition = null;
+        }
+      }
+
+      drawWheel();
+      drawBall();
+
+      requestAnimationFrame(animate);
+    }
+
+    function resizeCanvas() {
+      canvas.width = canvas.offsetWidth;
+      canvas.height = canvas.offsetHeight;
+    }
+
+    window.addEventListener("resize", resizeCanvas);
+    resizeCanvas();
+    requestAnimationFrame(animate);
+
+    // Controles
+    const els = {
+      playBtn: document.getElementById("playBtn"),
+      prevBtn: document.getElementById("prevBtn"),
+      nextBtn: document.getElementById("nextBtn"),
+      spinRange: document.getElementById("spinRange"),
+      speedSelect: document.getElementById("speedSelect"),
+      hudSpin: document.getElementById("hudSpin"),
+      hudNumber: document.getElementById("hudNumber"),
+      hudPrev: document.getElementById("hudPrev"),
+      hudDistance: document.getElementById("hudDistance"),
+      sampleTag: document.getElementById("sampleTag"),
+      coverageValue: document.getElementById("coverageValue"),
+      shortJumpValue: document.getElementById("shortJumpValue"),
+      repeatValue: document.getElementById("repeatValue"),
+      tableHead: document.getElementById("tableHead"),
+      tableBody: document.getElementById("tableBody"),
+      sectorChart: document.getElementById("sectorChart")
+    };
+
+    function renderUI() {
+      els.sampleTag.textContent = `${analysis.valid.length} giros`;
+      els.coverageValue.textContent = `${Math.round(analysis.coverage * 100)}%`;
+      els.shortJumpValue.textContent = String(analysis.shortJumps);
+      els.repeatValue.textContent = String(analysis.repeats);
+
+      const num = analysis.valid[current] || "--";
+      const prev = current > 0 ? analysis.valid[current - 1] : "--";
+      const trans = current > 0 ? analysis.transitions[current - 1] : null;
+
+      els.hudSpin.textContent = `#${current + 1}`;
+      els.hudNumber.textContent = num;
+      els.hudPrev.textContent = prev;
+      els.hudDistance.textContent = trans ? `${trans.min} casillas` : "--";
+
+      els.tableHead.innerHTML = `<tr><th>Giro</th><th>Número</th><th>Trans.</th></tr>`;
+      els.tableBody.innerHTML = analysis.valid.map((n, i) => `
+        <tr>
+          <td>#${i + 1}</td>
+          <td><span class="num ${slotClass(n)}">${n}</span></td>
+          <td>${i > 0 ? analysis.valid[i-1] + "→" + n : "--"}</td>
+        </tr>
+      `).join("");
+    }
+
+    function setCurrent(idx) {
+      current = Math.max(0, Math.min(idx, analysis.valid.length - 1));
+      els.spinRange.value = current;
+
+      const num = analysis.valid[current];
+      const prevNum = current > 0 ? analysis.valid[current - 1] : num;
+      const prevIdx = indexByNumber[prevNum];
+      const currIdx = indexByNumber[num];
+      const direction = (currIdx - prevIdx + WHEEL.length) % WHEEL.length;
+
+      let distance = Math.abs(direction);
+      if (distance > WHEEL.length / 2) {
+        distance = WHEEL.length - distance;
+      }
+
+      const baseDuration = 800 + (distance / WHEEL.length) * 2200;
+      const fromAngle = (prevIdx * (Math.PI * 2) / WHEEL.length) + wheelRotation;
+      const toAngle = (currIdx * (Math.PI * 2) / WHEEL.length) + (direction > WHEEL.length / 2 ? Math.PI * 2 : 0);
+
+      transition = {
+        started: performance.now(),
+        duration: baseDuration,
+        fromAngle,
+        toAngle: toAngle + wheelRotation
+      };
+
+      renderUI();
+    }
+
+    function togglePlayback() {
+      if (playing) {
+        playing = false;
+        clearInterval(playTimer);
+        els.playBtn.innerHTML = '<i class="fa-solid fa-play"></i>';
+      } else {
+        playing = true;
+        els.playBtn.innerHTML = '<i class="fa-solid fa-pause"></i>';
+        playTimer = setInterval(() => {
+          setCurrent(current + 1 < analysis.valid.length ? current + 1 : 0);
+        }, Number(els.speedSelect.value));
+      }
+    }
+
+    els.playBtn.addEventListener("click", togglePlayback);
+    els.prevBtn.addEventListener("click", () => setCurrent(current - 1));
+    els.nextBtn.addEventListener("click", () => setCurrent(current + 1));
+    els.spinRange.addEventListener("input", e => setCurrent(Number(e.target.value)));
+    els.speedSelect.addEventListener("change", () => {
+      if (playing) {
+        clearInterval(playTimer);
+        playTimer = setInterval(() => {
+          setCurrent(current + 1 < analysis.valid.length ? current + 1 : 0);
+        }, Number(els.speedSelect.value));
+      }
+    });
+
+    renderUI();
+    setCurrent(0);
+  </script>
+</body>
+</html>
