@@ -521,16 +521,52 @@
     }
 
     function createNumberRingTextTexture(size = 2048) {
-      const canvas = document.createElement("canvas");
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext("2d");
+      const c = document.createElement("canvas");
+      c.width = size;
+      c.height = size;
+      const g = c.getContext("2d");
 
       const center = size / 2;
-      const outerR = size * 0.48;
-      const innerR = size * 0.30;
-      const segAngle = (Math.PI * 2) / WHEEL.length;
+      const WHEEL_RADIUS = 2.16;
+      const POCKET_INNER = WHEEL_RADIUS * 0.55;
+      const POCKET_OUTER = WHEEL_RADIUS * 0.95;
 
+      const wheelTexture = generateWheelTexture();
+      const numberPocketRing = new THREE.Mesh(
+        new THREE.RingGeometry(POCKET_INNER, POCKET_OUTER, 256),
+        new THREE.MeshPhysicalMaterial({
+          map: wheelTexture,
+          metalness: 0.28,
+          roughness: 0.35,
+          transparent: true,
+          side: THREE.DoubleSide,
+        })
+      );
+      numberPocketRing.rotation.x = -Math.PI / 2;
+      numberPocketRing.position.y = 0.036;
+      numberPocketRing.castShadow = true;
+      numberPocketRing.receiveShadow = true;
+      wheelGroup.add(numberPocketRing);
+
+      const pocketOuterFret = new THREE.Mesh(
+        new THREE.TorusGeometry(POCKET_OUTER, 0.006, 12, 180),
+        matChrome
+      );
+      pocketOuterFret.rotation.x = Math.PI / 2;
+      pocketOuterFret.position.y = 0.038;
+      pocketOuterFret.castShadow = true;
+      pocketOuterFret.receiveShadow = true;
+      wheelGroup.add(pocketOuterFret);
+
+      const pocketInnerFret = new THREE.Mesh(
+        new THREE.TorusGeometry(POCKET_INNER, 0.005, 12, 180),
+        matChrome
+      );
+      pocketInnerFret.rotation.x = Math.PI / 2;
+      pocketInnerFret.position.y = 0.038;
+      pocketInnerFret.castShadow = true;
+      pocketInnerFret.receiveShadow = true;
+      wheelGroup.add(pocketInnerFret);
       const colors = {
         red: "#a61c1c",
         black: "#0d0d0d",
@@ -540,7 +576,7 @@
       WHEEL.forEach((num, i) => {
         const startAngle = i * segAngle - Math.PI / 2;
         const endAngle = startAngle + segAngle;
-        const color = (num === "0" || num === "00") ? "green" : (RED.has(num) ? "red" : "black");
+        const color = getPocketColor(num);
 
         ctx.beginPath();
         ctx.moveTo(center, center);
@@ -627,6 +663,7 @@
 
     const POCKET_INNER = 0.86;
     const POCKET_OUTER = 1.58;
+    const POCKET_MID = (POCKET_INNER + POCKET_OUTER) / 2;
 
     WHEEL.forEach((num, idx) => {
       const start = idx * slotAngle - slotAngle / 2;
@@ -645,10 +682,45 @@
       mesh.receiveShadow = true;
       wheelGroup.add(mesh);
 
-      // Separadores finos ya incluidos en la textura de la corona.
+      // Divisiones con relieve real entre casillas (pared + cresta superior).
+      const sepLen = POCKET_OUTER - POCKET_INNER + 0.01;
+      const sepGeom = new THREE.BoxGeometry(0.012, 0.066, sepLen);
+      const sepMesh = new THREE.Mesh(sepGeom, matChrome);
+      sepMesh.position.set(Math.cos(start) * POCKET_MID, 0.062, Math.sin(start) * POCKET_MID);
+      sepMesh.rotation.y = -start;
+      sepMesh.castShadow = true;
+      sepMesh.receiveShadow = true;
+      wheelGroup.add(sepMesh);
+
+      const sepCrest = new THREE.Mesh(
+        new THREE.BoxGeometry(0.005, 0.016, sepLen - 0.01),
+        new THREE.MeshPhysicalMaterial({ color: 0xe6e8eb, roughness: 0.16, metalness: 0.95, clearcoat: 0.3 })
+      );
+      sepCrest.position.set(Math.cos(start) * POCKET_MID, 0.102, Math.sin(start) * POCKET_MID);
+      sepCrest.rotation.y = -start;
+      sepCrest.castShadow = true;
+      sepCrest.receiveShadow = true;
+      wheelGroup.add(sepCrest);
+
+      // Numero ahora va en corona transparente unica (sin etiquetas negras).
     });
 
-    // Sin anillo superpuesto de texto: evita el borde grueso/saturado visual.
+    const numberTextRing = new THREE.Mesh(
+      new THREE.RingGeometry(POCKET_INNER + 0.02, POCKET_OUTER - 0.01, 256),
+      new THREE.MeshBasicMaterial({
+        map: createNumberRingTextTexture(),
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2,
+      })
+    );
+    numberTextRing.rotation.x = -Math.PI / 2;
+    // Al ras de la corona de casillas (sin efecto de anillo flotando).
+    numberTextRing.position.y = 0.0365;
+    wheelGroup.add(numberTextRing);
 
     // Spindle realista y delgado (cromado), sin bloque dorado tosco.
     const spindleBase = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.30, 0.08, 64), matDarkMetal);
@@ -725,10 +797,10 @@
     scene.add(bowlFloorMesh);
 
     // Carriles metalicos internos planos (al ras, sin sobresalir).
-    const trackGeom = new THREE.RingGeometry(2.01, 2.018, 220);
+    const trackGeom = new THREE.RingGeometry(2.0115, 2.0145, 220);
     const trackMesh = new THREE.Mesh(
       trackGeom,
-      new THREE.MeshPhysicalMaterial({ color: 0xbfc4ca, roughness: 0.35, metalness: 0.78, clearcoat: 0.16 })
+      new THREE.MeshPhysicalMaterial({ color: 0xd7dbe0, roughness: 0.22, metalness: 0.95, clearcoat: 0.3 })
     );
     trackMesh.rotation.x = -Math.PI / 2;
     trackMesh.position.y = 0.0352;
@@ -737,10 +809,10 @@
     scene.add(trackMesh);
 
     // Guía interior del carril.
-    const innerGuideGeom = new THREE.RingGeometry(1.90, 1.907, 220);
+    const innerGuideGeom = new THREE.RingGeometry(1.902, 1.905, 220);
     const innerGuide = new THREE.Mesh(
       innerGuideGeom,
-      new THREE.MeshPhysicalMaterial({ color: 0xb7bcc3, roughness: 0.37, metalness: 0.76, clearcoat: 0.14 })
+      new THREE.MeshPhysicalMaterial({ color: 0xd7dbe0, roughness: 0.24, metalness: 0.94, clearcoat: 0.26 })
     );
     innerGuide.rotation.x = -Math.PI / 2;
     innerGuide.position.y = 0.0352;
