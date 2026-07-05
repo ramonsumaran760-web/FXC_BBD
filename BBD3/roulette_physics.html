@@ -527,38 +527,103 @@
       const g = c.getContext("2d");
 
       const center = size / 2;
-      const outerR = size * 0.48;
-      const innerR = size * 0.34;
-      const segAngle = (Math.PI * 2) / WHEEL.length;
+      const WHEEL_RADIUS = 2.16;
+      const POCKET_INNER = WHEEL_RADIUS * 0.55;
+      const POCKET_OUTER = WHEEL_RADIUS * 0.95;
 
-      g.clearRect(0, 0, size, size);
+      const wheelTexture = generateWheelTexture();
+      const numberPocketRing = new THREE.Mesh(
+        new THREE.RingGeometry(POCKET_INNER, POCKET_OUTER, 256),
+        new THREE.MeshPhysicalMaterial({
+          map: wheelTexture,
+          metalness: 0.28,
+          roughness: 0.35,
+          transparent: true,
+          side: THREE.DoubleSide,
+        })
+      );
+      numberPocketRing.rotation.x = -Math.PI / 2;
+      numberPocketRing.position.y = 0.036;
+      numberPocketRing.castShadow = true;
+      numberPocketRing.receiveShadow = true;
+      wheelGroup.add(numberPocketRing);
 
-      for (let i = 0; i < WHEEL.length; i += 1) {
-        const num = WHEEL[i];
-        const textAngle = i * segAngle - Math.PI / 2 + segAngle / 2;
+      const pocketOuterFret = new THREE.Mesh(
+        new THREE.TorusGeometry(POCKET_OUTER, 0.006, 12, 180),
+        matChrome
+      );
+      pocketOuterFret.rotation.x = Math.PI / 2;
+      pocketOuterFret.position.y = 0.038;
+      pocketOuterFret.castShadow = true;
+      pocketOuterFret.receiveShadow = true;
+      wheelGroup.add(pocketOuterFret);
+
+      const pocketInnerFret = new THREE.Mesh(
+        new THREE.TorusGeometry(POCKET_INNER, 0.005, 12, 180),
+        matChrome
+      );
+      pocketInnerFret.rotation.x = Math.PI / 2;
+      pocketInnerFret.position.y = 0.038;
+      pocketInnerFret.castShadow = true;
+      pocketInnerFret.receiveShadow = true;
+      wheelGroup.add(pocketInnerFret);
+      const colors = {
+        red: "#a61c1c",
+        black: "#0d0d0d",
+        green: "#0a5c2e",
+      };
+
+      WHEEL.forEach((num, i) => {
+        const startAngle = i * segAngle - Math.PI / 2;
+        const endAngle = startAngle + segAngle;
+        const color = getPocketColor(num);
+
+        ctx.beginPath();
+        ctx.moveTo(center, center);
+        ctx.arc(center, center, outerR, startAngle, endAngle);
+        ctx.closePath();
+        ctx.fillStyle = colors[color];
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(center, center, innerR, 0, Math.PI * 2);
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.fill();
+        ctx.globalCompositeOperation = "source-over";
+
+        ctx.save();
+        ctx.translate(center, center);
+        ctx.rotate(startAngle);
+        ctx.beginPath();
+        ctx.rect(innerR, -size * 0.003, outerR - innerR, size * 0.006);
+        const grad = ctx.createLinearGradient(innerR, 0, outerR, 0);
+        grad.addColorStop(0, "#8a8a8a");
+        grad.addColorStop(0.5, "#e8e8e8");
+        grad.addColorStop(1, "#8a8a8a");
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.restore();
+
+        const textAngle = startAngle + segAngle / 2;
         const textR = (outerR + innerR) / 2;
-
-        g.save();
-        g.translate(
+        ctx.save();
+        ctx.translate(
           center + Math.cos(textAngle) * textR,
           center + Math.sin(textAngle) * textR
         );
-        g.rotate(textAngle + Math.PI / 2);
-        g.shadowColor = "rgba(0,0,0,0.75)";
-        g.shadowBlur = 7;
-        g.shadowOffsetY = 2;
-        g.fillStyle = (num === "0" || num === "00") ? "#8ff0bf" : "#f7f7f7";
-        g.font = `bold ${size * 0.040}px Arial`;
-        g.textAlign = "center";
-        g.textBaseline = "middle";
-        g.fillText(num, 0, 0);
-        g.restore();
-      }
+        ctx.rotate(textAngle + Math.PI / 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = `bold ${size * 0.030}px Arial`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(num, 0, 0);
+        ctx.restore();
+      });
 
-      const tex = new THREE.CanvasTexture(c);
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.anisotropy = 8;
-      return tex;
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.colorSpace = THREE.SRGBColorSpace;
+      texture.anisotropy = 8;
+      return texture;
     }
 
     function createBallNormalTexture() {
@@ -732,7 +797,7 @@
     scene.add(bowlFloorMesh);
 
     // Carriles metalicos internos planos (al ras, sin sobresalir).
-    const trackGeom = new THREE.RingGeometry(2.014, 2.022, 220);
+    const trackGeom = new THREE.RingGeometry(2.01, 2.018, 220);
     const trackMesh = new THREE.Mesh(
       trackGeom,
       new THREE.MeshPhysicalMaterial({ color: 0xd7dbe0, roughness: 0.22, metalness: 0.95, clearcoat: 0.3 })
@@ -744,7 +809,7 @@
     scene.add(trackMesh);
 
     // Guía interior del carril.
-    const innerGuideGeom = new THREE.RingGeometry(1.896, 1.903, 220);
+    const innerGuideGeom = new THREE.RingGeometry(1.90, 1.907, 220);
     const innerGuide = new THREE.Mesh(
       innerGuideGeom,
       new THREE.MeshPhysicalMaterial({ color: 0xd7dbe0, roughness: 0.24, metalness: 0.94, clearcoat: 0.26 })
