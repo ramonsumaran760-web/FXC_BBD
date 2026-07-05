@@ -462,16 +462,18 @@
 
     const matBall = new THREE.MeshPhysicalMaterial({
       color: 0xffffff,
-      metalness: 0.06,
-      roughness: 0.006,
-      transmission: 0.55,
+      metalness: 0.08,
+      roughness: 0.003,
+      transmission: 0.35,
       ior: 1.46,
       clearcoat: 1.0,
-      clearcoatRoughness: 0.002,
-      envMapIntensity: 2.5,
+      clearcoatRoughness: 0.001,
+      envMapIntensity: 3.2,
       specularIntensity: 1.0,
-      sheen: 0.6,
-      sheenRoughness: 0.08,
+      sheen: 0.8,
+      sheenRoughness: 0.04,
+      emissive: 0x111111,
+      emissiveIntensity: 0.08,
     });
 
     function createWoodTexture() {
@@ -650,14 +652,29 @@
     let bounceY = 0;
     let bounceVy = 0;
     let nextBounceAt = 0;
+    const launchRingRadius = 2.50;
+    const settlePocketRadius = 1.02;
+
+    function placeBallOnPocket(idx) {
+      const angle = idx * slotAngle + wheelRotation;
+      ballPos.set(
+        Math.cos(angle) * settlePocketRadius,
+        0.13,
+        Math.sin(angle) * settlePocketRadius
+      );
+      ballMesh.position.copy(ballPos);
+      ballVel.set(0, 0, 0);
+      bounceY = 0;
+      bounceVy = 0;
+    }
 
     function launch(speed, angle, rpm) {
       if (isSpinning) return;
       isSpinning = true;
       spinStartTime = performance.now();
       const radAngle = (angle * Math.PI) / 180;
-      // Arranca claramente dentro del anillo dorado, no fuera de la ruleta.
-      ballPos.set(Math.cos(radAngle) * 1.98, 1.42, Math.sin(radAngle) * 1.98);
+      // Arranca dentro del anillo dorado (carril exterior real).
+      ballPos.set(Math.cos(radAngle) * launchRingRadius, 1.42, Math.sin(radAngle) * launchRingRadius);
       ballVel.set(Math.cos(radAngle + Math.PI / 2) * speed, 0, Math.sin(radAngle + Math.PI / 2) * speed);
       ballRot = 0;
       bounceY = 0;
@@ -672,6 +689,10 @@
       const calc = getCalculatedResult();
       const delta = slotDelta(real.idx, calc.idx);
       const result = real.num;
+
+      // Al finalizar, la bola queda estatica sobre el pocket ganador.
+      wheelAngularSpeed = 0;
+      placeBallOnPocket(real.idx);
 
       document.getElementById("hudResult").textContent = result;
       document.getElementById("hudReal").textContent = real.num;
@@ -881,7 +902,7 @@
         const fallProgress = Math.min(1, Math.max(0, (elapsedSec - 1.0) / 4.2));
 
         // Radio y altura objetivo: de pista exterior a bolsillos internos.
-        const targetRadius = 2.46 - 1.46 * fallProgress;
+        const targetRadius = launchRingRadius - (launchRingRadius - settlePocketRadius) * fallProgress;
         const yAir = 1.58 - 0.82 * airPhase;
         const yBowl = 0.76 - 1.02 * fallProgress;
         const targetY = elapsedSec < 1.0 ? yAir : yBowl;
