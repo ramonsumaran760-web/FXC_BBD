@@ -4,6 +4,10 @@
 from flask import Flask, send_file
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+# Cargar variables de entorno
+load_dotenv()
 
 # Obtener el directorio del script
 BASE_DIR = Path(__file__).parent.absolute()
@@ -40,5 +44,7 @@ def not_found(error):
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("FLASK_ENV") != "production"
     print(f"Starting server from {BASE_DIR}")
-    app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
+    print(f"Debug mode: {debug}")
+    app.run(host="0.0.0.0", port=port, debug=debug, threaded=True)
