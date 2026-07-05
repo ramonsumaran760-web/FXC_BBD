@@ -4,9 +4,14 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Artemis Roulette - Professional Casino 3D</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <script src="/static/three.min.js"></script>
-  <script src="/static/OrbitControls.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://esm.sh/three@r128",
+      "three/addons/": "https://esm.sh/three@r128/examples/jsm/"
+    }
+  }
+  </script>
   <style>
     :root { --bg: #0a0a0a; --text: #f1eee4; --muted: #9a9b8d; --gold: #d4af37; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -38,7 +43,7 @@
     <div class="canvas-area">
       <canvas id="canvas"></canvas>
       <div class="hud">
-        <div>ESTADO: <span class="hud-value" id="hudState">Listo</span></div>
+        <div>ESTADO: <span class="hud-value" id="hudState">Cargando...</span></div>
         <div>BOLA: <span class="hud-value" id="hudBall">0 m/s</span></div>
         <div>RUEDA: <span class="hud-value" id="hudWheel">0 RPM</span></div>
         <div style="margin-top: 8px; border-top: 1px solid #303326; padding-top: 8px;">RESULTADO: <span class="hud-value" id="hudResult">--</span></div>
@@ -83,37 +88,13 @@
     </div>
   </div>
 
-  <script>
-    function waitForThree(callback, timeout = 10000) {
-      const start = Date.now();
-      function check() {
-        if (typeof THREE !== 'undefined' && THREE.OrbitControls !== undefined) {
-          console.log('✓ Three.js loaded successfully');
-          callback();
-        } else if (Date.now() - start < timeout) {
-          requestAnimationFrame(check);
-        } else {
-          console.error('THREE.js failed to load within', timeout, 'ms');
-          document.body.innerHTML = `
-            <div style="display: flex; align-items: center; justify-content: center; height: 100vh; background: #0a0a0a; color: #f1eee4; font-family: monospace; text-align: center;">
-              <div>
-                <h1 style="font-size: 32px; margin-bottom: 20px; color: #d4af37;">⚠ Error de carga</h1>
-                <p style="font-size: 18px; margin-bottom: 10px;">Three.js no se pudo cargar</p>
-                <p style="font-size: 14px; color: #9a9b8d; margin-bottom: 20px;">Servidor: ${window.location.host}</p>
-                <button onclick="location.reload()" style="padding: 12px 24px; font-size: 16px; background: #24200f; border: 1px solid #d4af37; color: #d4af37; cursor: pointer; border-radius: 4px;">
-                  🔄 Reintentar
-                </button>
-              </div>
-            </div>
-          `;
-        }
-      }
-      check();
-    }
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-    function initRoulette() {
+    console.log('✓ Three.js imported:', THREE.version);
 
-      const WHEEL = ["0","28","9","26","30","11","7","20","32","17","5","22","34","15","3","24","36","13","1","00","27","10","25","29","12","8","19","31","18","6","21","33","16","4","23","35","14","2"];
+    const WHEEL = ["0","28","9","26","30","11","7","20","32","17","5","22","34","15","3","24","36","13","1","00","27","10","25","29","12","8","19","31","18","6","21","33","16","4","23","35","14","2"];
     const RED = new Set(["1","3","5","7","9","12","14","16","18","19","21","23","25","27","30","32","34","36"]);
     const slotAngle = (Math.PI * 2) / WHEEL.length;
 
@@ -122,7 +103,6 @@
     let wheelRotation = 0;
     let wheelAngularSpeed = 0;
 
-    // ===== THREE.JS SETUP =====
     const canvas = document.getElementById("canvas");
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(0x0a0a0a);
@@ -140,7 +120,7 @@
     renderer.toneMappingExposure = 1.2;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.minDistance = 5;
@@ -149,7 +129,7 @@
     controls.autoRotate = true;
     controls.autoRotateSpeed = 0.4;
 
-    // ===== LIGHTING (3-Point Setup) =====
+    // Lighting
     const keyLight = new THREE.DirectionalLight(0xfff4e0, 3.8);
     keyLight.position.set(6, 12, 6);
     keyLight.castShadow = true;
@@ -173,7 +153,7 @@
     const ambientLight = new THREE.AmbientLight(0x505050, 0.5);
     scene.add(ambientLight);
 
-    // ===== PBR MATERIALS =====
+    // Materials
     const matGold = new THREE.MeshPhysicalMaterial({
       color: 0xd4af37,
       metalness: 1.0,
@@ -225,11 +205,10 @@
       clearcoat: 0,
     });
 
-    // ===== GEOMETRIES & MESHES =====
+    // Geometries
     const wheelGroup = new THREE.Group();
     scene.add(wheelGroup);
 
-    // Números en la rueda
     WHEEL.forEach((num, idx) => {
       const start = idx * slotAngle - slotAngle / 2;
       const end = idx * slotAngle + slotAngle / 2;
@@ -244,7 +223,6 @@
       wheelGroup.add(mesh);
     });
 
-    // Centro dorado
     const centerGeom = new THREE.SphereGeometry(0.24, 64, 32);
     const centerMesh = new THREE.Mesh(centerGeom, matGold);
     centerMesh.position.y = 0.42;
@@ -252,7 +230,6 @@
     centerMesh.receiveShadow = true;
     wheelGroup.add(centerMesh);
 
-    // Cono dorado interior
     const coneGeom = new THREE.CylinderGeometry(0.2, 0.7, 0.45, 48);
     const coneMesh = new THREE.Mesh(coneGeom, matGold);
     coneMesh.position.y = 0.15;
@@ -260,7 +237,6 @@
     coneMesh.receiveShadow = true;
     wheelGroup.add(coneMesh);
 
-    // Mesa de madera
     const tableGeom = new THREE.CylinderGeometry(2.6, 2.9, 0.16, 128);
     const tableMesh = new THREE.Mesh(tableGeom, matWood);
     tableMesh.position.y = -0.14;
@@ -268,7 +244,6 @@
     tableMesh.receiveShadow = true;
     scene.add(tableMesh);
 
-    // Borde dorado de la mesa
     const rimGeom = new THREE.TorusGeometry(2.6, 0.06, 16, 100);
     const rimMesh = new THREE.Mesh(rimGeom, matGold);
     rimMesh.rotation.x = Math.PI / 2;
@@ -277,7 +252,6 @@
     rimMesh.receiveShadow = true;
     scene.add(rimMesh);
 
-    // Bola (marfil realista)
     const ballGeom = new THREE.SphereGeometry(0.062, 64, 32);
     const ballMesh = new THREE.Mesh(ballGeom, matBall);
     ballMesh.position.set(0, 2, 3);
@@ -285,7 +259,6 @@
     ballMesh.receiveShadow = true;
     scene.add(ballMesh);
 
-    // Deflectores (pines de latón)
     for (let i = 0; i < 8; i++) {
       const angle = (i / 8) * Math.PI * 2;
       const pinGeom = new THREE.SphereGeometry(0.09, 32, 16);
@@ -296,7 +269,6 @@
       scene.add(pinMesh);
     }
 
-    // DOMO DE VIDRIO (cilindro transparente que encierra la ruleta)
     const domeGeom = new THREE.CylinderGeometry(3.5, 3.5, 4.5, 64, 1, true);
     const domeMesh = new THREE.Mesh(domeGeom, matGlass);
     domeMesh.position.y = 1.8;
@@ -304,7 +276,7 @@
     domeMesh.receiveShadow = true;
     scene.add(domeMesh);
 
-    // ===== PHYSICS SIMULATION (Simplified) =====
+    // Physics
     let ballVel = new THREE.Vector3();
     let ballPos = new THREE.Vector3(0, 2, 3);
     let ballRot = 0;
@@ -343,62 +315,6 @@
       list.innerHTML = history.map(n => `<div>${n}</div>`).join("");
     }
 
-    // ===== ANIMATION LOOP =====
-    const clock = new THREE.Clock();
-    let spinTimeout = null;
-
-    function animate() {
-      requestAnimationFrame(animate);
-      const dt = clock.getDelta();
-
-      // Rueda
-      wheelAngularSpeed *= 0.998;
-      wheelRotation += wheelAngularSpeed * dt;
-      wheelGroup.rotation.z = wheelRotation;
-
-      // Bola
-      if (isSpinning) {
-        ballVel.y -= 9.82 * dt;
-        ballPos.addScaledVector(ballVel, dt);
-        ballVel.multiplyScalar(Math.pow(0.985, dt));
-
-        // Colisión con mesa
-        const distFromCenter = new THREE.Vector2(ballPos.x, ballPos.z).length();
-        if (distFromCenter > 2.4 || ballPos.y < 0.12) {
-          ballPos.y = 0.15;
-          ballVel.y *= -0.25;
-          ballVel.multiplyScalar(0.65);
-        }
-
-        ballMesh.position.copy(ballPos);
-        ballRot += ballVel.length() * 0.5;
-        ballMesh.rotation.x = ballRot;
-
-        document.getElementById("hudBall").textContent = ballVel.length().toFixed(2) + " m/s";
-      }
-
-      document.getElementById("hudWheel").textContent = (wheelAngularSpeed * 9.55).toFixed(1) + " RPM";
-
-      // Detectar fin de spin
-      if (isSpinning && ballVel.length() < 0.06 && wheelAngularSpeed < 0.03) {
-        if (!spinTimeout) {
-          spinTimeout = setTimeout(() => {
-            const result = getResult();
-            document.getElementById("hudResult").textContent = result;
-            document.getElementById("lastResult").textContent = result;
-            addHistory(result);
-            document.getElementById("hudState").textContent = "Resultado: " + result;
-            isSpinning = false;
-            spinTimeout = null;
-          }, 400);
-        }
-      }
-
-      controls.update();
-      renderer.render(scene, camera);
-    }
-
-    // ===== EVENTS =====
     document.getElementById("launchBtn").addEventListener("click", () => {
       launch(
         parseFloat(document.getElementById("speedSlider").value),
@@ -418,15 +334,58 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
     });
 
-    animate();
+    const clock = new THREE.Clock();
+    let spinTimeout = null;
+
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = clock.getDelta();
+
+      wheelAngularSpeed *= 0.998;
+      wheelRotation += wheelAngularSpeed * dt;
+      wheelGroup.rotation.z = wheelRotation;
+
+      if (isSpinning) {
+        ballVel.y -= 9.82 * dt;
+        ballPos.addScaledVector(ballVel, dt);
+        ballVel.multiplyScalar(Math.pow(0.985, dt));
+
+        const distFromCenter = new THREE.Vector2(ballPos.x, ballPos.z).length();
+        if (distFromCenter > 2.4 || ballPos.y < 0.12) {
+          ballPos.y = 0.15;
+          ballVel.y *= -0.25;
+          ballVel.multiplyScalar(0.65);
+        }
+
+        ballMesh.position.copy(ballPos);
+        ballRot += ballVel.length() * 0.5;
+        ballMesh.rotation.x = ballRot;
+
+        document.getElementById("hudBall").textContent = ballVel.length().toFixed(2) + " m/s";
+      }
+
+      document.getElementById("hudWheel").textContent = (wheelAngularSpeed * 9.55).toFixed(1) + " RPM";
+
+      if (isSpinning && ballVel.length() < 0.06 && wheelAngularSpeed < 0.03) {
+        if (!spinTimeout) {
+          spinTimeout = setTimeout(() => {
+            const result = getResult();
+            document.getElementById("hudResult").textContent = result;
+            document.getElementById("lastResult").textContent = result;
+            addHistory(result);
+            document.getElementById("hudState").textContent = "Resultado: " + result;
+            isSpinning = false;
+            spinTimeout = null;
+          }, 400);
+        }
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
     }
 
-    // Iniciar cuando THREE esté disponible
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => waitForThree(initRoulette));
-    } else {
-      waitForThree(initRoulette);
-    }
+    document.getElementById("hudState").textContent = "Listo";
+    animate();
   </script>
 </body>
 </html>
