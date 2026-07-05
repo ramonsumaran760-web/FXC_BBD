@@ -16,10 +16,24 @@
     :root { --bg: #0a0a0a; --text: #f1eee4; --muted: #9a9b8d; --gold: #d4af37; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width: 100%; height: 100vh; background: var(--bg); color: var(--text); font-family: Inter, system-ui, sans-serif; overflow: hidden; }
-    .container { display: grid; grid-template-columns: 1fr 350px; height: 100vh; }
-    .canvas-area { position: relative; background: #050505; }
+    .container { position: relative; height: 100vh; }
+    .canvas-area { position: relative; background: radial-gradient(circle at 50% 35%, #1a0f08 0%, #080808 55%, #050505 100%); height: 100vh; }
     canvas { display: block; width: 100%; height: 100%; }
-    .side { overflow-y: auto; border-left: 1px solid #303326; background: rgba(10, 10, 10, .98); padding: 14px; }
+    .side {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 300px;
+      max-height: calc(100vh - 230px);
+      overflow-y: auto;
+      border: 1px solid #503319;
+      background: rgba(10, 10, 10, .78);
+      backdrop-filter: blur(10px);
+      border-radius: 10px;
+      padding: 12px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, .38);
+      z-index: 5;
+    }
     .panel-head { font-weight: 700; font-size: 13px; margin: 12px 0 8px 0; padding-bottom: 8px; border-bottom: 1px solid #303326; }
     .control-group { margin: 10px 0; padding: 8px; background: #0d0e0b; border: 1px solid #303326; border-radius: 6px; }
     .control-group label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
@@ -31,8 +45,161 @@
     .toolbar button { margin: 0; }
     .metric { margin: 8px 0; padding: 8px; background: #0d0e0b; border: 1px solid #303326; border-radius: 6px; font-size: 12px; }
     .metric-value { font-size: 16px; font-weight: 900; color: var(--gold); margin-top: 2px; }
-    .hud { position: absolute; top: 16px; left: 16px; background: rgba(10, 10, 10, .9); backdrop-filter: blur(12px); border: 1px solid rgba(212, 175, 55, .26); border-radius: 8px; padding: 12px; font-size: 12px; line-height: 1.5; min-width: 200px; }
+    .hud { position: absolute; top: 16px; left: 16px; background: rgba(10, 10, 10, .82); backdrop-filter: blur(10px); border: 1px solid rgba(255, 138, 53, .4); border-radius: 8px; padding: 12px; font-size: 12px; line-height: 1.5; min-width: 220px; z-index: 5; }
     .hud-value { color: var(--gold); font-weight: 700; }
+
+    .casino-overlay {
+      position: absolute;
+      left: 14px;
+      right: 14px;
+      bottom: 14px;
+      display: grid;
+      grid-template-columns: 360px minmax(0, 1fr);
+      gap: 12px;
+      z-index: 4;
+      pointer-events: none;
+    }
+
+    .overlay-panel {
+      pointer-events: auto;
+      border: 1px solid #ff7a1c66;
+      border-radius: 10px;
+      background: rgba(5, 5, 5, .86);
+      backdrop-filter: blur(9px);
+      box-shadow: 0 12px 34px rgba(0, 0, 0, .5), inset 0 0 0 1px rgba(255, 150, 60, .1);
+    }
+
+    .race-head {
+      padding: 7px 10px;
+      border-bottom: 1px solid #4e2f14;
+      color: #ffae66;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .racetrack {
+      position: relative;
+      margin: 10px;
+      height: 124px;
+      border: 2px solid #f4b662;
+      border-radius: 999px;
+      overflow: hidden;
+      background: #060606;
+    }
+
+    .race-labels {
+      position: absolute;
+      left: 12px;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      text-align: center;
+      color: #f2e2c0;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+
+    .race-ring {
+      position: absolute;
+      inset: 7px;
+      border: 1px dashed #f4b66255;
+      border-radius: 999px;
+    }
+
+    .race-chip {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 1px solid #efb967;
+      font-size: 9px;
+      line-height: 18px;
+      text-align: center;
+      font-weight: 700;
+      box-shadow: 0 0 8px rgba(0, 0, 0, .5);
+      transform: translate(-50%, -50%);
+      color: #f7f2de;
+      background: #111;
+    }
+
+    .race-chip.red { background: #7d1f1f; }
+    .race-chip.black { background: #0f0f10; }
+    .race-chip.green { background: #0f6346; }
+
+    .betboard {
+      padding: 10px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .bet-grid {
+      border: 1px solid #6f431e;
+      border-radius: 8px;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 54px repeat(12, minmax(24px, 1fr));
+      grid-auto-rows: 38px;
+      background: #0b0b0b;
+    }
+
+    .bet-cell {
+      border-right: 1px solid #5d3718;
+      border-bottom: 1px solid #5d3718;
+      display: grid;
+      place-items: center;
+      color: #ece5d2;
+      font-size: 15px;
+      font-weight: 700;
+      text-shadow: 0 1px 1px rgba(0, 0, 0, .4);
+    }
+
+    .bet-cell.red { color: #ff4d3d; }
+    .bet-cell.black { color: #f7f5ef; }
+    .bet-cell.green { color: #36d489; background: #0f3326; }
+    .bet-cell.title { color: #f2be79; font-size: 11px; text-transform: uppercase; letter-spacing: .05em; }
+
+    .outside-grid {
+      border: 1px solid #6f431e;
+      border-radius: 8px;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      background: #0b0b0b;
+    }
+
+    .outside-cell {
+      min-height: 36px;
+      border-right: 1px solid #5d3718;
+      display: grid;
+      place-items: center;
+      color: #f2e1bf;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .outside-cell:last-child { border-right: 0; }
+
+    .outside-cell.red { color: #ff5e4f; }
+    .outside-cell.black { color: #f8f8f8; }
+    @media (max-width: 1200px) {
+      .casino-overlay { grid-template-columns: 1fr; }
+      .side { width: 270px; }
+    }
+
+    @media (max-width: 860px) {
+      .side { display: none; }
+      .casino-overlay { left: 8px; right: 8px; bottom: 8px; }
+      .bet-grid { grid-template-columns: 44px repeat(12, minmax(18px, 1fr)); grid-auto-rows: 30px; }
+      .bet-cell { font-size: 12px; }
+    }
+
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: #0d0e0b; }
     ::-webkit-scrollbar-thumb { background: #44472f; border-radius: 3px; }
@@ -47,6 +214,35 @@
         <div>BOLA: <span class="hud-value" id="hudBall">0 m/s</span></div>
         <div>RUEDA: <span class="hud-value" id="hudWheel">0 RPM</span></div>
         <div style="margin-top: 8px; border-top: 1px solid #303326; padding-top: 8px;">RESULTADO: <span class="hud-value" id="hudResult">--</span></div>
+        <div>REAL: <span class="hud-value" id="hudReal">--</span></div>
+        <div>CALC: <span class="hud-value" id="hudCalc">--</span> · Δ <span class="hud-value" id="hudDelta">--</span></div>
+      </div>
+
+      <div class="casino-overlay">
+        <div class="overlay-panel">
+          <div class="race-head">Racetrack: Tier · Orphelins · Voisins · Zero</div>
+          <div class="racetrack" id="racetrack">
+            <div class="race-ring"></div>
+            <div class="race-labels">
+              <span>Tier</span>
+              <span>Orphelins</span>
+              <span>Voisins</span>
+              <span>Zero</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="overlay-panel betboard">
+          <div class="bet-grid" id="betGrid"></div>
+          <div class="outside-grid">
+            <div class="outside-cell">1-18</div>
+            <div class="outside-cell">Par</div>
+            <div class="outside-cell red">Rojo</div>
+            <div class="outside-cell black">Negro</div>
+            <div class="outside-cell">Impar</div>
+            <div class="outside-cell">19-36</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -91,10 +287,16 @@
   <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 
     console.log('✓ Three.js imported:', THREE.version);
 
     const WHEEL = ["0","28","9","26","30","11","7","20","32","17","5","22","34","15","3","24","36","13","1","00","27","10","25","29","12","8","19","31","18","6","21","33","16","4","23","35","14","2"];
+    const BOARD_ROWS = [
+      [3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36],
+      [2, 5, 8, 11, 14, 17, 20, 23, 26, 29, 32, 35],
+      [1, 4, 7, 10, 13, 16, 19, 22, 25, 28, 31, 34]
+    ];
     const RED = new Set(["1","3","5","7","9","12","14","16","18","19","21","23","25","27","30","32","34","36"]);
     const slotAngle = (Math.PI * 2) / WHEEL.length;
 
@@ -108,8 +310,8 @@
     scene.background = new THREE.Color(0x0a0a0a);
     scene.fog = new THREE.FogExp2(0x0a0a0a, 0.06);
 
-    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 200);
-    camera.position.set(0, 4.2, 5.8);
+    const camera = new THREE.PerspectiveCamera(39, window.innerWidth / window.innerHeight, 0.1, 200);
+    camera.position.set(0.12, 2.78, 3.72);
 
     const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -120,17 +322,30 @@
     renderer.toneMappingExposure = 1.2;
     renderer.outputColorSpace = THREE.SRGBColorSpace;
 
+    // Environment map generado por codigo, sin HDR externo.
+    const pmremGenerator = new THREE.PMREMGenerator(renderer);
+    const envMap = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+    scene.environment = envMap;
+    pmremGenerator.dispose();
+    if (!scene.environment) {
+      console.error('[ROULETTE] scene.environment es null - los metales se van a ver negros');
+    } else {
+      console.log('[ROULETTE] Environment OK, metales deberian reflejar correctamente');
+    }
+
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-    controls.minDistance = 5;
-    controls.maxDistance = 12;
-    controls.target.set(0, 0.1, 0);
-    controls.autoRotate = true;
-    controls.autoRotateSpeed = 0.4;
+    controls.minDistance = 3.25;
+    controls.maxDistance = 6.2;
+    controls.minPolarAngle = Math.PI * 0.30;
+    controls.maxPolarAngle = Math.PI * 0.46;
+    controls.target.set(0, 0.15, 0);
+    controls.autoRotate = false;
+    controls.autoRotateSpeed = 0.25;
 
     // Lighting
-    const keyLight = new THREE.DirectionalLight(0xfff4e0, 3.8);
+    const keyLight = new THREE.DirectionalLight(0xffb46e, 3.9);
     keyLight.position.set(6, 12, 6);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(2048, 2048);
@@ -142,12 +357,12 @@
     keyLight.shadow.bias = -0.0008;
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight(0xcfe0ff, 1.2);
+    const fillLight = new THREE.DirectionalLight(0xff9a57, 1.0);
     fillLight.position.set(-8, 5, -4);
     scene.add(fillLight);
 
-    const rimLight = new THREE.PointLight(0xffcc66, 2.2, 20);
-    rimLight.position.set(0, 4, -8);
+    const rimLight = new THREE.PointLight(0xff6f2a, 2.6, 20);
+    rimLight.position.set(0, 3.2, -5.5);
     scene.add(rimLight);
 
     const ambientLight = new THREE.AmbientLight(0x505050, 0.5);
@@ -194,15 +409,6 @@
       roughness: 0.08,
       clearcoat: 1.0,
       clearcoatRoughness: 0.05,
-    });
-
-    const matGlass = new THREE.MeshPhysicalMaterial({
-      color: 0xffffff,
-      transmission: 0.95,
-      thickness: 0.1,
-      roughness: 0.05,
-      metalness: 0,
-      clearcoat: 0,
     });
 
     // Geometries
@@ -259,19 +465,23 @@
     ballMesh.receiveShadow = true;
     scene.add(ballMesh);
 
-    for (let i = 0; i < 8; i++) {
-      const angle = (i / 8) * Math.PI * 2;
-      const pinGeom = new THREE.SphereGeometry(0.09, 32, 16);
-      const pinMesh = new THREE.Mesh(pinGeom, matGold);
-      pinMesh.position.set(Math.cos(angle) * 3.3, 0.18, Math.sin(angle) * 3.3);
-      pinMesh.castShadow = true;
-      pinMesh.receiveShadow = true;
-      scene.add(pinMesh);
-    }
+    // Sin elementos externos para evitar el efecto visual de "muchas bolas".
 
-    const domeGeom = new THREE.CylinderGeometry(3.5, 3.5, 4.5, 64, 1, true);
-    const domeMesh = new THREE.Mesh(domeGeom, matGlass);
-    domeMesh.position.y = 1.8;
+    // Cupula de vidrio hemisferica sobre la ruleta.
+    const domeGeom = new THREE.SphereGeometry(2.05, 64, 32, 0, Math.PI * 2, 0, Math.PI / 2);
+    const domeMesh = new THREE.Mesh(
+      domeGeom,
+      new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        transmission: 0.95,
+        thickness: 0.08,
+        roughness: 0.02,
+        metalness: 0,
+        clearcoat: 0.1,
+        side: THREE.DoubleSide,
+      })
+    );
+    domeMesh.position.y = 0.06;
     domeMesh.castShadow = false;
     domeMesh.receiveShadow = true;
     scene.add(domeMesh);
@@ -280,16 +490,36 @@
     let ballVel = new THREE.Vector3();
     let ballPos = new THREE.Vector3(0, 2, 3);
     let ballRot = 0;
+    let spinStartTime = 0;
 
     function launch(speed, angle, rpm) {
       if (isSpinning) return;
       isSpinning = true;
+      spinStartTime = performance.now();
       const radAngle = (angle * Math.PI) / 180;
-      ballVel.set(Math.sin(radAngle) * speed, 0, -Math.cos(radAngle) * speed);
-      ballPos.set(0, 1.3, 2.9);
+      // Arranca en el aro exterior y con velocidad tangencial para que se vea la "caida" al plato.
+      ballPos.set(Math.cos(radAngle) * 2.35, 0.62, Math.sin(radAngle) * 2.35);
+      ballVel.set(Math.cos(radAngle + Math.PI / 2) * speed, 0, Math.sin(radAngle + Math.PI / 2) * speed);
       ballRot = 0;
       wheelAngularSpeed = (rpm * Math.PI * 2) / 60;
       document.getElementById("hudState").textContent = "Girando";
+    }
+
+    function finalizeSpin() {
+      const real = getRealResult();
+      const calc = getCalculatedResult();
+      const delta = slotDelta(real.idx, calc.idx);
+      const result = real.num;
+
+      document.getElementById("hudResult").textContent = result;
+      document.getElementById("hudReal").textContent = real.num;
+      document.getElementById("hudCalc").textContent = calc.num;
+      document.getElementById("hudDelta").textContent = delta + " cas";
+      document.getElementById("lastResult").textContent = `${real.num} | calc ${calc.num} (Δ${delta})`;
+      addHistory(`${real.num} | calc ${calc.num} (Δ${delta})`);
+      document.getElementById("hudState").textContent = `Resultado: ${real.num} | calc ${calc.num}`;
+      isSpinning = false;
+      spinTimeout = null;
     }
 
     function reset() {
@@ -297,15 +527,43 @@
       ballVel.set(0, 0, 0);
       wheelRotation = 0;
       wheelAngularSpeed = 0;
-      wheelGroup.rotation.z = 0;
+      wheelGroup.rotation.y = 0;
       isSpinning = false;
       document.getElementById("hudState").textContent = "Listo";
+      document.getElementById("hudResult").textContent = "--";
+      document.getElementById("hudReal").textContent = "--";
+      document.getElementById("hudCalc").textContent = "--";
+      document.getElementById("hudDelta").textContent = "--";
     }
 
-    function getResult() {
-      const angle = Math.atan2(ballMesh.position.z, ballMesh.position.x);
-      const norm = ((angle + Math.PI) % (Math.PI * 2)) / slotAngle;
-      return WHEEL[Math.round(norm) % WHEEL.length];
+    function normalizeAngle(angle) {
+      const tau = Math.PI * 2;
+      return ((angle % tau) + tau) % tau;
+    }
+
+    function indexFromBallAndWheel(ballAngle, wheelAngle) {
+      const relativeAngle = normalizeAngle(ballAngle - wheelAngle);
+      return Math.round(relativeAngle / slotAngle) % WHEEL.length;
+    }
+
+    function getRealResult() {
+      const ballAngle = Math.atan2(ballMesh.position.z, ballMesh.position.x);
+      const idx = indexFromBallAndWheel(ballAngle, wheelRotation);
+      return { num: WHEEL[idx], idx };
+    }
+
+    function getCalculatedResult() {
+      const ballAngle = Math.atan2(ballMesh.position.z, ballMesh.position.x);
+      const relativeAngle = normalizeAngle(ballAngle - wheelRotation);
+      const residualSlots = (ballVel.length() * 7) + (Math.abs(wheelAngularSpeed) * 28);
+      const projectedAngle = normalizeAngle(relativeAngle + (residualSlots * slotAngle));
+      const idx = Math.round(projectedAngle / slotAngle) % WHEEL.length;
+      return { num: WHEEL[idx], idx };
+    }
+
+    function slotDelta(idxA, idxB) {
+      const d = Math.abs(idxA - idxB);
+      return Math.min(d, WHEEL.length - d);
     }
 
     function addHistory(num) {
@@ -313,6 +571,50 @@
       if (history.length > 10) history.pop();
       const list = document.getElementById("historyList");
       list.innerHTML = history.map(n => `<div>${n}</div>`).join("");
+    }
+
+    function numClass(num) {
+      const txt = String(num);
+      if (txt === "0" || txt === "00") return "green";
+      return RED.has(txt) ? "red" : "black";
+    }
+
+    function renderBetGrid() {
+      const grid = document.getElementById("betGrid");
+      const cells = [];
+      cells.push('<div class="bet-cell green" style="grid-column: 1; grid-row: 1 / span 3;">0</div>');
+      for (let r = 0; r < BOARD_ROWS.length; r++) {
+        for (let c = 0; c < BOARD_ROWS[r].length; c++) {
+          const n = BOARD_ROWS[r][c];
+          cells.push(`<div class="bet-cell ${numClass(n)}" style="grid-column: ${c + 2}; grid-row: ${r + 1};">${n}</div>`);
+        }
+      }
+      grid.innerHTML = cells.join("");
+    }
+
+    function renderRacetrack() {
+      const track = document.getElementById("racetrack");
+      const ring = track.querySelector('.race-ring');
+      const labels = track.querySelector('.race-labels');
+      track.innerHTML = '';
+      if (ring) track.appendChild(ring);
+      if (labels) track.appendChild(labels);
+      const cx = track.clientWidth / 2;
+      const cy = track.clientHeight / 2;
+      const rx = track.clientWidth / 2 - 18;
+      const ry = track.clientHeight / 2 - 18;
+
+      WHEEL.forEach((n, i) => {
+        const t = (i / WHEEL.length) * Math.PI * 2;
+        const x = cx + Math.cos(t) * rx;
+        const y = cy + Math.sin(t) * ry;
+        const chip = document.createElement('div');
+        chip.className = `race-chip ${numClass(n)}`;
+        chip.style.left = `${x}px`;
+        chip.style.top = `${y}px`;
+        chip.textContent = n;
+        track.appendChild(chip);
+      });
     }
 
     document.getElementById("launchBtn").addEventListener("click", () => {
@@ -343,19 +645,31 @@
 
       wheelAngularSpeed *= 0.998;
       wheelRotation += wheelAngularSpeed * dt;
-      wheelGroup.rotation.z = wheelRotation;
+      wheelGroup.rotation.y = wheelRotation;
 
       if (isSpinning) {
-        ballVel.y -= 9.82 * dt;
-        ballPos.addScaledVector(ballVel, dt);
-        ballVel.multiplyScalar(Math.pow(0.985, dt));
+        const elapsedSec = (performance.now() - spinStartTime) / 1000;
+        const radiusNow = Math.max(0.12, new THREE.Vector2(ballPos.x, ballPos.z).length());
+        const fallProgress = Math.min(1, Math.max(0, (elapsedSec - 1.2) / 3.8));
 
-        const distFromCenter = new THREE.Vector2(ballPos.x, ballPos.z).length();
-        if (distFromCenter > 2.4 || ballPos.y < 0.12) {
-          ballPos.y = 0.15;
-          ballVel.y *= -0.25;
-          ballVel.multiplyScalar(0.65);
-        }
+        // Radio y altura objetivo: de pista exterior a bolsillos internos.
+        const targetRadius = 2.35 - 1.23 * fallProgress;
+        const targetY = 0.62 - 0.50 * fallProgress;
+
+        const tangentialSpeed = Math.max(0.05, ballVel.length());
+        let angle = Math.atan2(ballPos.z, ballPos.x);
+        angle += (tangentialSpeed / radiusNow) * dt;
+
+        const jitter = fallProgress > 0.72
+          ? Math.sin(performance.now() * 0.03) * (1 - fallProgress) * 0.02
+          : 0;
+
+        ballPos.x = Math.cos(angle) * targetRadius;
+        ballPos.z = Math.sin(angle) * targetRadius;
+        ballPos.y = targetY + jitter;
+
+        // Frenado progresivo realista.
+        ballVel.multiplyScalar(Math.pow(0.92, dt * 2));
 
         ballMesh.position.copy(ballPos);
         ballRot += ballVel.length() * 0.5;
@@ -366,16 +680,14 @@
 
       document.getElementById("hudWheel").textContent = (wheelAngularSpeed * 9.55).toFixed(1) + " RPM";
 
-      if (isSpinning && ballVel.length() < 0.06 && wheelAngularSpeed < 0.03) {
+      const spinElapsedMs = isSpinning ? (performance.now() - spinStartTime) : 0;
+      const settleByPhysics = ballVel.length() < 0.12 && wheelAngularSpeed < 0.05;
+      const settleByTimeout = spinElapsedMs > 7000;
+
+      if (isSpinning && (settleByPhysics || settleByTimeout)) {
         if (!spinTimeout) {
           spinTimeout = setTimeout(() => {
-            const result = getResult();
-            document.getElementById("hudResult").textContent = result;
-            document.getElementById("lastResult").textContent = result;
-            addHistory(result);
-            document.getElementById("hudState").textContent = "Resultado: " + result;
-            isSpinning = false;
-            spinTimeout = null;
+            finalizeSpin();
           }, 400);
         }
       }
@@ -385,6 +697,9 @@
     }
 
     document.getElementById("hudState").textContent = "Listo";
+    renderBetGrid();
+    renderRacetrack();
+    window.addEventListener("resize", renderRacetrack);
     animate();
   </script>
 </body>

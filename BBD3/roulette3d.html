@@ -729,6 +729,7 @@
   <script type="module">
     const CDN_THREE = "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js";
     const CDN_ORBIT = "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/controls/OrbitControls.js";
+    const CDN_ROOM_ENV = "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/environments/RoomEnvironment.js";
 
     const DEFAULT_NUMBERS = [
       "31", "34", "20", "28", "16", "30", "00", "8", "8", "2", "8", "30",
@@ -1283,6 +1284,7 @@
       try {
         const THREE = await import(CDN_THREE);
         const { OrbitControls } = await import(CDN_ORBIT);
+        const { RoomEnvironment } = await import(CDN_ROOM_ENV);
         if (new URLSearchParams(window.location.search).has("debugGeometry")) {
           const originalCompute = THREE.BufferGeometry.prototype.computeBoundingSphere;
           THREE.BufferGeometry.prototype.computeBoundingSphere = function debugBoundingSphere() {
@@ -1309,7 +1311,7 @@
             return originalCompute.call(this);
           };
         }
-        threeApi = createRouletteScene(THREE, OrbitControls);
+        threeApi = createRouletteScene(THREE, OrbitControls, RoomEnvironment);
         threeApi.rebuildHistory(analysis.valid);
         threeApi.focusSpin(0, false);
         renderCurrent();
@@ -1319,7 +1321,7 @@
       }
     }
 
-    function createRouletteScene(THREE, OrbitControls) {
+    function createRouletteScene(THREE, OrbitControls, RoomEnvironment) {
       const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -1330,6 +1332,18 @@
       const scene = new THREE.Scene();
       scene.fog = new THREE.FogExp2(0x070806, 0.08);
       scene.background = new THREE.Color(0x0a0908);
+
+      // Environment map 100% por codigo (sin HDR externo / sin fetch).
+      const pmremGenerator = new THREE.PMREMGenerator(renderer);
+      const envMap = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
+      scene.environment = envMap;
+      pmremGenerator.dispose();
+      if (!scene.environment) {
+        console.error("[ROULETTE] scene.environment es null - los metales se van a ver negros");
+      } else {
+        console.log("[ROULETTE] Environment OK, metales deberian reflejar correctamente");
+      }
+
       const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 150);
       camera.position.set(0, 3.8, 5.2);
 
