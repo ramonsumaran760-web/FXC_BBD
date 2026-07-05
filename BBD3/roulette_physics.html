@@ -520,25 +520,40 @@
       return tex;
     }
 
-    function createPocketTileTexture(text, bgColor, fgColor) {
+    function createNumberRingTextTexture(size = 2048) {
       const c = document.createElement("canvas");
-      c.width = 512;
-      c.height = 512;
+      c.width = size;
+      c.height = size;
       const g = c.getContext("2d");
 
-      // Fondo de la casilla.
-      g.fillStyle = bgColor;
-      g.fillRect(0, 0, c.width, c.height);
+      const center = size / 2;
+      const outerR = size * 0.48;
+      const innerR = size * 0.34;
+      const segAngle = (Math.PI * 2) / WHEEL.length;
 
-      // Numero integrado en la casilla (sin etiqueta/placa).
-      g.shadowColor = "rgba(0,0,0,0.75)";
-      g.shadowBlur = 8;
-      g.shadowOffsetY = 2;
-      g.fillStyle = fgColor;
-      g.font = "bold 240px Arial";
-      g.textAlign = "center";
-      g.textBaseline = "middle";
-      g.fillText(text, c.width / 2, c.height / 2 + 10);
+      g.clearRect(0, 0, size, size);
+
+      for (let i = 0; i < WHEEL.length; i += 1) {
+        const num = WHEEL[i];
+        const textAngle = i * segAngle - Math.PI / 2 + segAngle / 2;
+        const textR = (outerR + innerR) / 2;
+
+        g.save();
+        g.translate(
+          center + Math.cos(textAngle) * textR,
+          center + Math.sin(textAngle) * textR
+        );
+        g.rotate(textAngle + Math.PI / 2);
+        g.shadowColor = "rgba(0,0,0,0.75)";
+        g.shadowBlur = 7;
+        g.shadowOffsetY = 2;
+        g.fillStyle = (num === "0" || num === "00") ? "#8ff0bf" : "#f7f7f7";
+        g.font = `bold ${size * 0.040}px Arial`;
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.fillText(num, 0, 0);
+        g.restore();
+      }
 
       const tex = new THREE.CanvasTexture(c);
       tex.colorSpace = THREE.SRGBColorSpace;
@@ -588,13 +603,8 @@
     WHEEL.forEach((num, idx) => {
       const start = idx * slotAngle - slotAngle / 2;
       const end = idx * slotAngle + slotAngle / 2;
-      const isGreen = num === "0" || num === "00";
-      const isRed = RED.has(num);
-      const tileBg = isGreen ? "#0f5b38" : (isRed ? "#b03a3a" : "#232426");
-      const tileFg = isGreen ? "#d3ffe7" : (isRed ? "#ffe2dd" : "#f6f6f6");
-      const tileTex = createPocketTileTexture(num, tileBg, tileFg);
       const mat = new THREE.MeshStandardMaterial({
-        map: tileTex,
+        color: (num === "0" || num === "00") ? 0x0f5b38 : (RED.has(num) ? 0xb03a3a : 0x232426),
         roughness: 0.44,
         metalness: 0.12,
       });
@@ -627,8 +637,16 @@
       sepCrest.receiveShadow = true;
       wheelGroup.add(sepCrest);
 
-      // Numero ahora va en la textura de la casilla.
+      // Numero ahora va en corona transparente unica (sin etiquetas negras).
     });
+
+    const numberTextRing = new THREE.Mesh(
+      new THREE.RingGeometry(POCKET_INNER + 0.02, POCKET_OUTER - 0.01, 256),
+      new THREE.MeshBasicMaterial({ map: createNumberRingTextTexture(), transparent: true, side: THREE.DoubleSide, depthWrite: false })
+    );
+    numberTextRing.rotation.x = -Math.PI / 2;
+    numberTextRing.position.y = 0.092;
+    wheelGroup.add(numberTextRing);
 
     // Spindle realista y delgado (cromado), sin bloque dorado tosco.
     const spindleBase = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.30, 0.08, 64), matDarkMetal);
