@@ -797,7 +797,7 @@
     scene.add(bowlFloorMesh);
 
     // Carriles metalicos internos planos (al ras, sin sobresalir).
-    const trackGeom = new THREE.RingGeometry(2.0115, 2.0145, 220);
+    const trackGeom = new THREE.RingGeometry(2.0131, 2.0141, 220);
     const trackMesh = new THREE.Mesh(
       trackGeom,
       new THREE.MeshPhysicalMaterial({ color: 0xd7dbe0, roughness: 0.22, metalness: 0.95, clearcoat: 0.3 })
@@ -809,7 +809,7 @@
     scene.add(trackMesh);
 
     // Guía interior del carril.
-    const innerGuideGeom = new THREE.RingGeometry(1.902, 1.905, 220);
+    const innerGuideGeom = new THREE.RingGeometry(1.9034, 1.9044, 220);
     const innerGuide = new THREE.Mesh(
       innerGuideGeom,
       new THREE.MeshPhysicalMaterial({ color: 0xd7dbe0, roughness: 0.24, metalness: 0.94, clearcoat: 0.26 })
