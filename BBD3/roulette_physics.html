@@ -411,22 +411,103 @@
       clearcoatRoughness: 0.05,
     });
 
+    function createWoodTexture() {
+      const c = document.createElement("canvas");
+      c.width = 1024;
+      c.height = 1024;
+      const g = c.getContext("2d");
+
+      g.fillStyle = "#5e3720";
+      g.fillRect(0, 0, c.width, c.height);
+
+      for (let i = 0; i < 220; i++) {
+        const y = (i / 220) * c.height + (Math.random() - 0.5) * 14;
+        g.strokeStyle = `rgba(${110 + Math.random() * 70}, ${62 + Math.random() * 44}, ${28 + Math.random() * 24}, ${0.10 + Math.random() * 0.18})`;
+        g.lineWidth = 2 + Math.random() * 4;
+        g.beginPath();
+        g.moveTo(0, y);
+        g.bezierCurveTo(c.width * 0.25, y + Math.random() * 20, c.width * 0.75, y - Math.random() * 20, c.width, y + Math.random() * 10);
+        g.stroke();
+      }
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(2.2, 2.2);
+      tex.anisotropy = 8;
+      return tex;
+    }
+
+    function createPocketNumberTexture(text, fgColor) {
+      const c = document.createElement("canvas");
+      c.width = 256;
+      c.height = 128;
+      const g = c.getContext("2d");
+
+      g.clearRect(0, 0, c.width, c.height);
+      g.shadowColor = "rgba(0,0,0,0.78)";
+      g.shadowBlur = 7;
+      g.shadowOffsetY = 2;
+      g.fillStyle = fgColor;
+      g.font = "bold 82px Arial";
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillText(text, c.width / 2, c.height / 2 + 2);
+
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      tex.anisotropy = 8;
+      return tex;
+    }
+
+    const woodTexture = createWoodTexture();
+    matWood.map = woodTexture;
+    matWood.color.set(0xffffff);
+    matWood.needsUpdate = true;
+
     // Geometries
     const wheelGroup = new THREE.Group();
     scene.add(wheelGroup);
+
+    const POCKET_INNER = 0.86;
+    const POCKET_OUTER = 1.58;
+    const POCKET_MID = (POCKET_INNER + POCKET_OUTER) / 2;
 
     WHEEL.forEach((num, idx) => {
       const start = idx * slotAngle - slotAngle / 2;
       const end = idx * slotAngle + slotAngle / 2;
       const mat = RED.has(num) ? matRed : (num === "0" || num === "00" ? matGreen : matBlack);
 
-      const geom = new THREE.RingGeometry(0.75, 1.45, 12, 1, start, end - start);
+      const geom = new THREE.RingGeometry(POCKET_INNER, POCKET_OUTER, 20, 1, start, end - start);
       geom.rotateX(-Math.PI / 2);
       const mesh = new THREE.Mesh(geom, mat);
-      mesh.position.y = 0.01;
+      mesh.position.y = 0.035;
       mesh.castShadow = true;
       mesh.receiveShadow = true;
       wheelGroup.add(mesh);
+
+      // Separadores visibles entre casillas.
+      const sepGeom = new THREE.BoxGeometry(0.018, 0.07, POCKET_OUTER - POCKET_INNER + 0.02);
+      const sepMesh = new THREE.Mesh(sepGeom, matGold);
+      sepMesh.position.set(Math.cos(start) * POCKET_MID, 0.055, Math.sin(start) * POCKET_MID);
+      sepMesh.rotation.y = -start;
+      sepMesh.castShadow = true;
+      sepMesh.receiveShadow = true;
+      wheelGroup.add(sepMesh);
+
+      // Numero de ruleta real (texto sobre el anillo, sin ficha circular falsa).
+      const mid = (start + end) / 2;
+      const fg = (num === "0" || num === "00") ? "#aaf5d3" : (RED.has(num) ? "#ffd6d0" : "#f5f5f5");
+      const tex = createPocketNumberTexture(num, fg);
+      const label = new THREE.Mesh(
+        new THREE.PlaneGeometry(0.15, 0.085),
+        new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false })
+      );
+      label.rotation.x = -Math.PI / 2;
+      label.rotation.z = -mid + Math.PI / 2;
+      label.position.set(Math.cos(mid) * (POCKET_OUTER - 0.10), 0.105, Math.sin(mid) * (POCKET_OUTER - 0.10));
+      wheelGroup.add(label);
     });
 
     const centerGeom = new THREE.SphereGeometry(0.24, 64, 32);
@@ -443,17 +524,48 @@
     coneMesh.receiveShadow = true;
     wheelGroup.add(coneMesh);
 
-    const tableGeom = new THREE.CylinderGeometry(2.6, 2.9, 0.16, 128);
+    const tableGeom = new THREE.CylinderGeometry(2.7, 3.0, 0.42, 128);
     const tableMesh = new THREE.Mesh(tableGeom, matWood);
-    tableMesh.position.y = -0.14;
+    tableMesh.position.y = -0.33;
     tableMesh.castShadow = true;
     tableMesh.receiveShadow = true;
     scene.add(tableMesh);
 
-    const rimGeom = new THREE.TorusGeometry(2.6, 0.06, 16, 100);
+    // Plato hondo (bowl) para que no se vea plano.
+    const bowlWallGeom = new THREE.CylinderGeometry(1.95, 1.62, 0.36, 128, 1, true);
+    const bowlWallTex = woodTexture.clone();
+    bowlWallTex.repeat.set(3.0, 1.2);
+    const bowlWallMesh = new THREE.Mesh(
+      bowlWallGeom,
+      new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        map: bowlWallTex,
+        roughness: 0.52,
+        metalness: 0.03,
+        clearcoat: 0.12,
+      })
+    );
+    bowlWallMesh.position.y = 0.02;
+    bowlWallMesh.castShadow = true;
+    bowlWallMesh.receiveShadow = true;
+    scene.add(bowlWallMesh);
+
+    const bowlFloorGeom = new THREE.CircleGeometry(1.62, 96);
+    const bowlFloorTex = woodTexture.clone();
+    bowlFloorTex.repeat.set(1.7, 1.7);
+    const bowlFloorMesh = new THREE.Mesh(
+      bowlFloorGeom,
+      new THREE.MeshStandardMaterial({ color: 0xffffff, map: bowlFloorTex, roughness: 0.60, metalness: 0.02 })
+    );
+    bowlFloorMesh.rotation.x = -Math.PI / 2;
+    bowlFloorMesh.position.y = -0.16;
+    bowlFloorMesh.receiveShadow = true;
+    scene.add(bowlFloorMesh);
+
+    const rimGeom = new THREE.TorusGeometry(2.58, 0.065, 16, 140);
     const rimMesh = new THREE.Mesh(rimGeom, matGold);
     rimMesh.rotation.x = Math.PI / 2;
-    rimMesh.position.y = 0.04;
+    rimMesh.position.y = 0.08;
     rimMesh.castShadow = true;
     rimMesh.receiveShadow = true;
     scene.add(rimMesh);
@@ -465,26 +577,7 @@
     ballMesh.receiveShadow = true;
     scene.add(ballMesh);
 
-    // Sin elementos externos para evitar el efecto visual de "muchas bolas".
-
-    // Cupula de vidrio hemisferica sobre la ruleta.
-    const domeGeom = new THREE.SphereGeometry(2.05, 64, 32, 0, Math.PI * 2, 0, Math.PI / 2);
-    const domeMesh = new THREE.Mesh(
-      domeGeom,
-      new THREE.MeshPhysicalMaterial({
-        color: 0xffffff,
-        transmission: 0.95,
-        thickness: 0.08,
-        roughness: 0.02,
-        metalness: 0,
-        clearcoat: 0.1,
-        side: THREE.DoubleSide,
-      })
-    );
-    domeMesh.position.y = 0.06;
-    domeMesh.castShadow = false;
-    domeMesh.receiveShadow = true;
-    scene.add(domeMesh);
+    // Sin domo: ruleta abierta como en mesa real.
 
     // Physics
     let ballVel = new THREE.Vector3();
