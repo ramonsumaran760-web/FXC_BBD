@@ -1454,14 +1454,25 @@
         const fromAngle = angleForNumber(prev);
         const toAngle = angleForNumber(num);
         const direction = idx > 0 ? signedShortestDistance(indexByNumber[prev], indexByNumber[num]) : 0;
-        const extra = (Math.sign(direction || 1) || 1) * Math.PI * 2 * (animate ? 1.25 : 0);
+        
+        // Calcular revolventes basado en distancia
+        let revolutions = 3 + (Math.abs(direction) / WHEEL.length) * 2.8;
+        const extra = (Math.sign(direction || 1) || 1) * Math.PI * 2 * revolutions;
+        
+        // Duración realista basada en distancia: más distancia = más tiempo
+        const distance = Math.abs(direction || 0);
+        const baseDuration = 800 + (distance / WHEEL.length) * 2200;
+        
         transition = {
           started: performance.now(),
-          duration: animate ? 1150 : 1,
+          duration: animate ? baseDuration : 1,
           fromAngle,
           toAngle: toAngle + extra,
           finalAngle: toAngle,
-          num
+          num,
+          distance,
+          revolutions: animate ? revolutions : 0,
+          ballRotation: 0
         };
       }
 
@@ -1517,15 +1528,58 @@
 
         if (transition) {
           const p = Math.min(1, (now - transition.started) / transition.duration);
-          const eased = 1 - Math.pow(1 - p, 3);
+          
+          // Easing avanzado: aceleración al inicio, desaceleración al final
+          let eased;
+          if (p < 0.2) {
+            // Aceleración rápida al inicio
+            eased = (p / 0.2) * 0.2 * 1.8;
+          } else if (p < 0.75) {
+            // Movimiento a velocidad constante en la mitad
+            eased = 0.2 + (p - 0.2) / 0.55 * 0.65;
+          } else {
+            // Desaceleración suave al final (ease-out)
+            const decel = (p - 0.75) / 0.25;
+            eased = 0.85 + Math.pow(decel, 0.4) * 0.15;
+          }
+          
           const angle = transition.fromAngle + (transition.toAngle - transition.fromAngle) * eased;
-          const settle = p < .72 ? p / .72 : 1;
-          const radius = 1.78 + (1.08 - 1.78) * Math.pow(settle, 1.6);
-          const height = .25 + (.13 - .25) * settle + Math.sin(p * Math.PI * 6) * (1 - p) * .045;
+          
+          // Física de la bola: baja rápido, luego sube lentamente
+          const settleStart = 0.5;
+          let settle;
+          if (p < settleStart) {
+            settle = 0;
+          } else {
+            const settleFactor = (p - settleStart) / (1 - settleStart);
+            settle = 1 - Math.pow(1 - settleFactor, 2.2);
+          }
+          
+          // Radio: empieza muy lejos, se acerca
+          const radius = 1.78 + (1.08 - 1.78) * settle;
+          
+          // Altura: sube al inicio por "lanzamiento", baja gradualmente
+          const apogee = Math.sin(p * Math.PI * 0.8) * (1 - p) * 0.12;
+          const descend = Math.max(0, 0.25 - settle * 0.12);
+          const height = descend + apogee;
+          
           ball.position.set(Math.cos(angle) * radius, height, Math.sin(angle) * radius);
+          
+          // Rotación realista de la bola mientras se mueve
+          const spinSpeed = eased * Math.PI * 12;
+          transition.ballRotation = (transition.ballRotation || 0) + spinSpeed * dt;
+          ball.rotation.x = transition.ballRotation;
+          
+          // Vibración final cuando llega (últimos 100ms)
+          if (p > 0.9) {
+            const vibration = Math.sin(p * Math.PI * 8) * (1 - p) * 0.015;
+            ball.position.addScaledVector(new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5), vibration);
+          }
+          
           if (p >= 1) {
             transition = null;
             setBallAt(analysis.valid[current] || "0");
+            ball.rotation.x = 0;
           }
         } else {
           setBallAt(analysis.valid[current] || "0");
