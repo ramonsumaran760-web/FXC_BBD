@@ -402,7 +402,7 @@
     controls.autoRotateSpeed = 0.25;
 
     // Lighting
-    const keyLight = new THREE.DirectionalLight(0xffb46e, 3.9);
+    const keyLight = new THREE.DirectionalLight(0xffb46e, 2.15);
     keyLight.position.set(6, 12, 6);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.set(2048, 2048);
@@ -414,15 +414,15 @@
     keyLight.shadow.bias = -0.0008;
     scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight(0xff9a57, 1.0);
+    const fillLight = new THREE.DirectionalLight(0xff9a57, 0.42);
     fillLight.position.set(-8, 5, -4);
     scene.add(fillLight);
 
-    const rimLight = new THREE.PointLight(0xff6f2a, 2.6, 20);
+    const rimLight = new THREE.PointLight(0xff6f2a, 0.82, 20);
     rimLight.position.set(0, 3.2, -5.5);
     scene.add(rimLight);
 
-    const ambientLight = new THREE.AmbientLight(0x505050, 0.5);
+    const ambientLight = new THREE.AmbientLight(0x505050, 0.2);
     scene.add(ambientLight);
 
     // Materials
@@ -525,102 +525,56 @@
       c.width = size;
       c.height = size;
       const g = c.getContext("2d");
-
       const center = size / 2;
-      const WHEEL_RADIUS = 2.16;
-      const POCKET_INNER = WHEEL_RADIUS * 0.55;
-      const POCKET_OUTER = WHEEL_RADIUS * 0.95;
+      const outerR = size * 0.48;
+      const innerR = size * 0.31;
+      const segAngle = (Math.PI * 2) / WHEEL.length;
 
-      const wheelTexture = generateWheelTexture();
-      const numberPocketRing = new THREE.Mesh(
-        new THREE.RingGeometry(POCKET_INNER, POCKET_OUTER, 256),
-        new THREE.MeshPhysicalMaterial({
-          map: wheelTexture,
-          metalness: 0.28,
-          roughness: 0.35,
-          transparent: true,
-          side: THREE.DoubleSide,
-        })
-      );
-      numberPocketRing.rotation.x = -Math.PI / 2;
-      numberPocketRing.position.y = 0.036;
-      numberPocketRing.castShadow = true;
-      numberPocketRing.receiveShadow = true;
-      wheelGroup.add(numberPocketRing);
-
-      const pocketOuterFret = new THREE.Mesh(
-        new THREE.TorusGeometry(POCKET_OUTER, 0.006, 12, 180),
-        matChrome
-      );
-      pocketOuterFret.rotation.x = Math.PI / 2;
-      pocketOuterFret.position.y = 0.038;
-      pocketOuterFret.castShadow = true;
-      pocketOuterFret.receiveShadow = true;
-      wheelGroup.add(pocketOuterFret);
-
-      const pocketInnerFret = new THREE.Mesh(
-        new THREE.TorusGeometry(POCKET_INNER, 0.005, 12, 180),
-        matChrome
-      );
-      pocketInnerFret.rotation.x = Math.PI / 2;
-      pocketInnerFret.position.y = 0.038;
-      pocketInnerFret.castShadow = true;
-      pocketInnerFret.receiveShadow = true;
-      wheelGroup.add(pocketInnerFret);
       const colors = {
-        red: "#a61c1c",
-        black: "#0d0d0d",
-        green: "#0a5c2e",
+        red: "#ba2323",
+        black: "#111111",
+        green: "#0d6330",
       };
 
       WHEEL.forEach((num, i) => {
         const startAngle = i * segAngle - Math.PI / 2;
         const endAngle = startAngle + segAngle;
-        const color = getPocketColor(num);
+        const fill = (num === "0" || num === "00") ? colors.green : (RED.has(num) ? colors.red : colors.black);
 
-        ctx.beginPath();
-        ctx.moveTo(center, center);
-        ctx.arc(center, center, outerR, startAngle, endAngle);
-        ctx.closePath();
-        ctx.fillStyle = colors[color];
-        ctx.fill();
+        g.save();
+        g.beginPath();
+        g.moveTo(center + Math.cos(startAngle) * innerR, center + Math.sin(startAngle) * innerR);
+        g.arc(center, center, outerR, startAngle, endAngle);
+        g.arc(center, center, innerR, endAngle, startAngle, true);
+        g.closePath();
+        g.fillStyle = fill;
+        g.fill();
 
-        ctx.beginPath();
-        ctx.arc(center, center, innerR, 0, Math.PI * 2);
-        ctx.globalCompositeOperation = "destination-out";
-        ctx.fill();
-        ctx.globalCompositeOperation = "source-over";
-
-        ctx.save();
-        ctx.translate(center, center);
-        ctx.rotate(startAngle);
-        ctx.beginPath();
-        ctx.rect(innerR, -size * 0.003, outerR - innerR, size * 0.006);
-        const grad = ctx.createLinearGradient(innerR, 0, outerR, 0);
-        grad.addColorStop(0, "#8a8a8a");
-        grad.addColorStop(0.5, "#e8e8e8");
-        grad.addColorStop(1, "#8a8a8a");
-        ctx.fillStyle = grad;
-        ctx.fill();
-        ctx.restore();
+        g.strokeStyle = "rgba(232,236,240,0.72)";
+        g.lineWidth = Math.max(2, size * 0.0022);
+        g.stroke();
+        g.restore();
 
         const textAngle = startAngle + segAngle / 2;
-        const textR = (outerR + innerR) / 2;
-        ctx.save();
-        ctx.translate(
+        const textR = innerR + (outerR - innerR) * 0.56;
+        g.save();
+        g.translate(
           center + Math.cos(textAngle) * textR,
           center + Math.sin(textAngle) * textR
         );
-        ctx.rotate(textAngle + Math.PI / 2);
-        ctx.fillStyle = "#ffffff";
-        ctx.font = `bold ${size * 0.030}px Arial`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(num, 0, 0);
-        ctx.restore();
+        g.rotate(textAngle + Math.PI / 2);
+        g.fillStyle = "#ffffff";
+        g.shadowColor = "rgba(0, 0, 0, 0.45)";
+        g.shadowBlur = 4;
+        g.shadowOffsetY = 1;
+        g.font = `bold ${size * 0.027}px Arial`;
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.fillText(num, 0, 0);
+        g.restore();
       });
 
-      const texture = new THREE.CanvasTexture(canvas);
+      const texture = new THREE.CanvasTexture(c);
       texture.colorSpace = THREE.SRGBColorSpace;
       texture.anisotropy = 8;
       return texture;
@@ -684,19 +638,22 @@
 
       // Divisiones con relieve real entre casillas (pared + cresta superior).
       const sepLen = POCKET_OUTER - POCKET_INNER + 0.01;
-      const sepGeom = new THREE.BoxGeometry(0.012, 0.066, sepLen);
-      const sepMesh = new THREE.Mesh(sepGeom, matChrome);
-      sepMesh.position.set(Math.cos(start) * POCKET_MID, 0.062, Math.sin(start) * POCKET_MID);
+      const sepGeom = new THREE.BoxGeometry(0.008, 0.074, sepLen);
+      const sepMesh = new THREE.Mesh(
+        sepGeom,
+        new THREE.MeshPhysicalMaterial({ color: 0xf0f2f6, roughness: 0.08, metalness: 1.0, clearcoat: 0.45 })
+      );
+      sepMesh.position.set(Math.cos(start) * POCKET_MID, 0.066, Math.sin(start) * POCKET_MID);
       sepMesh.rotation.y = -start;
       sepMesh.castShadow = true;
       sepMesh.receiveShadow = true;
       wheelGroup.add(sepMesh);
 
       const sepCrest = new THREE.Mesh(
-        new THREE.BoxGeometry(0.005, 0.016, sepLen - 0.01),
-        new THREE.MeshPhysicalMaterial({ color: 0xe6e8eb, roughness: 0.16, metalness: 0.95, clearcoat: 0.3 })
+        new THREE.BoxGeometry(0.004, 0.020, sepLen - 0.008),
+        new THREE.MeshPhysicalMaterial({ color: 0xffffff, roughness: 0.06, metalness: 1.0, clearcoat: 0.38 })
       );
-      sepCrest.position.set(Math.cos(start) * POCKET_MID, 0.102, Math.sin(start) * POCKET_MID);
+      sepCrest.position.set(Math.cos(start) * POCKET_MID, 0.106, Math.sin(start) * POCKET_MID);
       sepCrest.rotation.y = -start;
       sepCrest.castShadow = true;
       sepCrest.receiveShadow = true;
@@ -706,7 +663,7 @@
     });
 
     const numberTextRing = new THREE.Mesh(
-      new THREE.RingGeometry(POCKET_INNER + 0.02, POCKET_OUTER - 0.01, 256),
+      new THREE.RingGeometry(POCKET_INNER + 0.015, POCKET_OUTER - 0.014, 256),
       new THREE.MeshBasicMaterial({
         map: createNumberRingTextTexture(),
         transparent: true,
@@ -838,6 +795,8 @@
     let spinStartTime = 0;
     let bounceY = 0;
     let bounceVy = 0;
+    let ballRadius = 2.01;
+    let ballRadialSpeed = 0;
     let nextBounceAt = 0;
     let settledPocketIndex = null;
     const launchRingRadius = 2.01;
@@ -847,7 +806,7 @@
       const angle = idx * slotAngle + wheelRotation;
       ballPos.set(
         Math.cos(angle) * settlePocketRadius,
-        0.13,
+        0.07,
         Math.sin(angle) * settlePocketRadius
       );
       ballMesh.position.copy(ballPos);
@@ -858,6 +817,10 @@
 
     function launch(speed, angle, rpm) {
       if (isSpinning) return;
+      if (spinTimeout) {
+        clearTimeout(spinTimeout);
+        spinTimeout = null;
+      }
       isSpinning = true;
       settledPocketIndex = null;
       spinStartTime = performance.now();
@@ -865,7 +828,9 @@
       // Arranca dentro del anillo dorado (carril exterior real).
       ballAngle = radAngle;
       ballAngularSpeed = -(speed / launchRingRadius) * 2.35; // gira en sentido contrario al rotor
-      ballPos.set(Math.cos(ballAngle) * launchRingRadius, 1.42, Math.sin(ballAngle) * launchRingRadius);
+      ballRadius = launchRingRadius;
+      ballRadialSpeed = -0.22 - Math.min(0.32, speed * 0.03);
+      ballPos.set(Math.cos(ballAngle) * launchRingRadius, 0.11, Math.sin(ballAngle) * launchRingRadius);
       ballVel.set(Math.cos(ballAngle + Math.PI / 2) * speed, 0, Math.sin(ballAngle + Math.PI / 2) * speed);
       ballRot = 0;
       bounceY = 0;
@@ -876,6 +841,10 @@
     }
 
     function finalizeSpin() {
+      if (spinTimeout) {
+        clearTimeout(spinTimeout);
+        spinTimeout = null;
+      }
       const real = getRealResult();
       const calc = getCalculatedResult();
       const delta = slotDelta(real.idx, calc.idx);
@@ -886,6 +855,8 @@
       if (wheelAngularSpeed < 0.16) {
         wheelAngularSpeed = 0.16;
       }
+      ballRadius = settlePocketRadius;
+      ballRadialSpeed = 0;
       placeBallOnPocket(settledPocketIndex);
 
       document.getElementById("hudResult").textContent = result;
@@ -900,6 +871,10 @@
     }
 
     function reset() {
+      if (spinTimeout) {
+        clearTimeout(spinTimeout);
+        spinTimeout = null;
+      }
       ballPos.set(0, 2, 3);
       ballVel.set(0, 0, 0);
       ballAngle = 0;
@@ -910,6 +885,8 @@
       settledPocketIndex = null;
       bounceY = 0;
       bounceVy = 0;
+      ballRadius = launchRingRadius;
+      ballRadialSpeed = 0;
       nextBounceAt = 0;
       isSpinning = false;
       document.getElementById("hudState").textContent = "Listo";
@@ -1095,23 +1072,48 @@
 
       if (isSpinning) {
         const elapsedSec = (performance.now() - spinStartTime) / 1000;
+        const hardStopReached = elapsedSec > 7.2;
         const tDrop = Math.min(1, Math.max(0, (elapsedSec - 0.9) / 4.3));
         const smoothDrop = tDrop * tDrop * (3 - 2 * tDrop);
 
         // Fases con perdida de energia progresiva.
         const drag = tDrop < 0.22 ? 0.28 : (tDrop < 0.70 ? 0.55 : 0.95);
         ballAngularSpeed *= Math.exp(-drag * dt);
-
-        // Rebotes al tocar diamantes y borde de pockets.
-        if (smoothDrop > 0.55 && elapsedSec >= nextBounceAt && smoothDrop < 0.995) {
-          const e = Math.max(0.012, (1 - smoothDrop) * 0.11);
-          bounceVy = e * (0.9 + Math.random() * 0.6);
-          const kick = (Math.random() - 0.5) * 0.9;
-          ballAngularSpeed += kick;
-          nextBounceAt = elapsedSec + 0.13 + Math.random() * 0.12;
+        ballRadialSpeed *= Math.exp(-0.65 * dt);
+        if (!hardStopReached) {
+          ballRadius += ballRadialSpeed * dt;
+          if (ballRadius >= launchRingRadius) {
+            ballRadius = launchRingRadius;
+            ballRadialSpeed = -Math.abs(ballRadialSpeed) * (0.42 + Math.random() * 0.18);
+            const kick = (Math.random() - 0.5) * 0.52;
+            ballAngularSpeed += kick;
+            bounceVy = 0.018 + Math.random() * 0.028;
+          } else if (ballRadius <= settlePocketRadius) {
+            ballRadius = settlePocketRadius;
+            ballRadialSpeed = Math.abs(ballRadialSpeed) * 0.35;
+          }
         }
 
-        bounceVy -= 2.35 * dt;
+        // Rebotes visibles al tocar diamantes y bordes de pockets.
+        const impactWindow = !hardStopReached && smoothDrop > 0.28 && smoothDrop < 0.995;
+        if (impactWindow && elapsedSec >= nextBounceAt) {
+          const e = 0.035 + (1 - smoothDrop) * 0.09;
+          bounceVy = e * (0.75 + Math.random() * 0.55);
+          const kick = (Math.random() - 0.5) * (0.55 + (1 - smoothDrop) * 0.65);
+          ballAngularSpeed += kick;
+          nextBounceAt = elapsedSec + 0.12 + Math.random() * 0.22;
+          if (ballRadius > settlePocketRadius + 0.08) {
+            ballRadialSpeed = Math.min(ballRadialSpeed, 0) - (0.015 + Math.random() * 0.03);
+          }
+        }
+
+        if (hardStopReached) {
+          bounceVy = 0;
+          bounceY = 0;
+          ballAngularSpeed *= Math.pow(0.86, dt * 60);
+        } else {
+          bounceVy -= 2.35 * dt;
+        }
         bounceY += bounceVy;
         if (bounceY < 0) {
           bounceY = 0;
@@ -1124,12 +1126,12 @@
 
         ballAngle += ballAngularSpeed * dt;
 
-        const targetRadius = launchRingRadius - (launchRingRadius - settlePocketRadius) * smoothDrop;
-        const yHigh = 1.42;
-        const yLow = 0.12;
+        const targetRadius = ballRadius;
+        const yHigh = 0.13;
+        const yLow = 0.045;
         const targetY = yHigh + (yLow - yHigh) * smoothDrop;
-        const jitter = smoothDrop > 0.76
-          ? Math.sin(performance.now() * 0.045) * (1 - smoothDrop) * 0.018
+        const jitter = smoothDrop > 0.68
+          ? Math.sin(performance.now() * 0.05 + ballAngle * 2.3) * (1 - smoothDrop) * 0.024
           : 0;
 
         ballPos.x = Math.cos(ballAngle) * targetRadius;
@@ -1157,14 +1159,14 @@
       document.getElementById("hudWheel").textContent = (wheelAngularSpeed * 9.55).toFixed(1) + " RPM";
 
       const spinElapsedMs = isSpinning ? (performance.now() - spinStartTime) : 0;
-      const settleByPhysics = Math.abs(ballAngularSpeed - wheelAngularSpeed) < 0.22 && spinElapsedMs > 4200;
-      const settleByTimeout = spinElapsedMs > 9800;
+      const settleByPhysics = Math.abs(ballAngularSpeed - wheelAngularSpeed) < 0.12 && spinElapsedMs > 3600 && Math.abs(bounceVy) < 0.01;
+      const settleByTimeout = spinElapsedMs > 7200;
 
       if (isSpinning && (settleByPhysics || settleByTimeout)) {
         if (!spinTimeout) {
           spinTimeout = setTimeout(() => {
             finalizeSpin();
-          }, 400);
+          }, settleByPhysics ? 180 : 0);
         }
       }
 

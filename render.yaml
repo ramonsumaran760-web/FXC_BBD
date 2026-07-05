@@ -1,4 +1,19 @@
 services:
+  # ── BBD3 Roulette 3D ─────────────────────────────────────────────────────
+  - type: web
+    name: bbd3-roulette-3d
+    env: python
+    rootDir: BBD3
+    plan: free
+    region: oregon
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: gunicorn --workers 1 --threads 4 --worker-class gthread --bind 0.0.0.0:$PORT server:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.7
+      - key: FLASK_ENV
+        value: production
+
   # ── InvestIQ Stock Exchange (Python/FastAPI) ──────────────────────────────
   - type: web
     name: investiq-api
