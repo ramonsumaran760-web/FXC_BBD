@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Artemis Roulette - Professional Casino 3D</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/three@r128/build/three.min.js" crossorigin></script>
-  <script src="https://cdn.jsdelivr.net/npm/three@r128/examples/js/controls/OrbitControls.js" crossorigin></script>
+  <script src="https://unpkg.com/three@r128/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@r128/examples/js/controls/OrbitControls.js"></script>
   <style>
     :root { --bg: #0a0a0a; --text: #f1eee4; --muted: #9a9b8d; --gold: #d4af37; }
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -84,12 +84,22 @@
   </div>
 
   <script>
-    function initRoulette() {
-      if (typeof THREE === 'undefined') {
-        console.warn('THREE.js not loaded, retrying...');
-        setTimeout(initRoulette, 100);
-        return;
+    function waitForThree(callback, timeout = 5000) {
+      const start = Date.now();
+      function check() {
+        if (typeof THREE !== 'undefined' && typeof THREE.OrbitControls !== 'undefined') {
+          callback();
+        } else if (Date.now() - start < timeout) {
+          requestAnimationFrame(check);
+        } else {
+          console.error('THREE.js failed to load within', timeout, 'ms');
+          document.body.innerHTML = '<h1>Error: Three.js library failed to load</h1><p>Please refresh the page.</p>';
+        }
       }
+      check();
+    }
+
+    function initRoulette() {
 
       const WHEEL = ["0","28","9","26","30","11","7","20","32","17","5","22","34","15","3","24","36","13","1","00","27","10","25","29","12","8","19","31","18","6","21","33","16","4","23","35","14","2"];
     const RED = new Set(["1","3","5","7","9","12","14","16","18","19","21","23","25","27","30","32","34","36"]);
@@ -400,7 +410,11 @@
     }
 
     // Iniciar cuando THREE esté disponible
-    initRoulette();
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => waitForThree(initRoulette));
+    } else {
+      waitForThree(initRoulette);
+    }
   </script>
 </body>
 </html>
