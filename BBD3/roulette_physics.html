@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Artemis Roulette - Physics Engine 3D</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/cannon-es@0.20.0/dist/cannon-es.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.165.0/examples/js/controls/OrbitControls.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" defer></script>
+  <style>
+    :root {
+      --bg: #070806;
+      --panel: #11120f;
+      --text: #f1eee4;
+      --muted: #9a9b8d;
+      --gold: #d6b660;
+      --red: #d94a4a;
+      --green: #12b981;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100vh; margin: 0; background: var(--bg); color: var(--text); font-family: Inter, "Segoe UI", system-ui, sans-serif; overflow: hidden; }
+
+    .container { display: grid; grid-template-columns: 1fr 360px; height: 100vh; gap: 0; }
+    .canvas-area { position: relative; overflow: hidden; background: radial-gradient(circle at 50% 40%, rgba(18, 185, 129, .05), transparent 50%); }
+    canvas { display: block; width: 100%; height: 100%; }
+
+    .side { overflow-y: auto; border-left: 1px solid #303326; background: rgba(15, 16, 12, .96); padding: 16px; }
+    .panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #303326; }
+    .panel-title { font-weight: 700; font-size: 13px; }
+    .tag { display: inline-block; padding: 3px 7px; border-radius: 6px; border: 1px solid #303326; font-size: 10px; color: #dcd4bc; background: #0e0f0b; }
+
+    .metric { margin: 12px 0; padding: 8px; border-radius: 6px; background: #0d0e0b; border: 1px solid #303326; }
+    .metric-label { font-size: 11px; color: var(--muted); margin-bottom: 3px; }
+    .metric-value { font-size: 18px; font-weight: 900; color: var(--gold); }
+
+    .control-group { margin: 12px 0; padding: 10px; background: #0d0e0b; border: 1px solid #303326; border-radius: 6px; }
+    .control-group label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+
+    input[type="range"], input[type="number"] { width: 100%; padding: 6px; border: 1px solid #303326; background: #0a0b08; color: var(--text); border-radius: 4px; margin-bottom: 4px; }
+    input[type="number"] { width: 48%; display: inline-block; margin-right: 4%; }
+
+    button { border: 1px solid #303326; background: #1a1b15; color: var(--text); height: 36px; padding: 0 12px; border-radius: 6px; cursor: pointer; font-weight: 600; margin-top: 8px; width: 100%; transition: all .15s ease; }
+    button:hover { border-color: var(--gold); background: #222318; }
+    button.primary { background: #24200f; border-color: rgba(214, 182, 96, .72); color: var(--gold); }
+    button.primary:hover { background: #2d2812; }
+
+    .toolbar { display: flex; gap: 8px; margin: 12px 0; }
+    .toolbar button { flex: 1; margin: 0; height: 32px; font-size: 11px; }
+
+    .status-line { margin-top: 8px; color: var(--muted); font-size: 11px; min-height: 17px; }
+    .status-success { color: var(--green); }
+    .status-error { color: var(--red); }
+
+    .hud { position: absolute; top: 16px; left: 16px; background: rgba(10, 11, 8, .85); backdrop-filter: blur(12px); border: 1px solid rgba(214, 182, 96, .26); border-radius: 8px; padding: 12px; font-size: 12px; line-height: 1.6; min-width: 220px; }
+    .hud-label { color: var(--muted); }
+    .hud-value { color: var(--gold); font-weight: 700; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0d0e0b; }
+    ::-webkit-scrollbar-thumb { background: #44472f; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="canvas-area">
+      <canvas id="canvas"></canvas>
+      <div class="hud" id="hud">
+        <div><span class="hud-label">Estado:</span> <span class="hud-value" id="hudState">Listo</span></div>
+        <div><span class="hud-label">Bola:</span> <span class="hud-label" id="hudBall">-</span></div>
+        <div><span class="hud-label">Rueda:</span> <span class="hud-label" id="hudWheel">-</span></div>
+        <div><span class="hud-label">Resultado:</span> <span class="hud-value" id="hudResult">--</span></div>
+      </div>
+    </div>
+
+    <div class="side">
+      <div class="panel-head">
+        <div class="panel-title"><i class="fa-solid fa-dice"></i> LANZAMIENTO</div>
+      </div>
+
+      <div class="control-group">
+        <label>Velocidad (m/s): <span id="speedVal">8.0</span></label>
+        <input type="range" id="speedSlider" min="5" max="15" step="0.5" value="8" />
+      </div>
+
+      <div class="control-group">
+        <label>Ángulo (°): <span id="angleVal">0</span></label>
+        <input type="range" id="angleSlider" min="-45" max="45" step="5" value="0" />
+      </div>
+
+      <div class="control-group">
+        <label>Dirección rueda (RPM): <span id="rpmVal">3.0</span></label>
+        <input type="range" id="rpmSlider" min="0" max="10" step="0.5" value="3" />
+      </div>
+
+      <div class="toolbar">
+        <button id="launchBtn" class="primary"><i class="fa-solid fa-play"></i> LANZAR</button>
+        <button id="resetBtn"><i class="fa-solid fa-redo"></i></button>
+      </div>
+
+      <div class="status-line" id="statusLine"></div>
+
+      <div class="panel-head" style="margin-top: 16px;">
+        <div class="panel-title"><i class="fa-solid fa-chart-pie"></i> ESTADÍSTICAS</div>
+      </div>
+
+      <div class="metric">
+        <div class="metric-label">Última tirada</div>
+        <div class="metric-value" id="lastResult">--</div>
+      </div>
+
+      <div class="metric">
+        <div class="metric-label">Historial</div>
+        <div id="historyList" style="font-size: 11px; color: #dcd4bc; max-height: 120px; overflow-y: auto;">
+          <div style="color: var(--muted);">Sin tiradas</div>
+        </div>
+      </div>
+
+      <div class="metric">
+        <div class="metric-label">Velocidad bola actual</div>
+        <div class="metric-value" id="ballSpeed">0.0</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ====== CONSTANTS ======
+    const WHEEL = [
+      "0", "28", "9", "26", "30", "11", "7", "20", "32", "17", "5", "22",
+      "34", "15", "3", "24", "36", "13", "1", "00", "27", "10", "25", "29",
+      "12", "8", "19", "31", "18", "6", "21", "33", "16", "4", "23", "35",
+      "14", "2"
+    ];
+
+    const RED_NUMBERS = new Set(["1","3","5","7","9","12","14","16","18","19","21","23","25","27","30","32","34","36"]);
+    const indexByNumber = Object.fromEntries(WHEEL.map((num, idx) => [num, idx]));
+    const slotAngle = (Math.PI * 2) / WHEEL.length;
+
+    let history = [];
+    let isSpinning = false;
+
+    // ====== THREE.JS SETUP ======
+    const canvas = document.getElementById("canvas");
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x0a0908);
+    scene.fog = new THREE.FogExp2(0x070806, 0.08);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 150);
+    camera.position.set(0, 3.8, 5.2);
+
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.minDistance = 4.2;
+    controls.maxDistance = 9.5;
+    controls.maxPolarAngle = Math.PI * 0.52;
+    controls.minPolarAngle = Math.PI * 0.35;
+    controls.target.set(0, 0.08, 0);
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.5;
+
+    // ====== LIGHTING ======
+    const ambient = new THREE.HemisphereLight(0xfffacd, 0x1a1a2e, 2.2);
+    scene.add(ambient);
+
+    const key = new THREE.DirectionalLight(0xffffff, 3.5);
+    key.position.set(4.5, 6.8, 3.2);
+    key.castShadow = true;
+    key.shadow.mapSize.width = 2048;
+    key.shadow.mapSize.height = 2048;
+    scene.add(key);
+
+    const rim = new THREE.PointLight(0xff6b35, 4.5, 12);
+    rim.position.set(-3.5, 2.5, -2.2);
+    scene.add(rim);
+
+    // ====== PHYSICS SETUP ======
+    const world = new CANNON.World();
+    world.gravity.set(0, -9.82, 0);
+    world.solver.iterations = 20;
+    world.allowSleep = true;
+    world.broadphase = new CANNON.SAPBroadphase(world);
+
+    const ballMaterial = new CANNON.Material('ball');
+    const trackMaterial = new CANNON.Material('track');
+    const wheelMaterial = new CANNON.Material('wheel');
+    const pinMaterial = new CANNON.Material('pin');
+
+    world.addContactMaterial(new CANNON.ContactMaterial(ballMaterial, trackMaterial, { friction: 0.05, restitution: 0.65 }));
+    world.addContactMaterial(new CANNON.ContactMaterial(ballMaterial, pinMaterial, { friction: 0.1, restitution: 0.8 }));
+    world.addContactMaterial(new CANNON.ContactMaterial(ballMaterial, wheelMaterial, { friction: 0.4, restitution: 0.2 }));
+
+    // ====== CREATE 3D WHEEL (Visual) ======
+    const wheelGroup = new THREE.Group();
+    scene.add(wheelGroup);
+
+    // Crear números
+    WHEEL.forEach((num, idx) => {
+      const start = idx * slotAngle - slotAngle / 2;
+      const end = idx * slotAngle + slotAngle / 2;
+      const color = RED_NUMBERS.has(num) ? 0x8b2e2e : (num === "0" || num === "00" ? 0x0d6b3f : 0x1a1a1a);
+
+      const geometry = new THREE.RingGeometry(0.72, 1.42, 10, 1, start, end - start);
+      geometry.rotateX(-Math.PI / 2);
+      const material = new THREE.MeshStandardMaterial({ color, roughness: 0.35, metalness: 0.15 });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.y = 0.008;
+      mesh.receiveShadow = true;
+      mesh.castShadow = true;
+      wheelGroup.add(mesh);
+    });
+
+    // Centro
+    const centerGeometry = new THREE.SphereGeometry(0.22, 48, 24);
+    const centerMaterial = new THREE.MeshStandardMaterial({ color: 0xf1d888, roughness: 0.18, metalness: 0.78 });
+    const center = new THREE.Mesh(centerGeometry, centerMaterial);
+    center.position.y = 0.38;
+    center.castShadow = true;
+    wheelGroup.add(center);
+
+    // Bola
+    const ballGeometry = new THREE.SphereGeometry(0.058, 48, 32);
+    const ballMat3D = new THREE.MeshStandardMaterial({ color: 0xf0e68c, roughness: 0.12, metalness: 0.35 });
+    const ballMesh = new THREE.Mesh(ballGeometry, ballMat3D);
+    ballMesh.castShadow = true;
+    ballMesh.receiveShadow = true;
+    scene.add(ballMesh);
+
+    // Mesa
+    const tableGeometry = new THREE.CylinderGeometry(2.5, 2.8, 0.14, 128);
+    const tableMaterial = new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: 0.8, metalness: 0.05 });
+    const table = new THREE.Mesh(tableGeometry, tableMaterial);
+    table.position.y = -0.12;
+    table.receiveShadow = true;
+    table.castShadow = true;
+    scene.add(table);
+
+    // ====== PHYSICS BODIES ======
+    const ballShape = new CANNON.Sphere(0.058);
+    const ballBody = new CANNON.Body({ mass: 0.05, shape: ballShape, material: ballMaterial, linearDamping: 0.05, angularDamping: 0.1 });
+    ballBody.position.set(0, 2, 3);
+    world.addBody(ballBody);
+
+    const trackShape = new CANNON.Cylinder(2.5, 1.75, 0.4, 32);
+    const trackBody = new CANNON.Body({ mass: 0, shape: trackShape, material: trackMaterial });
+    trackBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+    trackBody.position.y = -0.05;
+    world.addBody(trackBody);
+
+    const wheelShape = new CANNON.Cylinder(2.5, 2.5, 0.2, 32);
+    const wheelBody = new CANNON.Body({ mass: 0, type: CANNON.Body.KINEMATIC, shape: wheelShape, material: wheelMaterial });
+    wheelBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+    world.addBody(wheelBody);
+
+    // Deflectores (pines)
+    for (let i = 0; i < 8; i++) {
+      const angle = (i / 8) * Math.PI * 2;
+      const pinShape = new CANNON.Sphere(0.08);
+      const pinBody = new CANNON.Body({ mass: 0, shape: pinShape, material: pinMaterial });
+      pinBody.position.set(Math.cos(angle) * 3.2, 0.15, Math.sin(angle) * 3.2);
+      world.addBody(pinBody);
+
+      // Visual
+      const pinGeom = new THREE.SphereGeometry(0.08, 16, 16);
+      const pinMat = new THREE.MeshStandardMaterial({ color: 0xc4a747, roughness: 0.18, metalness: 0.85 });
+      const pinMesh = new THREE.Mesh(pinGeom, pinMat);
+      pinMesh.position.copy(pinBody.position);
+      pinMesh.castShadow = true;
+      scene.add(pinMesh);
+    }
+
+    // ====== FUNCTIONS ======
+    function launchBall(speed, angle, rpmWheel) {
+      if (isSpinning) return;
+      isSpinning = true;
+
+      const radAngle = (angle * Math.PI) / 180;
+      ballBody.velocity.set(Math.sin(radAngle) * speed, 0, -Math.cos(radAngle) * speed);
+      ballBody.angularVelocity.set(speed * 2, 0, 0);
+      ballBody.wakeUp();
+
+      wheelAngularSpeed = (rpmWheel * Math.PI * 2) / 60;
+      updateStatus("Spinning...", false);
+    }
+
+    function resetBall() {
+      ballBody.position.set(0, 2, 3);
+      ballBody.velocity.set(0, 0, 0);
+      ballBody.angularVelocity.set(0, 0, 0);
+      wheelAngularSpeed = 0;
+      wheelBody.quaternion.setFromEuler(-Math.PI / 2, 0, 0);
+      isSpinning = false;
+      updateStatus("Listo", false);
+    }
+
+    function getResultNumber() {
+      const angle = Math.atan2(ballMesh.position.z, ballMesh.position.x);
+      const normalizedAngle = ((angle + Math.PI) % (Math.PI * 2)) / slotAngle;
+      const idx = Math.round(normalizedAngle) % WHEEL.length;
+      return WHEEL[idx];
+    }
+
+    function updateStatus(msg, isError = false) {
+      const line = document.getElementById("statusLine");
+      line.textContent = msg;
+      line.className = "status-line " + (isError ? "status-error" : "status-success");
+    }
+
+    function addToHistory(number) {
+      history.unshift(number);
+      if (history.length > 10) history.pop();
+      const list = document.getElementById("historyList");
+      list.innerHTML = history.map(n => `<div>${n}</div>`).join("");
+    }
+
+    let wheelAngularSpeed = 0;
+    let spinTimeout = null;
+
+    // ====== ANIMATION LOOP ======
+    const clock = new THREE.Clock();
+    function animate() {
+      requestAnimationFrame(animate);
+      const dt = Math.min(clock.getDelta(), 1 / 30);
+
+      // Física
+      wheelAngularSpeed *= 0.999;
+      const currentQuat = wheelBody.quaternion;
+      const euler = new CANNON.Vec3();
+      currentQuat.toEuler(euler);
+      wheelBody.quaternion.setFromEuler(-Math.PI / 2, euler.z + wheelAngularSpeed * dt, 0);
+
+      world.step(1 / 60, dt, 3);
+
+      // Sincronizar visual
+      ballMesh.position.copy(ballBody.position);
+      ballMesh.quaternion.copy(ballBody.quaternion);
+      wheelGroup.quaternion.copy(wheelBody.quaternion);
+
+      // HUD
+      const ballV = ballBody.velocity.length();
+      document.getElementById("hudBall").textContent = ballV.toFixed(2) + " m/s";
+      document.getElementById("hudWheel").textContent = (wheelAngularSpeed * 9.55).toFixed(1) + " RPM";
+      document.getElementById("ballSpeed").textContent = ballV.toFixed(2) + " m/s";
+
+      // Detectar fin de spin
+      if (isSpinning && ballV < 0.1 && wheelAngularSpeed < 0.05) {
+        if (!spinTimeout) {
+          spinTimeout = setTimeout(() => {
+            isSpinning = false;
+            const result = getResultNumber();
+            document.getElementById("hudResult").textContent = result;
+            document.getElementById("lastResult").textContent = result;
+            addToHistory(result);
+            updateStatus(`¡${result}!`, false);
+            spinTimeout = null;
+          }, 500);
+        }
+      }
+
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    // ====== EVENTS ======
+    document.getElementById("launchBtn").addEventListener("click", () => {
+      const speed = parseFloat(document.getElementById("speedSlider").value);
+      const angle = parseFloat(document.getElementById("angleSlider").value);
+      const rpm = parseFloat(document.getElementById("rpmSlider").value);
+      launchBall(speed, angle, rpm);
+    });
+
+    document.getElementById("resetBtn").addEventListener("click", resetBall);
+
+    document.getElementById("speedSlider").addEventListener("input", e => {
+      document.getElementById("speedVal").textContent = e.target.value;
+    });
+
+    document.getElementById("angleSlider").addEventListener("input", e => {
+      document.getElementById("angleVal").textContent = e.target.value;
+    });
+
+    document.getElementById("rpmSlider").addEventListener("input", e => {
+      document.getElementById("rpmVal").textContent = e.target.value;
+    });
+
+    window.addEventListener("resize", () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    animate();
+  </script>
+</body>
+</html>

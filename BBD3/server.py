@@ -12,22 +12,22 @@ app = Flask(__name__, static_folder=str(BASE_DIR), static_url_path="/static")
 
 @app.route("/")
 def index():
-    """Servir la ruleta 3D realista por defecto"""
-    html_path = BASE_DIR / "roulette3d.html"
+    """Servir la ruleta con física en tiempo real"""
+    html_path = BASE_DIR / "roulette_physics.html"
     if not html_path.exists():
-        return f"Error: roulette3d.html not found at {html_path}", 500
-    return send_file(str(html_path), mimetype="text/html")
-
-@app.route("/roulette_real.html")
-def roulette_real():
-    """Ruleta con canvas (más realista)"""
-    html_path = BASE_DIR / "roulette_real.html"
+        return f"Error: roulette_physics.html not found at {html_path}", 500
     return send_file(str(html_path), mimetype="text/html")
 
 @app.route("/roulette3d.html")
 def roulette_3d():
     """Ruleta 3D original"""
     html_path = BASE_DIR / "roulette3d.html"
+    return send_file(str(html_path), mimetype="text/html")
+
+@app.route("/roulette_physics.html")
+def roulette_physics():
+    """Ruleta con motor de física Cannon.js"""
+    html_path = BASE_DIR / "roulette_physics.html"
     return send_file(str(html_path), mimetype="text/html")
 
 @app.errorhandler(404)
