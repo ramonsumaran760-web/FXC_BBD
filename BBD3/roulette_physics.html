@@ -652,6 +652,7 @@
     let bounceY = 0;
     let bounceVy = 0;
     let nextBounceAt = 0;
+    let settledPocketIndex = null;
     const launchRingRadius = 2.50;
     const settlePocketRadius = 1.02;
 
@@ -671,6 +672,7 @@
     function launch(speed, angle, rpm) {
       if (isSpinning) return;
       isSpinning = true;
+      settledPocketIndex = null;
       spinStartTime = performance.now();
       const radAngle = (angle * Math.PI) / 180;
       // Arranca dentro del anillo dorado (carril exterior real).
@@ -690,9 +692,12 @@
       const delta = slotDelta(real.idx, calc.idx);
       const result = real.num;
 
-      // Al finalizar, la bola queda estatica sobre el pocket ganador.
-      wheelAngularSpeed = 0;
-      placeBallOnPocket(real.idx);
+      // Al finalizar, la bola queda anclada al pocket ganador y sigue el giro de la rueda.
+      settledPocketIndex = real.idx;
+      if (wheelAngularSpeed < 0.16) {
+        wheelAngularSpeed = 0.16;
+      }
+      placeBallOnPocket(settledPocketIndex);
 
       document.getElementById("hudResult").textContent = result;
       document.getElementById("hudReal").textContent = real.num;
@@ -711,6 +716,7 @@
       wheelRotation = 0;
       wheelAngularSpeed = 0;
       wheelGroup.rotation.y = 0;
+      settledPocketIndex = null;
       bounceY = 0;
       bounceVy = 0;
       nextBounceAt = 0;
@@ -954,6 +960,9 @@
         ballMesh.rotation.x = ballRot;
 
         document.getElementById("hudBall").textContent = ballVel.length().toFixed(2) + " m/s";
+      } else if (settledPocketIndex !== null) {
+        placeBallOnPocket(settledPocketIndex);
+        document.getElementById("hudBall").textContent = "0.00 m/s";
       }
 
       document.getElementById("hudWheel").textContent = (wheelAngularSpeed * 9.55).toFixed(1) + " RPM";
