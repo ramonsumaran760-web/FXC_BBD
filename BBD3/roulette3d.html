@@ -791,6 +791,43 @@
 
     const indexByNumber = Object.fromEntries(WHEEL.map((num, idx) => [num, idx]));
     const slotAngle = (Math.PI * 2) / WHEEL.length;
+    
+    // Crear canvas para texturas realistas
+    function createNumberTexture(THREE, text, fg, bg) {
+      const canvas = document.createElement("canvas");
+      canvas.width = 256;
+      canvas.height = 256;
+      const ctx = canvas.getContext("2d");
+      
+      // Fondo con gradiente
+      const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 180);
+      grad.addColorStop(0, bg);
+      grad.addColorStop(1, "rgba(0,0,0,0.5)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, 256, 256);
+      
+      // Borde
+      ctx.strokeStyle = "rgba(200,180,100,0.8)";
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.arc(128, 128, 120, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      // Texto
+      ctx.fillStyle = fg;
+      ctx.font = "bold 140px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = "rgba(0,0,0,0.8)";
+      ctx.shadowBlur = 10;
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 2;
+      ctx.fillText(text, 128, 128);
+      
+      const texture = new THREE.CanvasTexture(canvas);
+      texture.anisotropy = 16;
+      return texture;
+    }
 
     const els = {
       webgl: document.getElementById("webgl"),
@@ -1291,74 +1328,105 @@
       els.webgl.appendChild(renderer.domElement);
 
       const scene = new THREE.Scene();
-      scene.fog = new THREE.FogExp2(0x070806, 0.055);
-      const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 120);
-      camera.position.set(0, 3.15, 4.85);
+      scene.fog = new THREE.FogExp2(0x070806, 0.08);
+      scene.background = new THREE.Color(0x0a0908);
+      const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 150);
+      camera.position.set(0, 3.8, 5.2);
 
       const controls = new OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
-      controls.dampingFactor = 0.075;
-      controls.minDistance = 3.1;
-      controls.maxDistance = 8;
-      controls.maxPolarAngle = Math.PI * 0.48;
-      controls.target.set(0, 0.05, 0);
+      controls.dampingFactor = 0.08;
+      controls.minDistance = 4.2;
+      controls.maxDistance = 9.5;
+      controls.maxPolarAngle = Math.PI * 0.52;
+      controls.minPolarAngle = Math.PI * 0.35;
+      controls.target.set(0, 0.08, 0);
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = 0.5;
 
-      const ambient = new THREE.HemisphereLight(0xfff4d0, 0x11130d, 1.7);
+      const ambient = new THREE.HemisphereLight(0xfffacd, 0x1a1a2e, 2.2);
       scene.add(ambient);
-      const key = new THREE.DirectionalLight(0xffe0a0, 2.8);
-      key.position.set(2.7, 5.2, 3.1);
+      
+      const key = new THREE.DirectionalLight(0xffffff, 3.5);
+      key.position.set(4.5, 6.8, 3.2);
       key.castShadow = true;
+      key.shadow.mapSize.width = 2048;
+      key.shadow.mapSize.height = 2048;
+      key.shadow.camera.far = 50;
+      key.shadow.camera.left = -8;
+      key.shadow.camera.right = 8;
+      key.shadow.camera.top = 8;
+      key.shadow.camera.bottom = -8;
       scene.add(key);
-      const rim = new THREE.PointLight(0x55b7c7, 3.2, 6.5);
-      rim.position.set(-2.4, 1.2, -1.8);
+      
+      const rim = new THREE.PointLight(0xff6b35, 4.5, 12);
+      rim.position.set(-3.5, 2.5, -2.2);
       scene.add(rim);
+      
+      const fill = new THREE.PointLight(0x4ecdc4, 2.8, 10);
+      fill.position.set(3.5, 1.5, 3.5);
+      scene.add(fill);
 
-      const tableMat = new THREE.MeshStandardMaterial({ color: 0x09100b, roughness: .78, metalness: .12 });
-      const tableGeom = new THREE.CylinderGeometry(2.28, 2.52, .12, 128);
+      const tableMat = new THREE.MeshStandardMaterial({ color: 0x1a1410, roughness: .8, metalness: .05 });
+      const tableGeom = new THREE.CylinderGeometry(2.5, 2.8, .14, 128);
       tableGeom.name = "tableBase";
       const table = new THREE.Mesh(tableGeom, tableMat);
-      table.position.y = -0.095;
+      table.position.y = -0.12;
       table.receiveShadow = true;
+      table.castShadow = true;
       scene.add(table);
+      
+      // Borde de la mesa
+      const edgeMat = new THREE.MeshStandardMaterial({ color: 0x3d2817, roughness: .6, metalness: .15 });
+      const edgeGeom = new THREE.TorusGeometry(2.5, 0.08, 16, 100);
+      const edge = new THREE.Mesh(edgeGeom, edgeMat);
+      edge.rotation.x = Math.PI / 2;
+      edge.position.y = -0.05;
+      edge.castShadow = true;
+      edge.receiveShadow = true;
+      scene.add(edge);
 
       const rotor = new THREE.Group();
       rotor.rotation.y = Math.PI / 2;
       scene.add(rotor);
 
       const pocketMats = {
-        red: new THREE.MeshStandardMaterial({ color: 0x611f1f, roughness: .42, metalness: .18 }),
-        black: new THREE.MeshStandardMaterial({ color: 0x111111, roughness: .5, metalness: .2 }),
-        green: new THREE.MeshStandardMaterial({ color: 0x0f5b38, roughness: .43, metalness: .18 })
+        red: new THREE.MeshStandardMaterial({ color: 0x8b2e2e, roughness: .35, metalness: .15, envMapIntensity: 1.2 }),
+        black: new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: .4, metalness: .12, envMapIntensity: 1.1 }),
+        green: new THREE.MeshStandardMaterial({ color: 0x0d6b3f, roughness: .33, metalness: .14, envMapIntensity: 1.15 })
       };
-      const metalMat = new THREE.MeshStandardMaterial({ color: 0xb99a4b, roughness: .25, metalness: .72 });
-      const railMat = new THREE.MeshStandardMaterial({ color: 0x5a1414, roughness: .34, metalness: .45 });
-      const darkMat = new THREE.MeshStandardMaterial({ color: 0x0b0c0a, roughness: .55, metalness: .18 });
+      const metalMat = new THREE.MeshStandardMaterial({ color: 0xc4a747, roughness: .18, metalness: .85 });
+      const railMat = new THREE.MeshStandardMaterial({ color: 0x3d1a1a, roughness: .3, metalness: .6 });
+      const woodMat = new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: .65, metalness: .05 });
 
       WHEEL.forEach((num, idx) => {
         const start = idx * slotAngle - slotAngle / 2;
         const end = idx * slotAngle + slotAngle / 2;
         const klass = slotClass(num);
         const wedge = new THREE.Mesh(makeWedgeShape(THREE, .72, 1.42, start, end), pocketMats[klass]);
-        wedge.position.y = 0.005;
+        wedge.position.y = 0.008;
         wedge.receiveShadow = true;
+        wedge.castShadow = true;
         rotor.add(wedge);
 
-        const separatorGeom = new THREE.BoxGeometry(.018, .055, .72);
+        const separatorGeom = new THREE.BoxGeometry(.022, .065, .75);
         separatorGeom.name = "pocketSeparator";
         const separator = new THREE.Mesh(separatorGeom, metalMat);
         const boundary = start;
-        separator.position.set(Math.cos(boundary) * 1.07, .047, Math.sin(boundary) * 1.07);
+        separator.position.set(Math.cos(boundary) * 1.07, .053, Math.sin(boundary) * 1.07);
         separator.rotation.y = -boundary;
         separator.castShadow = true;
+        separator.receiveShadow = true;
         rotor.add(separator);
 
         const mid = idx * slotAngle;
-        const fg = klass === "green" ? "#bfffe5" : (klass === "red" ? "#ffd6d0" : "#f0eee5");
-        const bg = klass === "green" ? "#0f5b38" : (klass === "red" ? "#611f1f" : "#111111");
-        const texture = makeTextTexture(THREE, num, fg, bg);
-        const label = new THREE.Sprite(new THREE.SpriteMaterial({ map: texture, transparent: true }));
-        label.position.set(Math.cos(mid) * 1.18, .082, Math.sin(mid) * 1.18);
-        label.scale.set(.19, .095, 1);
+        const fg = klass === "green" ? "#e8f5e9" : (klass === "red" ? "#ffebee" : "#f5f5f5");
+        const bg = klass === "green" ? "#0d6b3f" : (klass === "red" ? "#8b2e2e" : "#1a1a1a");
+        const texture = createNumberTexture(THREE, num, fg, bg);
+        const labelMat = new THREE.SpriteMaterial({ map: texture, transparent: true, sizeAttenuation: true });
+        const label = new THREE.Sprite(labelMat);
+        label.position.set(Math.cos(mid) * 1.22, .095, Math.sin(mid) * 1.22);
+        label.scale.set(.22, .22, 1);
         rotor.add(label);
       });
 
@@ -1415,13 +1483,18 @@
       activeMarker.position.y = .116;
       scene.add(activeMarker);
 
-      const ballGeom = new THREE.SphereGeometry(.052, 32, 18);
+      const ballGeom = new THREE.SphereGeometry(.058, 48, 32);
       ballGeom.name = "ball";
-      const ball = new THREE.Mesh(
-        ballGeom,
-        new THREE.MeshStandardMaterial({ color: 0xf7f6ed, roughness: .18, metalness: .2, emissive: 0x221f16 })
-      );
+      const ballMat = new THREE.MeshStandardMaterial({ 
+        color: 0xf0e68c, 
+        roughness: .12, 
+        metalness: .35, 
+        emissive: 0x2a2a1a,
+        envMapIntensity: 1.5
+      });
+      const ball = new THREE.Mesh(ballGeom, ballMat);
       ball.castShadow = true;
+      ball.receiveShadow = true;
       scene.add(ball);
 
       const trailMat = new THREE.LineBasicMaterial({ color: 0xd6b660, transparent: true, opacity: .36 });
@@ -1491,8 +1564,8 @@
       }
 
       function fitCamera() {
-        camera.position.set(0, 3.15, 4.85);
-        controls.target.set(0, 0.05, 0);
+        camera.position.set(0, 3.8, 5.2);
+        controls.target.set(0, 0.08, 0);
         controls.update();
       }
 
@@ -1529,57 +1602,62 @@
         if (transition) {
           const p = Math.min(1, (now - transition.started) / transition.duration);
           
-          // Easing avanzado: aceleración al inicio, desaceleración al final
+          // Easing más realista
           let eased;
-          if (p < 0.2) {
-            // Aceleración rápida al inicio
-            eased = (p / 0.2) * 0.2 * 1.8;
-          } else if (p < 0.75) {
-            // Movimiento a velocidad constante en la mitad
-            eased = 0.2 + (p - 0.2) / 0.55 * 0.65;
+          if (p < 0.15) {
+            // Lanzamiento rápido
+            eased = p / 0.15 * 0.15 * 2;
+          } else if (p < 0.8) {
+            // Movimiento uniforme la mayor parte
+            eased = 0.15 + (p - 0.15) / 0.65 * 0.75;
           } else {
-            // Desaceleración suave al final (ease-out)
-            const decel = (p - 0.75) / 0.25;
-            eased = 0.85 + Math.pow(decel, 0.4) * 0.15;
+            // Desaceleración suave al final
+            const decel = (p - 0.8) / 0.2;
+            eased = 0.9 + Math.pow(decel, 0.3) * 0.1;
           }
           
           const angle = transition.fromAngle + (transition.toAngle - transition.fromAngle) * eased;
           
-          // Física de la bola: baja rápido, luego sube lentamente
-          const settleStart = 0.5;
+          // Caída y rebote de la bola
+          const settleStart = 0.55;
           let settle;
           if (p < settleStart) {
             settle = 0;
           } else {
             const settleFactor = (p - settleStart) / (1 - settleStart);
-            settle = 1 - Math.pow(1 - settleFactor, 2.2);
+            settle = 1 - Math.pow(1 - settleFactor, 1.8);
           }
           
-          // Radio: empieza muy lejos, se acerca
-          const radius = 1.78 + (1.08 - 1.78) * settle;
+          // Radio: empieza lejos, se acerca
+          const radius = 1.85 + (1.08 - 1.85) * Math.pow(settle, 1.2);
           
-          // Altura: sube al inicio por "lanzamiento", baja gradualmente
-          const apogee = Math.sin(p * Math.PI * 0.8) * (1 - p) * 0.12;
-          const descend = Math.max(0, 0.25 - settle * 0.12);
-          const height = descend + apogee;
+          // Altura: arco parabólico + caída
+          const launchHeight = Math.sin(Math.min(p, 0.5) * Math.PI * 2) * 0.28;
+          const fallHeight = Math.max(0, 0.28 - settle * 0.18);
+          const height = fallHeight + launchHeight;
           
           ball.position.set(Math.cos(angle) * radius, height, Math.sin(angle) * radius);
           
-          // Rotación realista de la bola mientras se mueve
-          const spinSpeed = eased * Math.PI * 12;
-          transition.ballRotation = (transition.ballRotation || 0) + spinSpeed * dt;
+          // Rotación de la bola
+          const spinRate = eased * Math.PI * 18;
+          transition.ballRotation = (transition.ballRotation || 0) + spinRate * dt;
           ball.rotation.x = transition.ballRotation;
+          ball.rotation.z = transition.ballRotation * 0.5;
           
-          // Vibración final cuando llega (últimos 100ms)
-          if (p > 0.9) {
-            const vibration = Math.sin(p * Math.PI * 8) * (1 - p) * 0.015;
-            ball.position.addScaledVector(new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5), vibration);
+          // Pequeña vibración al aterrizar
+          if (p > 0.92 && p < 1) {
+            const vibScale = Math.sin(p * Math.PI * 12) * (1 - p) * 0.008;
+            ball.position.addScaledVector(
+              new THREE.Vector3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize(),
+              vibScale
+            );
           }
           
           if (p >= 1) {
             transition = null;
             setBallAt(analysis.valid[current] || "0");
             ball.rotation.x = 0;
+            ball.rotation.z = 0;
           }
         } else {
           setBallAt(analysis.valid[current] || "0");

@@ -12,10 +12,10 @@ app = Flask(__name__, static_folder=str(BASE_DIR), static_url_path="/static")
 
 @app.route("/")
 def index():
-    """Servir la ruleta real por defecto"""
-    html_path = BASE_DIR / "roulette_real.html"
+    """Servir la ruleta 3D realista por defecto"""
+    html_path = BASE_DIR / "roulette3d.html"
     if not html_path.exists():
-        return f"Error: roulette_real.html not found at {html_path}", 500
+        return f"Error: roulette3d.html not found at {html_path}", 500
     return send_file(str(html_path), mimetype="text/html")
 
 @app.route("/roulette_real.html")
@@ -33,7 +33,7 @@ def roulette_3d():
 @app.errorhandler(404)
 def not_found(error):
     """Redirigir 404 al index"""
-    html_path = BASE_DIR / "roulette_real.html"
+    html_path = BASE_DIR / "roulette3d.html"
     if html_path.exists():
         return send_file(str(html_path), mimetype="text/html")
     return "Not Found", 404
