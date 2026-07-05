@@ -642,10 +642,19 @@
 
     const numberTextRing = new THREE.Mesh(
       new THREE.RingGeometry(POCKET_INNER + 0.02, POCKET_OUTER - 0.01, 256),
-      new THREE.MeshBasicMaterial({ map: createNumberRingTextTexture(), transparent: true, side: THREE.DoubleSide, depthWrite: false })
+      new THREE.MeshBasicMaterial({
+        map: createNumberRingTextTexture(),
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -2,
+        polygonOffsetUnits: -2,
+      })
     );
     numberTextRing.rotation.x = -Math.PI / 2;
-    numberTextRing.position.y = 0.092;
+    // Al ras de la corona de casillas (sin efecto de anillo flotando).
+    numberTextRing.position.y = 0.0365;
     wheelGroup.add(numberTextRing);
 
     // Spindle realista y delgado (cromado), sin bloque dorado tosco.
@@ -722,20 +731,26 @@
     bowlFloorMesh.receiveShadow = true;
     scene.add(bowlFloorMesh);
 
-    // Carril realista de la bola: aro metalico fino y al ras.
-    const trackGeom = new THREE.TorusGeometry(2.02, 0.0024, 10, 220);
-    const trackMesh = new THREE.Mesh(trackGeom, matChrome);
-    trackMesh.rotation.x = Math.PI / 2;
-    trackMesh.position.y = 0.035;
+    // Carriles metalicos internos planos (al ras, sin sobresalir).
+    const trackGeom = new THREE.RingGeometry(2.014, 2.022, 220);
+    const trackMesh = new THREE.Mesh(
+      trackGeom,
+      new THREE.MeshPhysicalMaterial({ color: 0xd7dbe0, roughness: 0.22, metalness: 0.95, clearcoat: 0.3 })
+    );
+    trackMesh.rotation.x = -Math.PI / 2;
+    trackMesh.position.y = 0.0352;
     trackMesh.castShadow = true;
     trackMesh.receiveShadow = true;
     scene.add(trackMesh);
 
     // Guía interior del carril.
-    const innerGuideGeom = new THREE.TorusGeometry(1.90, 0.0021, 10, 220);
-    const innerGuide = new THREE.Mesh(innerGuideGeom, matChrome);
-    innerGuide.rotation.x = Math.PI / 2;
-    innerGuide.position.y = 0.035;
+    const innerGuideGeom = new THREE.RingGeometry(1.896, 1.903, 220);
+    const innerGuide = new THREE.Mesh(
+      innerGuideGeom,
+      new THREE.MeshPhysicalMaterial({ color: 0xd7dbe0, roughness: 0.24, metalness: 0.94, clearcoat: 0.26 })
+    );
+    innerGuide.rotation.x = -Math.PI / 2;
+    innerGuide.position.y = 0.0352;
     innerGuide.castShadow = true;
     innerGuide.receiveShadow = true;
     scene.add(innerGuide);
