@@ -48,6 +48,47 @@
     .hud { position: absolute; top: 16px; left: 16px; background: rgba(10, 10, 10, .82); backdrop-filter: blur(10px); border: 1px solid rgba(255, 138, 53, .4); border-radius: 8px; padding: 12px; font-size: 12px; line-height: 1.5; min-width: 220px; z-index: 5; }
     .hud-value { color: var(--gold); font-weight: 700; }
 
+    .runtime {
+      margin-top: 8px;
+      border-top: 1px solid #4e2f14;
+      padding-top: 6px;
+      font-size: 11px;
+      color: #f3d9a8;
+      max-width: 280px;
+      white-space: normal;
+      word-break: break-word;
+    }
+
+    .runtime.ok { color: #8de2b6; }
+    .runtime.err { color: #ff9d9d; }
+
+    .quick-controls {
+      position: absolute;
+      left: 16px;
+      bottom: 206px;
+      z-index: 5;
+      width: 250px;
+      border: 1px solid #503319;
+      border-radius: 8px;
+      background: rgba(10, 10, 10, .78);
+      backdrop-filter: blur(8px);
+      padding: 10px;
+    }
+
+    .quick-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+
+    .quick-controls small {
+      display: block;
+      color: #c8b28f;
+      font-size: 10px;
+      margin-bottom: 4px;
+    }
+
     .casino-overlay {
       position: absolute;
       left: 14px;
@@ -216,6 +257,20 @@
         <div style="margin-top: 8px; border-top: 1px solid #303326; padding-top: 8px;">RESULTADO: <span class="hud-value" id="hudResult">--</span></div>
         <div>REAL: <span class="hud-value" id="hudReal">--</span></div>
         <div>CALC: <span class="hud-value" id="hudCalc">--</span> · Δ <span class="hud-value" id="hudDelta">--</span></div>
+        <div class="runtime ok" id="runtimeStatus">Tiempo real: activo</div>
+        <div class="runtime" id="runtimeError">Sin errores de runtime</div>
+      </div>
+
+      <div class="quick-controls">
+        <div class="quick-row">
+          <button id="launchBtnQuick" class="primary">▶ Lanzar</button>
+          <button id="resetBtnQuick">↻ Reset</button>
+          <button id="autoBtn">Auto ON</button>
+        </div>
+        <small>Velocidad / Angulo / RPM</small>
+        <input type="range" id="speedSliderQuick" min="5" max="15" step="0.5" value="8" />
+        <input type="range" id="angleSliderQuick" min="-45" max="45" step="5" value="0" />
+        <input type="range" id="rpmSliderQuick" min="0" max="12" step="0.5" value="4" />
       </div>
 
       <div class="casino-overlay">
@@ -304,6 +359,8 @@
     let isSpinning = false;
     let wheelRotation = 0;
     let wheelAngularSpeed = 0;
+    let autoMode = true;
+    let autoTimer = null;
 
     const canvas = document.getElementById("canvas");
     const scene = new THREE.Scene();
@@ -404,11 +461,17 @@
     });
 
     const matBall = new THREE.MeshPhysicalMaterial({
-      color: 0xfaf6ef,
-      metalness: 0.0,
-      roughness: 0.08,
+      color: 0xffffff,
+      metalness: 0.06,
+      roughness: 0.006,
+      transmission: 0.55,
+      ior: 1.46,
       clearcoat: 1.0,
-      clearcoatRoughness: 0.05,
+      clearcoatRoughness: 0.002,
+      envMapIntensity: 2.5,
+      specularIntensity: 1.0,
+      sheen: 0.6,
+      sheenRoughness: 0.08,
     });
 
     function createWoodTexture() {
@@ -441,8 +504,8 @@
 
     function createPocketNumberTexture(text, fgColor) {
       const c = document.createElement("canvas");
-      c.width = 256;
-      c.height = 128;
+      c.width = 360;
+      c.height = 180;
       const g = c.getContext("2d");
 
       g.clearRect(0, 0, c.width, c.height);
@@ -450,7 +513,7 @@
       g.shadowBlur = 7;
       g.shadowOffsetY = 2;
       g.fillStyle = fgColor;
-      g.font = "bold 82px Arial";
+      g.font = "bold 124px Arial";
       g.textAlign = "center";
       g.textBaseline = "middle";
       g.fillText(text, c.width / 2, c.height / 2 + 2);
@@ -501,12 +564,12 @@
       const fg = (num === "0" || num === "00") ? "#aaf5d3" : (RED.has(num) ? "#ffd6d0" : "#f5f5f5");
       const tex = createPocketNumberTexture(num, fg);
       const label = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.15, 0.085),
+        new THREE.PlaneGeometry(0.24, 0.13),
         new THREE.MeshBasicMaterial({ map: tex, transparent: true, side: THREE.DoubleSide, depthWrite: false })
       );
       label.rotation.x = -Math.PI / 2;
       label.rotation.z = -mid + Math.PI / 2;
-      label.position.set(Math.cos(mid) * (POCKET_OUTER - 0.10), 0.105, Math.sin(mid) * (POCKET_OUTER - 0.10));
+      label.position.set(Math.cos(mid) * (POCKET_OUTER - 0.06), 0.108, Math.sin(mid) * (POCKET_OUTER - 0.06));
       wheelGroup.add(label);
     });
 
@@ -532,7 +595,7 @@
     scene.add(tableMesh);
 
     // Plato hondo (bowl) para que no se vea plano.
-    const bowlWallGeom = new THREE.CylinderGeometry(1.95, 1.62, 0.36, 128, 1, true);
+    const bowlWallGeom = new THREE.CylinderGeometry(2.06, 1.46, 0.72, 128, 1, true);
     const bowlWallTex = woodTexture.clone();
     bowlWallTex.repeat.set(3.0, 1.2);
     const bowlWallMesh = new THREE.Mesh(
@@ -545,12 +608,12 @@
         clearcoat: 0.12,
       })
     );
-    bowlWallMesh.position.y = 0.02;
+    bowlWallMesh.position.y = -0.16;
     bowlWallMesh.castShadow = true;
     bowlWallMesh.receiveShadow = true;
     scene.add(bowlWallMesh);
 
-    const bowlFloorGeom = new THREE.CircleGeometry(1.62, 96);
+    const bowlFloorGeom = new THREE.CircleGeometry(1.46, 96);
     const bowlFloorTex = woodTexture.clone();
     bowlFloorTex.repeat.set(1.7, 1.7);
     const bowlFloorMesh = new THREE.Mesh(
@@ -558,7 +621,7 @@
       new THREE.MeshStandardMaterial({ color: 0xffffff, map: bowlFloorTex, roughness: 0.60, metalness: 0.02 })
     );
     bowlFloorMesh.rotation.x = -Math.PI / 2;
-    bowlFloorMesh.position.y = -0.16;
+    bowlFloorMesh.position.y = -0.52;
     bowlFloorMesh.receiveShadow = true;
     scene.add(bowlFloorMesh);
 
@@ -584,16 +647,22 @@
     let ballPos = new THREE.Vector3(0, 2, 3);
     let ballRot = 0;
     let spinStartTime = 0;
+    let bounceY = 0;
+    let bounceVy = 0;
+    let nextBounceAt = 0;
 
     function launch(speed, angle, rpm) {
       if (isSpinning) return;
       isSpinning = true;
       spinStartTime = performance.now();
       const radAngle = (angle * Math.PI) / 180;
-      // Arranca en el aro exterior y con velocidad tangencial para que se vea la "caida" al plato.
-      ballPos.set(Math.cos(radAngle) * 2.35, 0.62, Math.sin(radAngle) * 2.35);
+      // Arranca claramente dentro del anillo dorado, no fuera de la ruleta.
+      ballPos.set(Math.cos(radAngle) * 1.98, 1.42, Math.sin(radAngle) * 1.98);
       ballVel.set(Math.cos(radAngle + Math.PI / 2) * speed, 0, Math.sin(radAngle + Math.PI / 2) * speed);
       ballRot = 0;
+      bounceY = 0;
+      bounceVy = 0;
+      nextBounceAt = 1.7;
       wheelAngularSpeed = (rpm * Math.PI * 2) / 60;
       document.getElementById("hudState").textContent = "Girando";
     }
@@ -621,6 +690,9 @@
       wheelRotation = 0;
       wheelAngularSpeed = 0;
       wheelGroup.rotation.y = 0;
+      bounceY = 0;
+      bounceVy = 0;
+      nextBounceAt = 0;
       isSpinning = false;
       document.getElementById("hudState").textContent = "Listo";
       document.getElementById("hudResult").textContent = "--";
@@ -664,6 +736,37 @@
       if (history.length > 10) history.pop();
       const list = document.getElementById("historyList");
       list.innerHTML = history.map(n => `<div>${n}</div>`).join("");
+    }
+
+    function reportRuntimeError(message) {
+      const errEl = document.getElementById("runtimeError");
+      const stateEl = document.getElementById("runtimeStatus");
+      errEl.textContent = message;
+      errEl.classList.add("err");
+      stateEl.textContent = "Tiempo real: error";
+      stateEl.classList.remove("ok");
+    }
+
+    function setAutoMode(enabled) {
+      autoMode = enabled;
+      const btn = document.getElementById("autoBtn");
+      btn.textContent = enabled ? "Auto ON" : "Auto OFF";
+      btn.style.borderColor = enabled ? "#6ad39d" : "#503319";
+      const stateEl = document.getElementById("runtimeStatus");
+      stateEl.textContent = enabled ? "Tiempo real: activo" : "Tiempo real: manual";
+      stateEl.classList.toggle("ok", enabled);
+
+      if (autoTimer) clearInterval(autoTimer);
+      if (enabled) {
+        autoTimer = setInterval(() => {
+          if (!isSpinning) {
+            const speed = 7 + Math.random() * 4;
+            const angle = -20 + Math.random() * 40;
+            const rpm = 3 + Math.random() * 4;
+            launch(speed, angle, rpm);
+          }
+        }, 1200);
+      }
     }
 
     function numClass(num) {
@@ -710,18 +813,49 @@
       });
     }
 
-    document.getElementById("launchBtn").addEventListener("click", () => {
+    function launchFromMainSliders() {
       launch(
         parseFloat(document.getElementById("speedSlider").value),
         parseFloat(document.getElementById("angleSlider").value),
         parseFloat(document.getElementById("rpmSlider").value)
       );
+    }
+
+    document.getElementById("launchBtn").addEventListener("click", launchFromMainSliders);
+    document.getElementById("launchBtnQuick").addEventListener("click", () => {
+      launch(
+        parseFloat(document.getElementById("speedSliderQuick").value),
+        parseFloat(document.getElementById("angleSliderQuick").value),
+        parseFloat(document.getElementById("rpmSliderQuick").value)
+      );
     });
 
     document.getElementById("resetBtn").addEventListener("click", reset);
+    document.getElementById("resetBtnQuick").addEventListener("click", reset);
+    document.getElementById("autoBtn").addEventListener("click", () => setAutoMode(!autoMode));
     document.getElementById("speedSlider").addEventListener("input", e => document.getElementById("speedVal").textContent = e.target.value);
     document.getElementById("angleSlider").addEventListener("input", e => document.getElementById("angleVal").textContent = e.target.value);
     document.getElementById("rpmSlider").addEventListener("input", e => document.getElementById("rpmVal").textContent = e.target.value);
+
+    document.getElementById("speedSliderQuick").addEventListener("input", e => {
+      document.getElementById("speedSlider").value = e.target.value;
+      document.getElementById("speedVal").textContent = e.target.value;
+    });
+    document.getElementById("angleSliderQuick").addEventListener("input", e => {
+      document.getElementById("angleSlider").value = e.target.value;
+      document.getElementById("angleVal").textContent = e.target.value;
+    });
+    document.getElementById("rpmSliderQuick").addEventListener("input", e => {
+      document.getElementById("rpmSlider").value = e.target.value;
+      document.getElementById("rpmVal").textContent = e.target.value;
+    });
+
+    window.addEventListener("error", (ev) => {
+      reportRuntimeError(`Error: ${ev.message || "desconocido"}`);
+    });
+    window.addEventListener("unhandledrejection", (ev) => {
+      reportRuntimeError(`Promise: ${String(ev.reason || "rechazada")}`);
+    });
 
     window.addEventListener("resize", () => {
       camera.aspect = window.innerWidth / window.innerHeight;
@@ -743,11 +877,14 @@
       if (isSpinning) {
         const elapsedSec = (performance.now() - spinStartTime) / 1000;
         const radiusNow = Math.max(0.12, new THREE.Vector2(ballPos.x, ballPos.z).length());
-        const fallProgress = Math.min(1, Math.max(0, (elapsedSec - 1.2) / 3.8));
+        const airPhase = Math.min(1, elapsedSec / 1.0);
+        const fallProgress = Math.min(1, Math.max(0, (elapsedSec - 1.0) / 4.2));
 
         // Radio y altura objetivo: de pista exterior a bolsillos internos.
-        const targetRadius = 2.35 - 1.23 * fallProgress;
-        const targetY = 0.62 - 0.50 * fallProgress;
+        const targetRadius = 2.46 - 1.46 * fallProgress;
+        const yAir = 1.58 - 0.82 * airPhase;
+        const yBowl = 0.76 - 1.02 * fallProgress;
+        const targetY = elapsedSec < 1.0 ? yAir : yBowl;
 
         const tangentialSpeed = Math.max(0.05, ballVel.length());
         let angle = Math.atan2(ballPos.z, ballPos.x);
@@ -757,9 +894,36 @@
           ? Math.sin(performance.now() * 0.03) * (1 - fallProgress) * 0.02
           : 0;
 
+        // Rebotes amortiguados al entrar en zona de pockets/deflectores.
+        if (fallProgress > 0.58 && elapsedSec >= nextBounceAt && fallProgress < 0.98) {
+          const impactEnergy = Math.max(0.02, (1 - fallProgress) * 0.12);
+          bounceVy = impactEnergy * (0.75 + Math.random() * 0.55);
+          nextBounceAt = elapsedSec + 0.16 + Math.random() * 0.10;
+
+          // Pequeno desvio tangencial para simular rebote lateral entre separadores.
+          const kick = (Math.random() - 0.5) * 0.24;
+          const cosA = Math.cos(kick);
+          const sinA = Math.sin(kick);
+          const vx = ballVel.x * cosA - ballVel.z * sinA;
+          const vz = ballVel.x * sinA + ballVel.z * cosA;
+          ballVel.x = vx;
+          ballVel.z = vz;
+        }
+
+        bounceVy -= 1.75 * dt;
+        bounceY += bounceVy;
+        if (bounceY < 0) {
+          bounceY = 0;
+          if (Math.abs(bounceVy) > 0.01) {
+            bounceVy *= -0.36;
+          } else {
+            bounceVy = 0;
+          }
+        }
+
         ballPos.x = Math.cos(angle) * targetRadius;
         ballPos.z = Math.sin(angle) * targetRadius;
-        ballPos.y = targetY + jitter;
+        ballPos.y = targetY + jitter + bounceY;
 
         // Frenado progresivo realista.
         ballVel.multiplyScalar(Math.pow(0.92, dt * 2));
@@ -793,6 +957,8 @@
     renderBetGrid();
     renderRacetrack();
     window.addEventListener("resize", renderRacetrack);
+    setAutoMode(true);
+    setTimeout(() => { if (!isSpinning) launchFromMainSliders(); }, 350);
     animate();
   </script>
 </body>
