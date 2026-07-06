@@ -1550,27 +1550,27 @@
       biselExterior.castShadow = true;
       maderaGrupo.add(biselExterior);
 
-      const RADIO_PISTA = R_EXT - 0.18;
-      const ALTURA_PISTA = ALTO_CASILLA / 2 + 0.2;
-      const pista = new THREE.Mesh(new THREE.TorusGeometry(RADIO_PISTA, 0.05, 14, 96), cromoMat);
+      const RADIO_PISTA = R_EXT - 0.12;
+      const ALTURA_PISTA = ALTO_CASILLA + 0.06;
+      const pista = new THREE.Mesh(new THREE.TorusGeometry(RADIO_PISTA, 0.04, 14, 96), cromoMat);
       pista.rotation.x = Math.PI / 2;
       pista.position.y = ALTURA_PISTA;
       pista.castShadow = true;
       maderaGrupo.add(pista);
 
       const bordePista = new THREE.Mesh(
-        new THREE.CylinderGeometry(R_EXT + 0.09, R_EXT + 0.09, 0.16, 96, 1, true),
+        new THREE.CylinderGeometry(R_EXT + 0.055, R_EXT + 0.055, 0.08, 96, 1, true),
         cromoOscuroMat
       );
-      bordePista.position.y = ALTO_CASILLA / 2 + 0.13;
+      bordePista.position.y = ALTURA_PISTA;
       bordePista.castShadow = true;
       maderaGrupo.add(bordePista);
 
       const aroAlto = new THREE.Mesh(
-        new THREE.CylinderGeometry(R_EXT + 0.035, R_EXT + 0.035, 0.06, 96, 1, true),
+        new THREE.CylinderGeometry(R_EXT + 0.01, R_EXT + 0.01, 0.05, 96, 1, true),
         cromoOscuroMat
       );
-      aroAlto.position.y = ALTO_CASILLA / 2 + 0.12;
+      aroAlto.position.y = ALTURA_PISTA;
       aroAlto.castShadow = true;
       maderaGrupo.add(aroAlto);
 
@@ -1586,8 +1586,8 @@
       baseCasillas.receiveShadow = true;
       ruleta.add(baseCasillas);
 
-      const piso = new THREE.Mesh(new THREE.CylinderGeometry(R_INT, R_INT, 0.32, 96), hubMat);
-      piso.position.y = ALTO_CASILLA / 2 + 0.16;
+      const piso = new THREE.Mesh(new THREE.CylinderGeometry(R_INT - 0.24, R_INT - 0.12, 0.22, 96), hubMat);
+      piso.position.y = ALTO_CASILLA / 2 + 0.08;
       piso.receiveShadow = true;
       ruleta.add(piso);
 
@@ -1597,7 +1597,7 @@
         new THREE.MeshStandardMaterial({ color: 0x100a06, roughness: 0.9, metalness: 0 })
       );
       canalAsiento.rotation.x = Math.PI / 2;
-      canalAsiento.position.y = ALTO_CASILLA / 2 + 0.13;
+      canalAsiento.position.y = ALTO_CASILLA / 2 + 0.09;
       ruleta.add(canalAsiento);
 
       const volcanBase = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.95, 0.22, 32), oroMat);
@@ -1698,7 +1698,7 @@
         ruleta.add(separador);
       }
 
-      const RADIO_BOLA = 0.11;
+      const RADIO_BOLA = 0.09;
       const bola = new THREE.Mesh(
         new THREE.SphereGeometry(RADIO_BOLA, 32, 32),
         new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.15, metalness: 0.05 })
@@ -1714,7 +1714,7 @@
       marker.position.y = ALTO_CASILLA / 2 + 0.22;
       scene.add(marker);
 
-      const ALTURA_ASENTADA = ALTO_CASILLA / 2 + RADIO_BOLA + 0.005;
+      const ALTURA_ASENTADA = ALTO_CASILLA / 2 + 0.16 + RADIO_BOLA - 0.006;
       const K_FRICCION_RUEDA = 0.09;
       const K_FRICCION_BOLA = 0.2;
       const VEL_BOLA_MIN = 1.15;
