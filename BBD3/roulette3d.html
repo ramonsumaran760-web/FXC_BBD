@@ -9,7 +9,7 @@
   <script type="importmap">
     {
       "imports": {
-        "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js"
+        "three": "./vendor/three/three.module.js"
       }
     }
   </script>
@@ -590,7 +590,7 @@
       <section class="scene-zone" aria-label="Ruleta 3D">
         <div id="webgl"></div>
         <div class="scene-fallback" id="sceneFallback">
-          Three.js no cargo desde CDN. La logica de analisis sigue disponible; conecta internet o sirve el archivo con las dependencias locales.
+          Three.js no se pudo cargar. La logica de analisis sigue disponible; verifica la carpeta local vendor/three o la conexion a CDN.
         </div>
 
         <div class="hud">
@@ -727,9 +727,25 @@
   </div>
 
   <script type="module">
+    const LOCAL_THREE = "./vendor/three/three.module.js";
+    const LOCAL_ORBIT = "./vendor/three/examples/jsm/controls/OrbitControls.js";
+    const LOCAL_ROOM_ENV = "./vendor/three/examples/jsm/environments/RoomEnvironment.js";
     const CDN_THREE = "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js";
     const CDN_ORBIT = "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/controls/OrbitControls.js";
     const CDN_ROOM_ENV = "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/environments/RoomEnvironment.js";
+
+    async function importWithFallback(primary, backup) {
+      try {
+        return await import(primary);
+      } catch (localErr) {
+        try {
+          return await import(backup);
+        } catch (cdnErr) {
+          console.error("Import local fallido:", primary, localErr);
+          throw cdnErr;
+        }
+      }
+    }
 
     const DEFAULT_NUMBERS = [
       "31", "34", "20", "28", "16", "30", "00", "8", "8", "2", "8", "30",
@@ -1282,9 +1298,9 @@
 
     async function initThree() {
       try {
-        const THREE = await import(CDN_THREE);
-        const { OrbitControls } = await import(CDN_ORBIT);
-        const { RoomEnvironment } = await import(CDN_ROOM_ENV);
+        const THREE = await importWithFallback(LOCAL_THREE, CDN_THREE);
+        const { OrbitControls } = await importWithFallback(LOCAL_ORBIT, CDN_ORBIT);
+        const { RoomEnvironment } = await importWithFallback(LOCAL_ROOM_ENV, CDN_ROOM_ENV);
         if (new URLSearchParams(window.location.search).has("debugGeometry")) {
           const originalCompute = THREE.BufferGeometry.prototype.computeBoundingSphere;
           THREE.BufferGeometry.prototype.computeBoundingSphere = function debugBoundingSphere() {
@@ -1317,6 +1333,8 @@
         renderCurrent();
       } catch (err) {
         console.error(err);
+        const errorText = (err && (err.message || String(err))) || "Error desconocido";
+        els.fallback.innerHTML = `<p>Three.js no se pudo cargar. ${errorText}</p>`;
         els.fallback.style.display = "grid";
       }
     }
@@ -1433,15 +1451,6 @@
       mesaConHoyo.position.y = MESA_TOP_Y;
       mesaConHoyo.receiveShadow = true;
       scene.add(mesaConHoyo);
-
-      const aroHoyoMesa = new THREE.Mesh(
-        new THREE.TorusGeometry(6.96, 0.14, 14, 128),
-        new THREE.MeshStandardMaterial({ color: 0x5a3822, roughness: 0.46, metalness: 0.16 })
-      );
-      aroHoyoMesa.rotation.x = Math.PI / 2;
-      aroHoyoMesa.position.y = MESA_TOP_Y + 0.02;
-      aroHoyoMesa.castShadow = true;
-      scene.add(aroHoyoMesa);
 
       const wheelAssembly = new THREE.Group();
       const WHEEL_OFFSET_Y = -1.58;
@@ -1564,6 +1573,9 @@
       caraTrasera.position.y = -GROSOR_MADERA * 1.05;
       maderaGrupo.add(caraTrasera);
 
+      const RADIO_PISTA = R_EXT - 0.12;
+      const ALTURA_PISTA = ALTO_CASILLA + 0.06;
+
       const paredCuencoInterna = new THREE.Mesh(
         new THREE.CylinderGeometry(R_EXT + 1.22, R_EXT + 0.96, 1.28, 96, 1, true),
         maderaCuencoMat
@@ -1571,30 +1583,7 @@
       paredCuencoInterna.position.y = -0.22;
       paredCuencoInterna.receiveShadow = true;
       paredCuencoInterna.castShadow = true;
-      const canalMaderaPista = new THREE.Mesh(
-        new THREE.TorusGeometry(RADIO_PISTA, 0.085, 14, 96),
-        maderaOscuraMat
-      );
-      canalMaderaPista.rotation.x = Math.PI / 2;
-      canalMaderaPista.position.y = ALTURA_PISTA - 0.035;
-      canalMaderaPista.receiveShadow = true;
-      maderaGrupo.add(canalMaderaPista);
-
-      const bordePista = new THREE.Mesh(
-        new THREE.CylinderGeometry(R_EXT - 0.02, R_EXT - 0.02, 0.05, 96, 1, true),
-        cromoOscuroMat
-      );
-      bordePista.position.y = ALTURA_PISTA;
-      bordePista.castShadow = true;
-      maderaGrupo.add(bordePista);
-
-      const aroAlto = new THREE.Mesh(
-        new THREE.CylinderGeometry(R_EXT - 0.05, R_EXT - 0.05, 0.05, 96, 1, true),
-        cromoOscuroMat
-      );
-      aroAlto.position.y = ALTURA_PISTA;
-      aroAlto.castShadow = true;
-      maderaGrupo.add(aroAlto);
+      maderaGrupo.add(paredCuencoInterna);
 
       const ruleta = new THREE.Group();
       wheelAssembly.add(ruleta);
