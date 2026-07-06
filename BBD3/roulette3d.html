@@ -850,7 +850,6 @@
     };
     const STORAGE_SEQUENCE_KEY = "artemis_sequence_input_v1";
     const AUTO_APPEND_SPINS = 500;
-    const AUTO_APPEND_THRESHOLD = 24;
 
     const SECTORS = {
       "35": "Sector Cero", "14": "Sector Cero", "2": "Sector Cero", "0": "Sector Cero",
@@ -1038,8 +1037,8 @@
     }
 
     function ensureContinuousExtension(targetIndex = current) {
-      const remaining = analysis.valid.length - 1 - targetIndex;
-      if (remaining > AUTO_APPEND_THRESHOLD) return;
+      const futureRemaining = analysis.valid.length - 1 - targetIndex;
+      if (futureRemaining >= AUTO_APPEND_SPINS) return;
 
       const extra = generateNextNumbers(sequence, AUTO_APPEND_SPINS);
       if (!extra.length) return;
@@ -1057,10 +1056,6 @@
       renderSummary();
       renderTable();
       renderSequenceGrid();
-    }
-
-    function primeForwardBuffer() {
-      ensureContinuousExtension(Math.max(0, analysis.valid.length - 1));
     }
 
     function getRawSequenceFromInputs() {
@@ -1415,7 +1410,7 @@
       }
       sequence = parsed;
       analysis = buildAnalysis(sequence);
-      primeForwardBuffer();
+      ensureContinuousExtension(0);
       if (els.sequenceExtended) {
         els.sequenceExtended.value = sequence.join(", ");
       }
@@ -2175,7 +2170,7 @@
       analysis = buildAnalysis(sequence);
       els.sequenceInput.value = DEFAULT_NUMBERS.join(", ");
     }
-    primeForwardBuffer();
+    ensureContinuousExtension(0);
     if (els.sequenceExtended) els.sequenceExtended.value = sequence.join(", ");
     els.spinRange.max = Math.max(0, analysis.valid.length - 1);
     installEvents();
