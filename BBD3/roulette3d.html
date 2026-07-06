@@ -1425,6 +1425,8 @@
       scene.add(filoMesa);
 
       const wheelAssembly = new THREE.Group();
+      const WHEEL_OFFSET_Y = -0.28;
+      wheelAssembly.position.y = WHEEL_OFFSET_Y;
       scene.add(wheelAssembly);
 
       const R_INT = 3.15;
@@ -1557,6 +1559,15 @@
       pista.position.y = ALTURA_PISTA;
       pista.castShadow = true;
       maderaGrupo.add(pista);
+
+      const canalMaderaPista = new THREE.Mesh(
+        new THREE.TorusGeometry(RADIO_PISTA, 0.085, 14, 96),
+        maderaOscuraMat
+      );
+      canalMaderaPista.rotation.x = Math.PI / 2;
+      canalMaderaPista.position.y = ALTURA_PISTA - 0.035;
+      canalMaderaPista.receiveShadow = true;
+      maderaGrupo.add(canalMaderaPista);
 
       const bordePista = new THREE.Mesh(
         new THREE.CylinderGeometry(R_EXT - 0.02, R_EXT - 0.02, 0.05, 96, 1, true),
@@ -1712,7 +1723,7 @@
       );
       marker.rotation.x = Math.PI / 2;
       marker.position.y = ALTO_CASILLA / 2 + 0.22;
-      scene.add(marker);
+      wheelAssembly.add(marker);
 
       const ALTURA_ASENTADA = ALTO_CASILLA / 2 + 0.16 + RADIO_BOLA - 0.006;
       const K_FRICCION_RUEDA = 0.09;
