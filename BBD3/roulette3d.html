@@ -849,7 +849,7 @@
       G4: "18, 20, 22, 28"
     };
     const STORAGE_SEQUENCE_KEY = "artemis_sequence_input_v1";
-    const AUTO_APPEND_SPINS = 200;
+    const AUTO_APPEND_SPINS = 500;
     const AUTO_APPEND_THRESHOLD = 24;
 
     const SECTORS = {
@@ -1057,6 +1057,10 @@
       renderSummary();
       renderTable();
       renderSequenceGrid();
+    }
+
+    function primeForwardBuffer() {
+      ensureContinuousExtension(Math.max(0, analysis.valid.length - 1));
     }
 
     function getRawSequenceFromInputs() {
@@ -1411,6 +1415,7 @@
       }
       sequence = parsed;
       analysis = buildAnalysis(sequence);
+      primeForwardBuffer();
       if (els.sequenceExtended) {
         els.sequenceExtended.value = sequence.join(", ");
       }
@@ -2170,6 +2175,7 @@
       analysis = buildAnalysis(sequence);
       els.sequenceInput.value = DEFAULT_NUMBERS.join(", ");
     }
+    primeForwardBuffer();
     if (els.sequenceExtended) els.sequenceExtended.value = sequence.join(", ");
     els.spinRange.max = Math.max(0, analysis.valid.length - 1);
     installEvents();
