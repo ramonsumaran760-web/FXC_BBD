@@ -1550,8 +1550,8 @@
       biselExterior.castShadow = true;
       maderaGrupo.add(biselExterior);
 
-      const RADIO_PISTA = R_EXT - 0.04;
-      const ALTURA_PISTA = ALTO_CASILLA + 0.11;
+      const RADIO_PISTA = R_EXT - 0.18;
+      const ALTURA_PISTA = ALTO_CASILLA / 2 + 0.2;
       const pista = new THREE.Mesh(new THREE.TorusGeometry(RADIO_PISTA, 0.05, 14, 96), cromoMat);
       pista.rotation.x = Math.PI / 2;
       pista.position.y = ALTURA_PISTA;
@@ -1562,15 +1562,15 @@
         new THREE.CylinderGeometry(R_EXT + 0.09, R_EXT + 0.09, 0.16, 96, 1, true),
         cromoOscuroMat
       );
-      bordePista.position.y = ALTO_CASILLA + 0.02;
+      bordePista.position.y = ALTO_CASILLA / 2 + 0.13;
       bordePista.castShadow = true;
       maderaGrupo.add(bordePista);
 
       const aroAlto = new THREE.Mesh(
-        new THREE.CylinderGeometry(R_EXT + 0.035, R_EXT + 0.035, 0.1, 96, 1, true),
+        new THREE.CylinderGeometry(R_EXT + 0.035, R_EXT + 0.035, 0.06, 96, 1, true),
         cromoOscuroMat
       );
-      aroAlto.position.y = ALTO_CASILLA + 0.05;
+      aroAlto.position.y = ALTO_CASILLA / 2 + 0.12;
       aroAlto.castShadow = true;
       maderaGrupo.add(aroAlto);
 
@@ -1698,7 +1698,7 @@
         ruleta.add(separador);
       }
 
-      const RADIO_BOLA = 0.14;
+      const RADIO_BOLA = 0.11;
       const bola = new THREE.Mesh(
         new THREE.SphereGeometry(RADIO_BOLA, 32, 32),
         new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.15, metalness: 0.05 })
@@ -1714,12 +1714,11 @@
       marker.position.y = ALTO_CASILLA / 2 + 0.22;
       scene.add(marker);
 
-      const ALTURA_ASENTADA = ALTO_CASILLA / 2 + RADIO_BOLA + 0.03;
+      const ALTURA_ASENTADA = ALTO_CASILLA / 2 + RADIO_BOLA + 0.005;
       const K_FRICCION_RUEDA = 0.09;
       const K_FRICCION_BOLA = 0.2;
       const VEL_BOLA_MIN = 1.15;
       const VEL_IDLE = 0.045;
-      const FRENADO_FINAL = 1.9;
 
       let history = [...analysis.valid];
       let estado = "asentada";
@@ -1921,12 +1920,16 @@
           const altura = bezierCuad(seg.h0, seg.hPico, seg.h1, u);
           bola.position.set(Math.cos(angulo) * radio, altura, Math.sin(angulo) * radio);
 
-          if (tFrac >= 1) estado = "asentada";
-        } else {
-          if (velocidadOciosa > 0) {
-            velocidadOciosa *= Math.exp(-FRENADO_FINAL * dt);
-            if (velocidadOciosa < 0.003) velocidadOciosa = 0;
+          if (tFrac >= 1) {
+            estado = "asentada";
+            velocidadOciosa = 0;
+            bola.position.set(
+              Math.cos(anguloAsentado + ruleta.rotation.y) * RADIO_ASENTADA,
+              ALTURA_ASENTADA,
+              Math.sin(anguloAsentado + ruleta.rotation.y) * RADIO_ASENTADA
+            );
           }
+        } else {
           ruleta.rotation.y += velocidadOciosa * dt;
           const anguloMundo = anguloAsentado + ruleta.rotation.y;
           bola.position.set(Math.cos(anguloMundo) * RADIO_ASENTADA, ALTURA_ASENTADA, Math.sin(anguloMundo) * RADIO_ASENTADA);
