@@ -1559,7 +1559,7 @@
       maderaGrupo.add(pista);
 
       const bordePista = new THREE.Mesh(
-        new THREE.CylinderGeometry(R_EXT + 0.055, R_EXT + 0.055, 0.08, 96, 1, true),
+        new THREE.CylinderGeometry(R_EXT - 0.02, R_EXT - 0.02, 0.08, 96, 1, true),
         cromoOscuroMat
       );
       bordePista.position.y = ALTURA_PISTA;
@@ -1567,7 +1567,7 @@
       maderaGrupo.add(bordePista);
 
       const aroAlto = new THREE.Mesh(
-        new THREE.CylinderGeometry(R_EXT + 0.01, R_EXT + 0.01, 0.05, 96, 1, true),
+        new THREE.CylinderGeometry(R_EXT - 0.05, R_EXT - 0.05, 0.05, 96, 1, true),
         cromoOscuroMat
       );
       aroAlto.position.y = ALTURA_PISTA;
