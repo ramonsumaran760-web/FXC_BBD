@@ -705,6 +705,7 @@
               </select>
             </div>
             <div class="status-line" id="sequenceStatus"></div>
+            <textarea id="sequenceExtended" spellcheck="false" readonly aria-label="Secuencia completa"></textarea>
           </div>
         </section>
 
@@ -807,6 +808,7 @@
       "Sector Izquierdo": "#e6a94b"
     };
     const GROUP_COLORS = { G0: "#12b981", G1: "#55b7c7", G2: "#6bd0ff", G3: "#d6b660", G4: "#9f72db" };
+    const AUTO_EXTRA_SPINS = 200;
 
     const indexByNumber = Object.fromEntries(WHEEL.map((num, idx) => [num, idx]));
     const slotAngle = (Math.PI * 2) / WHEEL.length;
@@ -883,6 +885,7 @@
       v0Value: document.getElementById("v0Value"),
       restValue: document.getElementById("restValue"),
       sequenceInput: document.getElementById("sequenceInput"),
+      sequenceExtended: document.getElementById("sequenceExtended"),
       loadSequenceBtn: document.getElementById("loadSequenceBtn"),
       resetBtn: document.getElementById("resetBtn"),
       sequenceStatus: document.getElementById("sequenceStatus"),
@@ -912,6 +915,62 @@
         .split(/[\s,;|]+/g)
         .map(normalizeNumber)
         .filter(Boolean);
+    }
+
+    function createSeededRng(numbers) {
+      let seed = 2166136261;
+      numbers.forEach((num, idx) => {
+        const token = `${num}:${idx}`;
+        for (let i = 0; i < token.length; i += 1) {
+          seed ^= token.charCodeAt(i);
+          seed = Math.imul(seed, 16777619) >>> 0;
+        }
+      });
+      return () => {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        return seed / 4294967296;
+      };
+    }
+
+    function signedStep(fromNum, toNum) {
+      const from = indexByNumber[fromNum];
+      const to = indexByNumber[toNum];
+      if (from === undefined || to === undefined) return 0;
+      const cw = (to - from + WHEEL.length) % WHEEL.length;
+      const ccw = (from - to + WHEEL.length) % WHEEL.length;
+      return cw <= ccw ? cw : -ccw;
+    }
+
+    function buildExtendedSequence(baseNumbers, extraCount = AUTO_EXTRA_SPINS) {
+      const baseValid = baseNumbers.filter(num => indexByNumber[num] !== undefined);
+      if (!baseValid.length || extraCount <= 0) return [...baseValid];
+
+      const rng = createSeededRng(baseValid);
+      const transitions = [];
+      for (let i = 1; i < baseValid.length; i += 1) {
+        const step = signedStep(baseValid[i - 1], baseValid[i]);
+        if (step !== 0) transitions.push(step);
+      }
+
+      if (!transitions.length) transitions.push(1, -1, 2, -2, 3, -3);
+      const extended = [...baseValid];
+
+      for (let i = 0; i < extraCount; i += 1) {
+        const prev = extended[extended.length - 1];
+        const prevIdx = indexByNumber[prev] ?? 0;
+        let step = transitions[Math.floor(rng() * transitions.length)] || 1;
+
+        // Bias suave para mantener continuidad fisica en saltos cortos/medios.
+        if (rng() < 0.34) {
+          const short = [1, -1, 2, -2, 3, -3, 4, -4];
+          step = short[Math.floor(rng() * short.length)];
+        }
+
+        const nextIdx = (prevIdx + step + WHEEL.length) % WHEEL.length;
+        extended.push(WHEEL[nextIdx]);
+      }
+
+      return extended;
     }
 
     function clockwiseDistance(from, to) {
@@ -1225,6 +1284,9 @@
       }
       sequence = parsed;
       analysis = buildAnalysis(sequence);
+      if (els.sequenceExtended) {
+        els.sequenceExtended.value = sequence.join(", ");
+      }
       els.spinRange.max = Math.max(0, analysis.valid.length - 1);
       current = 0;
       if (threeApi) threeApi.rebuildHistory(analysis.valid);
@@ -1259,7 +1321,8 @@
       els.tableMode.addEventListener("change", renderTable);
       els.loadSequenceBtn.addEventListener("click", () => loadSequence(els.sequenceInput.value));
       els.resetBtn.addEventListener("click", () => {
-        els.sequenceInput.value = DEFAULT_NUMBERS.join(", ");
+        const resetSequence = buildExtendedSequence(DEFAULT_NUMBERS, AUTO_EXTRA_SPINS);
+        els.sequenceInput.value = resetSequence.join(", ");
         loadSequence(els.sequenceInput.value);
       });
       window.addEventListener("keydown", event => {
@@ -1958,7 +2021,12 @@
       return { focusSpin, rebuildHistory, fitCamera, snapshot };
     }
 
-    els.sequenceInput.value = DEFAULT_NUMBERS.join(", ");
+    const initialSequence = buildExtendedSequence(DEFAULT_NUMBERS, AUTO_EXTRA_SPINS);
+    els.sequenceInput.value = initialSequence.join(", ");
+    if (els.sequenceExtended) els.sequenceExtended.value = initialSequence.join(", ");
+    sequence = [...initialSequence];
+    analysis = buildAnalysis(sequence);
+    els.spinRange.max = Math.max(0, analysis.valid.length - 1);
     installEvents();
     renderAll();
     window.addEventListener("load", renderCharts, { once: true });
