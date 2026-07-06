@@ -332,6 +332,7 @@
     .seq-cell.red { color: #ff3a3a; }
     .seq-cell.black { color: #e7e8ec; }
     .seq-cell.green { color: #00c640; }
+    .seq-cell.invalid { color: #9aa0ab; border-color: #4a4e56; }
     .seq-cell.current {
       border-color: #d6b660;
       box-shadow: 0 0 0 1px rgba(214, 182, 96, .5) inset;
@@ -847,6 +848,7 @@
       G3: "11, 19, 25",
       G4: "18, 20, 22, 28"
     };
+    const STORAGE_SEQUENCE_KEY = "artemis_sequence_input_v1";
 
     const SECTORS = {
       "35": "Sector Cero", "14": "Sector Cero", "2": "Sector Cero", "0": "Sector Cero",
@@ -1001,6 +1003,23 @@
 
     function slotBadge(num) {
       return `<span class="num ${slotClass(num)}">${num}</span>`;
+    }
+
+    function rawIndexFromValidIndex(validIndex) {
+      if (validIndex <= 0) {
+        for (let i = 0; i < sequence.length; i += 1) {
+          if (indexByNumber[sequence[i]] !== undefined) return i;
+        }
+        return -1;
+      }
+
+      let seen = -1;
+      for (let i = 0; i < sequence.length; i += 1) {
+        if (indexByNumber[sequence[i]] === undefined) continue;
+        seen += 1;
+        if (seen === validIndex) return i;
+      }
+      return -1;
     }
 
     function estimateTransition(prev, num, spinIndex) {
@@ -1183,9 +1202,10 @@
         return `<span class="chip" style="border-color:${GROUP_COLORS[group]}55"><b>${group}</b> ${count} <small>${GROUP_LABELS[group]}</small></span>`;
       }).join("");
 
-      const status = analysis.invalid.length
+      const statusBase = analysis.invalid.length
         ? `Ignorados por no existir en rueda americana: ${analysis.invalid.join(", ")}`
         : "Secuencia valida sobre rueda americana de 38 casillas.";
+      const status = `Cargados ${sequence.length} / validos ${analysis.valid.length}. ${statusBase}`;
       els.sequenceStatus.textContent = status;
     }
 
@@ -1277,10 +1297,13 @@
 
     function renderSequenceGrid() {
       if (!els.sequenceGrid) return;
-      els.sequenceGrid.innerHTML = analysis.valid.map((num, idx) => {
-        const cls = slotClass(num);
-        const currentCls = idx === current ? " current" : "";
-        return `<div class="seq-cell ${cls}${currentCls}" title="#${idx + 1} ${num}">${num}</div>`;
+      const currentRaw = rawIndexFromValidIndex(current);
+      els.sequenceGrid.innerHTML = sequence.map((num, idx) => {
+        const isValid = indexByNumber[num] !== undefined;
+        const cls = isValid ? slotClass(num) : "invalid";
+        const currentCls = idx === currentRaw ? " current" : "";
+        const title = isValid ? `#${idx + 1} ${num}` : `#${idx + 1} ${num} (invalido)`;
+        return `<div class="seq-cell ${cls}${currentCls}" title="${title}">${num}</div>`;
       }).join("");
     }
 
@@ -1303,6 +1326,11 @@
       analysis = buildAnalysis(sequence);
       if (els.sequenceExtended) {
         els.sequenceExtended.value = sequence.join(", ");
+      }
+      try {
+        localStorage.setItem(STORAGE_SEQUENCE_KEY, sequence.join(", "));
+      } catch (_) {
+        // Ignore storage issues in restricted browsers.
       }
       els.spinRange.max = Math.max(0, analysis.valid.length - 1);
       current = 0;
@@ -2037,10 +2065,25 @@
       return { focusSpin, rebuildHistory, fitCamera, snapshot };
     }
 
-    els.sequenceInput.value = DEFAULT_NUMBERS.join(", ");
-    if (els.sequenceExtended) els.sequenceExtended.value = DEFAULT_NUMBERS.join(", ");
-    sequence = [...DEFAULT_NUMBERS];
-    analysis = buildAnalysis(sequence);
+    let startupRaw = DEFAULT_NUMBERS.join(", ");
+    try {
+      const saved = localStorage.getItem(STORAGE_SEQUENCE_KEY);
+      if (saved && saved.trim()) startupRaw = saved;
+    } catch (_) {
+      // Ignore storage issues in restricted browsers.
+    }
+    const startupParsed = parseSequence(startupRaw);
+    const startupValid = startupParsed.filter(num => indexByNumber[num] !== undefined);
+    if (startupValid.length) {
+      sequence = [...startupParsed];
+      analysis = buildAnalysis(sequence);
+      els.sequenceInput.value = startupRaw;
+    } else {
+      sequence = [...DEFAULT_NUMBERS];
+      analysis = buildAnalysis(sequence);
+      els.sequenceInput.value = DEFAULT_NUMBERS.join(", ");
+    }
+    if (els.sequenceExtended) els.sequenceExtended.value = sequence.join(", ");
     els.spinRange.max = Math.max(0, analysis.valid.length - 1);
     installEvents();
     renderAll();
