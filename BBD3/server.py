@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Servidor para Ruleta 3D - Artemis Lab"""
 
-from flask import Flask, send_file
+from flask import Flask, send_file, send_from_directory, request
 import os
 from pathlib import Path
 from dotenv import load_dotenv
@@ -13,6 +13,12 @@ load_dotenv()
 BASE_DIR = Path(__file__).parent.absolute()
 
 app = Flask(__name__, static_folder=str(BASE_DIR), static_url_path="/static")
+
+ASSET_SUFFIXES = (
+    ".js", ".mjs", ".css", ".map", ".json",
+    ".png", ".jpg", ".jpeg", ".gif", ".svg", ".webp",
+    ".ico", ".woff", ".woff2", ".ttf", ".otf"
+)
 
 @app.route("/")
 def index():
@@ -34,9 +40,18 @@ def roulette_physics():
     html_path = BASE_DIR / "roulette_physics.html"
     return send_file(str(html_path), mimetype="text/html")
 
+@app.route("/vendor/<path:filename>")
+def vendor_files(filename):
+    """Servir modulos locales de three.js y dependencias."""
+    vendor_dir = BASE_DIR / "vendor"
+    return send_from_directory(str(vendor_dir), filename)
+
 @app.errorhandler(404)
 def not_found(error):
-    """Redirigir 404 al index"""
+    """Evitar fallback HTML para assets; fallback solo para rutas de pagina."""
+    path = request.path.lower()
+    if path.endswith(ASSET_SUFFIXES) or path.startswith("/vendor/"):
+        return "Not Found", 404
     html_path = BASE_DIR / "roulette3d.html"
     if html_path.exists():
         return send_file(str(html_path), mimetype="text/html")
