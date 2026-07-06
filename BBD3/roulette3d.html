@@ -1269,7 +1269,7 @@
 
     function renderSummary() {
       els.sampleTag.textContent = `${analysis.valid.length} giros`;
-      if (els.seqCountTag) els.seqCountTag.textContent = String(sequence.length);
+      if (els.seqCountTag) els.seqCountTag.textContent = `${sequence.length} / ${analysis.valid.length}`;
       els.coverageValue.textContent = `${Math.round(analysis.coverage * 100)}%`;
       els.shortJumpValue.textContent = String(analysis.shortJumps);
       els.repeatValue.textContent = String(analysis.repeats);
