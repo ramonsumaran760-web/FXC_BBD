@@ -849,6 +849,8 @@
       G4: "18, 20, 22, 28"
     };
     const STORAGE_SEQUENCE_KEY = "artemis_sequence_input_v1";
+    const AUTO_APPEND_SPINS = 200;
+    const AUTO_APPEND_THRESHOLD = 24;
 
     const SECTORS = {
       "35": "Sector Cero", "14": "Sector Cero", "2": "Sector Cero", "0": "Sector Cero",
@@ -981,6 +983,80 @@
         .split(/[\s,;|]+/g)
         .map(normalizeNumber)
         .filter(Boolean);
+    }
+
+    function createSeededRng(numbers) {
+      let seed = 2166136261;
+      numbers.forEach((num, idx) => {
+        const token = `${num}:${idx}`;
+        for (let i = 0; i < token.length; i += 1) {
+          seed ^= token.charCodeAt(i);
+          seed = Math.imul(seed, 16777619) >>> 0;
+        }
+      });
+      return () => {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        return seed / 4294967296;
+      };
+    }
+
+    function signedStep(fromNum, toNum) {
+      const from = indexByNumber[fromNum];
+      const to = indexByNumber[toNum];
+      if (from === undefined || to === undefined) return 0;
+      const cw = (to - from + WHEEL.length) % WHEEL.length;
+      const ccw = (from - to + WHEEL.length) % WHEEL.length;
+      return cw <= ccw ? cw : -ccw;
+    }
+
+    function generateNextNumbers(baseNumbers, extraCount = AUTO_APPEND_SPINS) {
+      const baseValid = baseNumbers.filter(num => indexByNumber[num] !== undefined);
+      if (!baseValid.length || extraCount <= 0) return [];
+
+      const rng = createSeededRng(baseValid);
+      const transitions = [];
+      for (let i = 1; i < baseValid.length; i += 1) {
+        const step = signedStep(baseValid[i - 1], baseValid[i]);
+        if (step !== 0) transitions.push(step);
+      }
+      if (!transitions.length) transitions.push(1, -1, 2, -2, 3, -3);
+
+      const generated = [];
+      let prev = baseValid[baseValid.length - 1];
+      for (let i = 0; i < extraCount; i += 1) {
+        const prevIdx = indexByNumber[prev] ?? 0;
+        let step = transitions[Math.floor(rng() * transitions.length)] || 1;
+        if (rng() < 0.34) {
+          const short = [1, -1, 2, -2, 3, -3, 4, -4];
+          step = short[Math.floor(rng() * short.length)];
+        }
+        const nextIdx = (prevIdx + step + WHEEL.length) % WHEEL.length;
+        prev = WHEEL[nextIdx];
+        generated.push(prev);
+      }
+      return generated;
+    }
+
+    function ensureContinuousExtension(targetIndex = current) {
+      const remaining = analysis.valid.length - 1 - targetIndex;
+      if (remaining > AUTO_APPEND_THRESHOLD) return;
+
+      const extra = generateNextNumbers(sequence, AUTO_APPEND_SPINS);
+      if (!extra.length) return;
+
+      sequence.push(...extra);
+      analysis = buildAnalysis(sequence);
+      els.spinRange.max = Math.max(0, analysis.valid.length - 1);
+      if (els.sequenceExtended) els.sequenceExtended.value = sequence.join(", ");
+      try {
+        localStorage.setItem(STORAGE_SEQUENCE_KEY, sequence.join(", "));
+      } catch (_) {
+        // Ignore storage issues in restricted browsers.
+      }
+      if (threeApi) threeApi.rebuildHistory(analysis.valid);
+      renderSummary();
+      renderTable();
+      renderSequenceGrid();
     }
 
     function getRawSequenceFromInputs() {
@@ -1142,7 +1218,7 @@
       playing = true;
       setPlayIcon();
       playTimer = window.setInterval(() => {
-        setCurrent((current + 1) % analysis.valid.length, true);
+        setCurrent(current + 1, true);
       }, Number(els.speedSelect.value));
     }
 
@@ -1153,6 +1229,7 @@
 
     function setCurrent(idx, animate = true) {
       if (!analysis.valid.length) return;
+      ensureContinuousExtension(idx);
       current = Math.max(0, Math.min(idx, analysis.valid.length - 1));
       els.spinRange.max = Math.max(0, analysis.valid.length - 1);
       els.spinRange.value = String(current);
