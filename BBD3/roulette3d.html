@@ -769,7 +769,7 @@
               </select>
             </div>
             <div class="status-line" id="sequenceStatus"></div>
-            <textarea id="sequenceExtended" spellcheck="false" aria-label="Secuencia completa"></textarea>
+            <textarea id="sequenceExtended" spellcheck="false" readonly aria-label="Secuencia completa"></textarea>
           </div>
         </section>
 
@@ -1059,11 +1059,7 @@
     }
 
     function getRawSequenceFromInputs() {
-      const rawMain = els.sequenceInput.value || "";
-      const rawExtended = els.sequenceExtended ? (els.sequenceExtended.value || "") : "";
-      const countMain = parseSequence(rawMain).length;
-      const countExtended = parseSequence(rawExtended).length;
-      return countExtended > countMain ? rawExtended : rawMain;
+      return els.sequenceInput.value || "";
     }
 
     function clockwiseDistance(from, to) {
