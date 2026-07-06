@@ -676,7 +676,7 @@
         </div>
 
         <div class="seq-grid-panel" aria-label="Secuencia en cuadricula">
-          <div class="seq-grid-head">Secuencia cargada</div>
+          <div class="seq-grid-head">Secuencia cargada <span id="seqCountTag">0</span></div>
           <div class="seq-grid-body" id="sequenceGrid"></div>
         </div>
 
@@ -769,7 +769,7 @@
               </select>
             </div>
             <div class="status-line" id="sequenceStatus"></div>
-            <textarea id="sequenceExtended" spellcheck="false" readonly aria-label="Secuencia completa"></textarea>
+            <textarea id="sequenceExtended" spellcheck="false" aria-label="Secuencia completa"></textarea>
           </div>
         </section>
 
@@ -958,6 +958,7 @@
       tableBody: document.getElementById("tableBody"),
       rowsTag: document.getElementById("rowsTag"),
       sequenceGrid: document.getElementById("sequenceGrid")
+      ,seqCountTag: document.getElementById("seqCountTag")
     };
 
     let sequence = [...DEFAULT_NUMBERS];
@@ -980,6 +981,14 @@
         .split(/[\s,;|]+/g)
         .map(normalizeNumber)
         .filter(Boolean);
+    }
+
+    function getRawSequenceFromInputs() {
+      const rawMain = els.sequenceInput.value || "";
+      const rawExtended = els.sequenceExtended ? (els.sequenceExtended.value || "") : "";
+      const countMain = parseSequence(rawMain).length;
+      const countExtended = parseSequence(rawExtended).length;
+      return countExtended > countMain ? rawExtended : rawMain;
     }
 
     function clockwiseDistance(from, to) {
@@ -1179,6 +1188,7 @@
 
     function renderSummary() {
       els.sampleTag.textContent = `${analysis.valid.length} giros`;
+      if (els.seqCountTag) els.seqCountTag.textContent = String(sequence.length);
       els.coverageValue.textContent = `${Math.round(analysis.coverage * 100)}%`;
       els.shortJumpValue.textContent = String(analysis.shortJumps);
       els.repeatValue.textContent = String(analysis.repeats);
@@ -1364,7 +1374,7 @@
       els.speedSelect.addEventListener("change", () => { if (playing) startPlayback(); });
       els.sectorFilter.addEventListener("change", renderTable);
       els.tableMode.addEventListener("change", renderTable);
-      els.loadSequenceBtn.addEventListener("click", () => loadSequence(els.sequenceInput.value));
+      els.loadSequenceBtn.addEventListener("click", () => loadSequence(getRawSequenceFromInputs()));
       els.resetBtn.addEventListener("click", () => {
         els.sequenceInput.value = DEFAULT_NUMBERS.join(", ");
         loadSequence(els.sequenceInput.value);
