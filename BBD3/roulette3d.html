@@ -1576,15 +1576,6 @@
       const RADIO_PISTA = R_EXT - 0.12;
       const ALTURA_PISTA = ALTO_CASILLA + 0.06;
 
-      const paredCuencoInterna = new THREE.Mesh(
-        new THREE.CylinderGeometry(R_EXT + 1.22, R_EXT + 0.96, 1.28, 96, 1, true),
-        maderaCuencoMat
-      );
-      paredCuencoInterna.position.y = -0.22;
-      paredCuencoInterna.receiveShadow = true;
-      paredCuencoInterna.castShadow = true;
-      maderaGrupo.add(paredCuencoInterna);
-
       const ruleta = new THREE.Group();
       wheelAssembly.add(ruleta);
 
